@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Wrapper for running IDNI tau in Docker for internal testing.
+# Respects TAU_INPUTS_DIR and TAU_OUTPUTS_DIR env vars from the daemon.
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $(basename "$0") <spec.tau>" >&2
+  exit 2
+fi
+
+SPEC_PATH="$1"
+if [[ ! -f "$SPEC_PATH" ]]; then
+  echo "Spec not found: $SPEC_PATH" >&2
+  exit 3
+fi
+
+SPEC_DIR="$(cd "$(dirname "$SPEC_PATH")" && pwd)"
+SPEC_FILE="$(basename "$SPEC_PATH")"
+
+# Default to sibling inputs/outputs if not provided by env
+INPUTS_DIR="${TAU_INPUTS_DIR:-$SPEC_DIR/inputs}"
+OUTPUTS_DIR="${TAU_OUTPUTS_DIR:-$SPEC_DIR/outputs}"
+
+mkdir -p "$INPUTS_DIR" "$OUTPUTS_DIR"
+
+# Image name built locally from https://github.com/IDNI/tau-lang (do not distribute)
+IMAGE_NAME="tau-local"
+
+exec docker run --rm \
+  -v "$SPEC_DIR":/workdir \
+  -v "$INPUTS_DIR":/workdir/inputs \
+  -v "$OUTPUTS_DIR":/workdir/outputs \
+  -w /workdir \
+  --entrypoint /tau-lang/build-Release/tau \
+  "$IMAGE_NAME" \
+  "/workdir/$SPEC_FILE"
+
+

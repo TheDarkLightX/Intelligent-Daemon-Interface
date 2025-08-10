@@ -1,0 +1,11 @@
+[workspace]
+
+members = [
+    "daemon",
+    "tau_core",
+    "tau_oracle",
+    "tau_solver",
+    "tau_witness",
+]
+
+resolver = "2"

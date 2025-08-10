@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "perplexity": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-perplexity"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
+      }
+    },
+    "atom-of-thoughts": {
+      "command": "node",
+      "args": [
+        "./node_modules/mcp-atom-of-thoughts/build/index.js"
+      ]
+    }
+  }
+}

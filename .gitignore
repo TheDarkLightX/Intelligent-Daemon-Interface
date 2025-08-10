@@ -1,0 +1,33 @@
+# Rust target artifacts
+**/target/
+**/*.rmeta
+**/*.rlib
+
+# Node and JS
+node_modules/
+
+# Tau outputs and generated data
+outputs/**
+!outputs/.gitkeep
+inputs/**
+!inputs/.gitkeep
+
+# Ledger and snapshots
+tau_daemon_alpha/ledger/**
+!tau_daemon_alpha/ledger/.gitkeep
+
+# Local caches and build helpers
+tau_daemon_alpha/.tau_lang_cache/**
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker artifacts
+**/.docker/**
+**/.cache/**
+
+

@@ -1,0 +1,10 @@
+[package]
+name = "tau_solver"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+or-tools = { git = "https://github.com/ulagbulag/or-tools-rs.git", features = ["build-native"] }
+tau_core = { path = "../tau_core" }
+thiserror = "1.0"
