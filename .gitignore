@@ -18,6 +18,8 @@ tau_daemon_alpha/ledger/**
 
 # Local caches and build helpers
 tau_daemon_alpha/.tau_lang_cache/**
+tau-lang*/
+tau_lang*/
 
 # Editor/OS
 .DS_Store
@@ -25,6 +27,11 @@ tau_daemon_alpha/.tau_lang_cache/**
 .vscode/
 *.swp
 *.swo
+/.venv/
+**/.venv/
+idi/artifacts/
+**/__pycache__/
+*.pyc
 
 # Docker artifacts
 **/.docker/**

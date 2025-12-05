@@ -3,10 +3,10 @@
 This repository contains the V35 Deflationary Agent kernel specification and an enhanced Rust daemon (Tau Daemon Alpha) that acts as an exoskeleton around a lean Tau kernel.
 
 ## Structure
-- `specification/` — Tau specs, including `agent4_testnet_v35.tau`
-- `tau_daemon_alpha/` — Rust workspace: daemon + core libs
-- `inputs/`, `outputs/` — IO directories used by specs
-- `verification/` — Formal checks (Z3 proofs, etc.)
+- `specification/`: Tau specs, including `agent4_testnet_v35.tau`
+- `tau_daemon_alpha/`: Rust workspace: daemon + core libs
+- `inputs/`, `outputs/`: IO directories used by specs
+- `verification/`: Formal checks (Z3 proofs, etc.)
 
 ## Quickstart
 1) Build Tau locally (internal-only)

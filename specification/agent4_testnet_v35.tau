@@ -13,50 +13,50 @@ valid_exit(p, h) := p & h.
 timed_out(b1, b0) := b1 & b0.
 
 # === OPTIMIZED INPUT STREAMS ===
-sbf i0 = ifile("inputs/price.in").     # Market price: 0=low, 1=high
-sbf i1 = ifile("inputs/volume.in").    # Trading volume: 0=low, 1=high  
-sbf i2 = ifile("inputs/trend.in").     # Price trend: 0=bearish, 1=bullish
-sbf i3 = ifile("inputs/profit_guard.in").  # Daemon-proved profitability guard
-sbf i4 = ifile("inputs/failure_echo.in").  # Daemon failure echo to force clean exit
+i0 : sbf = in file("inputs/price.in").     # Market price: 0=low, 1=high
+i1 : sbf = in file("inputs/volume.in").    # Trading volume: 0=low, 1=high  
+i2 : sbf = in file("inputs/trend.in").     # Price trend: 0=bearish, 1=bullish
+i3 : sbf = in file("inputs/profit_guard.in").  # Daemon-proved profitability guard
+i4 : sbf = in file("inputs/failure_echo.in").  # Daemon failure echo to force clean exit
 
 # === OPTIMIZED OUTPUT STREAMS (21 total: 5 inputs + 16 outputs) ===
 # Core state machine (o0-o3)
-sbf o0 = ofile("outputs/state.out").           # Agent state
-sbf o1 = ofile("outputs/holding.out").         # Position
-sbf o2 = ofile("outputs/buy_signal.out").      # Buy decision
-sbf o3 = ofile("outputs/sell_signal.out").     # Sell decision
+o0 : sbf = out file("outputs/state.out").           # Agent state
+o1 : sbf = out file("outputs/holding.out").         # Position
+o2 : sbf = out file("outputs/buy_signal.out").      # Buy decision
+o3 : sbf = out file("outputs/sell_signal.out").     # Sell decision
 
 # Safety mechanisms (o4-o7)
-sbf o4 = ofile("outputs/lock.out").            # Re-entrancy lock
-sbf o5 = ofile("outputs/oracle_fresh.out").    # Oracle freshness
-sbf o6 = ofile("outputs/timer_b0.out").        # Timer bit 0 (2-bit counter)
-sbf o7 = ofile("outputs/timer_b1.out").        # Timer bit 1 (MSB)
+o4 : sbf = out file("outputs/lock.out").            # Re-entrancy lock
+o5 : sbf = out file("outputs/oracle_fresh.out").    # Oracle freshness
+o6 : sbf = out file("outputs/timer_b0.out").        # Timer bit 0 (2-bit counter)
+o7 : sbf = out file("outputs/timer_b1.out").        # Timer bit 1 (MSB)
 
 # Nonce and economic tracking (o9-o13)
-sbf o9 = ofile("outputs/nonce.out").           # Nonce for no-replay
-sbf o10 = ofile("outputs/entry_price.out").    # Entry price memory
-sbf o11 = ofile("outputs/profit.out").         # Profitable exit
-sbf o12 = ofile("outputs/burn_event.out").     # Burn triggered
-sbf o13 = ofile("outputs/has_burned.out").     # Burn history (monotonic)
+o9 : sbf = out file("outputs/nonce.out").           # Nonce for no-replay
+o10 : sbf = out file("outputs/entry_price.out").    # Entry price memory
+o11 : sbf = out file("outputs/profit.out").         # Profitable exit
+o12 : sbf = out file("outputs/burn_event.out").     # Burn triggered
+o13 : sbf = out file("outputs/has_burned.out").     # Burn history (monotonic)
 
 # Observable invariants (o14-o17)
-sbf o14 = ofile("outputs/obs_action_excl.out").     # Observe !(buy && sell)
-sbf o15 = ofile("outputs/obs_fresh_exec.out").      # Observe executing -> fresh
-sbf o16 = ofile("outputs/obs_burn_profit.out").     # Observe burn -> profit
-sbf o17 = ofile("outputs/obs_nonce_effect.out").    # Observe nonce blocks repeats
+o14 : sbf = out file("outputs/obs_action_excl.out").     # Observe !(buy && sell)
+o15 : sbf = out file("outputs/obs_fresh_exec.out").      # Observe executing -> fresh
+o16 : sbf = out file("outputs/obs_burn_profit.out").     # Observe burn -> profit
+o17 : sbf = out file("outputs/obs_nonce_effect.out").    # Observe nonce blocks repeats
 
 # Progress tracking (o18)
-sbf o18 = ofile("outputs/progress_flag.out").   # Activity detection
+o18 : sbf = out file("outputs/progress_flag.out").   # Activity detection
 
 # === MAIN SPECIFICATION (Production Ready with Micro-Optimizations) ===
 r (
     # === OPTIMIZED STATE MACHINE (With factored timeout and enhanced progress) ===
     # Entry condition: gated by failure echo, factored timeout
-    (o0[t] = (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) & 
-              o4[t-1]' & i1[t] & timed_out(o7[t-1], o6[t-1])' & o9[t-1]' & i4[t]') |
+    (o0[t] = (o0[t-1]' & i0[t]' & i1[t] & i2[t] & o1[t-1]' & 
+              o4[t-1]' & o3[t-1]' & i1[t] & (o7[t-1] & o6[t-1])' & o9[t-1]' & i4[t]') |
              # Continue condition: gated by failure echo, factored timeout
-             (o0[t-1] & valid_exit(i0[t], o1[t-1])' & 
-              timed_out(o7[t-1], o6[t-1])' & i1[t] & i4[t]')) &&
+             (o0[t-1] & (i0[t] & o1[t-1])' & 
+              (o7[t-1] & o6[t-1])' & i1[t] & i4[t]')) &&
     
     # === OPTIMIZED TRADING LOGIC (Early gating for BDD efficiency) ===
     (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&  # Buy on state entry
@@ -75,7 +75,7 @@ r (
     
     # === OPTIMIZED NONCE (Gated by execution state) ===
     # Nonce: carry only while executing
-    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    (o9[t] = o2[t] | (o0[t-1] & o9[t-1])) &&
     
     # === OPTIMIZED ECONOMIC LOGIC (With daemon profit guard) ===
     # Entry price: carry only while executing and not selling

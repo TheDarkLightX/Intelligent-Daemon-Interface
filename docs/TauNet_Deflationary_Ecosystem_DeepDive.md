@@ -41,7 +41,7 @@ Design a robust, verifiable, deflationary economic ecosystem on Tau Net composed
 - Monotone-burn: `burn' | profit` and `never unburn` encoded via absence of reverse edges.
 - Bounded emissions: `emission_ok` (from counted witness) gates accept.
 - Nonce discipline: `buy' | nonce_prev'`.
-- Composition safety: per-module assume–guarantee: accept only when peer ok flags are asserted.
+- Composition safety: per-module assume-guarantee: accept only when peer ok flags are asserted.
 
 ### Agent templates (bf-only r())
 - Gray-gated timers for pacing and cooldowns.
@@ -51,7 +51,7 @@ Design a robust, verifiable, deflationary economic ecosystem on Tau Net composed
 ### Libraries added
 - `libraries/invariants_v36.tau`: core logical helpers and invariants.
 - `libraries/deflationary_economy_v1.tau`: deflationary primitives (burn, emission caps, pacing, demand s.t. bf monitors).
-- `libraries/mev_oracle_safety_v1.tau`: commit–reveal, batch, staleness/band, cooldown, mev capture monitors.
+- `libraries/mev_oracle_safety_v1.tau`: commit-reveal, batch, staleness/band, cooldown, mev capture monitors.
 - `dCFMM_Math_Spec_V1.md`: math spec for deflationary CFMMs and reserve-tax models.
 - `ITERATION_LOG_Deflationary_Math_AoT.md`: 100-iteration AoT log (growing) tracking new theorems and results.
 
@@ -62,7 +62,7 @@ Design a robust, verifiable, deflationary economic ecosystem on Tau Net composed
 - Use wrapper for governance updates; invariants must hold during `u`-driven revisions.
 
 ### Iteration highlights (condensed)
-1) Early gating reduces frontier pathwidth → smaller BDDs. 2) XOR avoided; parity/adders bounds reaffirmed. 3) Group sifting > blind sifting for SOP with shared gates. 4) Unique tables/caches maximize reuse—factor helpers. 5) L2S monitors for bounded progress. 6) Token buckets as pacing inputs. 7) Cooldowns prevent MEV oscillations. 8) Batch auctions neutralize ordering MEV. 9) Commit–reveal for oracle votes. 10) Median-of-medians for robust aggregation. 11) Band acceptance + slashing harden oracle. 12) Fee burn shifts value to holders; ensure validator tips suffice. 13) POL reduces liquidity fragility. 14) Buyback-and-make for growth; buyback-and-burn for scarcity. 15) Assume–guarantee specs for safe composition. ... (further items continue these themes across governance, upgrades, and verification practice).
+1) Early gating reduces frontier pathwidth → smaller BDDs. 2) XOR avoided; parity/adders bounds reaffirmed. 3) Group sifting > blind sifting for SOP with shared gates. 4) Unique tables/caches maximize reuse; factor helpers. 5) L2S monitors for bounded progress. 6) Token buckets as pacing inputs. 7) Cooldowns prevent MEV oscillations. 8) Batch auctions neutralize ordering MEV. 9) Commit-reveal for oracle votes. 10) Median-of-medians for robust aggregation. 11) Band acceptance + slashing harden oracle. 12) Fee burn shifts value to holders; ensure validator tips suffice. 13) POL reduces liquidity fragility. 14) Buyback-and-make for growth; buyback-and-burn for scarcity. 15) Assume-guarantee specs for safe composition. ... (further items continue these themes across governance, upgrades, and verification practice).
 
 ### Next steps
 - Integrate libraries in example agents; add counting witnesses where needed for emissions.
