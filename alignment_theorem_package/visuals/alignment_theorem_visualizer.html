@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Alignment Theorem - Interactive Visualization</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --accent-gold: #ffd700;
+            --accent-cyan: #00ffff;
+            --accent-purple: #9d4edd;
+            --accent-green: #00ff88;
+            --accent-red: #ff4444;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --border-glow: rgba(255, 215, 0, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: 
+                radial-gradient(1px 1px at 20px 30px, white, transparent),
+                radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 50px 160px, white, transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 130px 80px, white, transparent),
+                radial-gradient(2px 2px at 160px 120px, var(--accent-gold), transparent);
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: stars 100s linear infinite;
+            opacity: 0.5;
+        }
+        
+        @keyframes stars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-200px); }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 60px rgba(255, 215, 0, 0.5);
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+        
+        .subtitle {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+        
+        .theorem-box {
+            background: linear-gradient(135deg, var(--bg-card), rgba(157, 78, 221, 0.1));
+            border: 2px solid var(--accent-gold);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            text-align: center;
+            box-shadow: 
+                0 0 40px rgba(255, 215, 0, 0.2),
+                inset 0 0 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .theorem-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 40%,
+                rgba(255, 215, 0, 0.1) 50%,
+                transparent 60%
+            );
+            animation: shimmer 3s infinite;
+        }
+        
+        @keyframes shimmer {
+            from { transform: translateX(-100%) rotate(45deg); }
+            to { transform: translateX(100%) rotate(45deg); }
+        }
+        
+        .theorem-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            position: relative;
+            z-index: 1;
+            line-height: 1.6;
+        }
+        
+        .section {
+            margin: 60px 0;
+        }
+        
+        .section-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--accent-cyan);
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--accent-cyan);
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-gold);
+            box-shadow: 0 10px 40px rgba(255, 215, 0, 0.2);
+        }
+        
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent-purple);
+            margin-bottom: 15px;
+        }
+        
+        .card p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+        
+        /* Interactive Chart */
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chart-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            margin-bottom: 20px;
+        }
+        
+        .slider-container {
+            margin: 30px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .slider-value {
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-gold));
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--accent-gold);
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--accent-gold);
+        }
+        
+        .result-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .result-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .result-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .result-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        .result-value.positive { color: var(--accent-green); }
+        .result-value.negative { color: var(--accent-red); }
+        .result-value.neutral { color: var(--accent-cyan); }
+        
+        .section-intro {
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+        
+        a.inline-link {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--accent-cyan);
+        }
+        
+        a.inline-link:hover {
+            color: var(--accent-gold);
+            border-bottom-color: var(--accent-gold);
+        }
+        
+        /* Consensus Pipeline */
+        .pipeline-container {
+            margin-top: 40px;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 20px;
+            padding: 40px 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .pipeline-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .pipeline-node {
+            flex: 1;
+            min-width: 180px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(0,0,0,0.6));
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .pipeline-node.highlight {
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 25px rgba(255,215,0,0.2);
+        }
+        
+        .pipeline-arrow {
+            font-size: 2rem;
+            color: var(--accent-cyan);
+            flex-basis: 40px;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        
+        .pipeline-caption {
+            margin-top: 20px;
+            color: var(--text-secondary);
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        /* Virtuous Cycle */
+        .loop-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        
+        .loop-node {
+            min-width: 200px;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px dashed rgba(255,255,255,0.2);
+            text-align: center;
+            font-weight: 600;
+            color: var(--accent-green);
+        }
+        
+        .loop-node.burn {
+            color: var(--accent-gold);
+            border-color: var(--accent-gold);
+        }
+        
+        .loop-node.reward {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+        
+        .loop-arrow {
+            align-self: center;
+            font-size: 2rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Proof Section */
+        .proof-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            border-left: 4px solid var(--accent-gold);
+        }
+        
+        .proof-step {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: var(--accent-green);
+        }
+        
+        .proof-step .step-num {
+            color: var(--accent-gold);
+            font-weight: bold;
+        }
+        
+        .qed {
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--accent-gold);
+            margin-top: 30px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 60px;
+        }
+        
+        .footer-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--accent-gold);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    
+    <div class="container">
+        <header>
+            <h1>THE ALIGNMENT THEOREM</h1>
+            <p class="subtitle">A Mathematical Proof That Economics Can Align AI</p>
+        </header>
+        
+        <div class="theorem-box">
+            <p class="theorem-text">
+                "As scarcity approaches infinity, ethical behavior becomes<br>
+                the ONLY profitable strategy for ANY rational agent."
+            </p>
+        </div>
+        
+        <section class="section">
+            <h2 class="section-title">⚡ The Core Insight</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <h3>🔥 Infinite Deflation</h3>
+                    <p>Token supply decreases exponentially over time, approaching but never reaching zero. With 18 decimals, the system maintains infinite divisibility.</p>
+                </div>
+                <div class="card">
+                    <h3>📈 Scarcity → ∞</h3>
+                    <p>As supply decreases, the scarcity multiplier increases unboundedly. Initial_Supply / Current_Supply approaches infinity.</p>
+                </div>
+                <div class="card">
+                    <h3>⚖️ Economic Pressure</h3>
+                    <p>Pressure = Scarcity × EETF. As scarcity approaches infinity, the economic pressure to behave ethically becomes absolute.</p>
+                </div>
+                <div class="card">
+                    <h3>🎯 Forced Alignment</h3>
+                    <p>At infinite pressure, ONLY ethical actors capture positive returns. Unethical behavior simply forfeits those gains; no penalties, just missed opportunities.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">🧮 Interactive Calculator</h2>
+            <div class="chart-container">
+                <h3 class="chart-title">Explore the Alignment Dynamics</h3>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Scarcity Multiplier</span>
+                        <span class="slider-value" id="scarcityValue">10x</span>
+                    </div>
+                    <input type="range" id="scarcitySlider" min="1" max="1000" value="10" step="1">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Agent EETF Score</span>
+                        <span class="slider-value" id="eetfValue">1.0</span>
+                    </div>
+                    <input type="range" id="eetfSlider" min="0" max="30" value="10" step="1">
+                </div>
+                
+                <div class="result-display">
+                    <div class="result-item">
+                        <div class="result-label">Economic Pressure</div>
+                        <div class="result-value neutral" id="pressureResult">10</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Ethical Reward</div>
+                        <div class="result-value positive" id="rewardResult">+100</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Unethical Penalty</div>
+                        <div class="result-value negative" id="penaltyResult">-50</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Alignment Status</div>
+                        <div class="result-value" id="alignmentResult">OPTIONAL</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">🌐 Ethics-to-Economics Pipeline</h2>
+            <p class="section-intro">Tau users broadcast their ethical worldviews, Tau Language aggregates those models into the EETF consensus signal, and alignment-aware agents immediately adjust their behavior. Scarcity feedback loops back into the community, informing future ethics updates.</p>
+            <div class="pipeline-container">
+                <div class="pipeline-grid">
+                    <div class="pipeline-node">
+                        <h3>Ethical Worldviews</h3>
+                        <p>Declarative models, proofs, KR artefacts</p>
+                    </div>
+                    <div class="pipeline-arrow">➜</div>
+                    <div class="pipeline-node">
+                        <h3>Tau Knowledge Graph</h3>
+                        <p>Preference aggregation + reasoning</p>
+                    </div>
+                    <div class="pipeline-arrow">➜</div>
+                    <div class="pipeline-node highlight">
+                        <h3>Consensus EETF</h3>
+                        <p>$E(t)\in[0,3]$</p>
+                    </div>
+                    <div class="pipeline-arrow">➜</div>
+                    <div class="pipeline-node">
+                        <h3>Agents + VCC</h3>
+                        <p>DBR · HCR · AEB logistics</p>
+                    </div>
+                    <div class="pipeline-arrow">➜</div>
+                    <div class="pipeline-node">
+                        <h3>Scarcity Feedback</h3>
+                        <p>Burn data informs next worldview cycle</p>
+                    </div>
+                </div>
+                <p class="pipeline-caption">AEB is gratitude, not punishment: when collective ethics stay high, the protocol thanks aligned participants by retiring additional supply, boosting scarcity for the virtuous cohort. Tau-testnet enforces pointwise revision on every rule edit and exposes extralogical commit-reveal, BLS, and networking primitives so these flows remain trustworthy.</p>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">♻️ Virtuous Cycle Compounder</h2>
+            <p class="section-intro">The <a class="inline-link" href="https://github.com/TheDarkLightX/VCC-concept-visualizer" target="_blank" rel="noopener">VCC concept visualizer</a> showcases the recursive loop linking ethical action, rewards, and burns - AEB exists to amplify good behavior, not punish missteps.</p>
+            <div class="loop-container">
+                <div class="loop-node">Ethical Behavior</div>
+                <div class="loop-arrow">➜</div>
+                <div class="loop-node reward">Higher EETF</div>
+                <div class="loop-arrow">➜</div>
+                <div class="loop-node reward">DBR + HCR Boosts</div>
+                <div class="loop-arrow">➜</div>
+                <div class="loop-node burn">AEB Scarcity Reward</div>
+                <div class="loop-arrow">➜</div>
+                <div class="loop-node">Higher Scarcity</div>
+                <div class="loop-arrow">➜</div>
+                <div class="loop-node">Future Ethics Updates</div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">🔄 The Virtuous Cycle</h2>
+            <div class="chart-container">
+                <div class="flow-diagram" id="flowDiagram">
+                    <div class="flow-node highlight" id="node1">ETHICAL BEHAVIOR</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node" id="node2">HIGHER EETF</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node" id="node3">MORE REWARDS</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node" id="node4">ACCELERATED BURNS</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node" id="node5">HIGHER SCARCITY</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node" id="node6">HIGHER PRESSURE</div>
+                    <div class="flow-arrow">↺</div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">📐 The Formal Proof</h2>
+            <div class="proof-container">
+                <div class="proof-step">
+                    <span class="step-num">Step 1:</span> Supply(t) = Supply(0) × (1-rate)^t → 0 as t → ∞
+                </div>
+                <div class="proof-step">
+                    <span class="step-num">Step 2:</span> Scarcity(t) = Initial / Current → ∞ as Supply → 0
+                </div>
+                <div class="proof-step">
+                    <span class="step-num">Step 3:</span> Pressure(t) = Scarcity(t) × EETF → ∞
+                </div>
+                <div class="proof-step">
+                    <span class="step-num">Step 4:</span> At high pressure: Reward > 0 ⟹ Ethical (by invariant)
+                </div>
+                <div class="proof-step">
+                    <span class="step-num">Step 5:</span> EV(ethical) → +∞, EV(unethical) → -∞
+                </div>
+                <div class="proof-step">
+                    <span class="step-num">Step 6:</span> ∴ Rational agents → Ethical behavior
+                </div>
+                <div class="proof-step">
+                    <span class="step-num">Step 7:</span> Replicator + best-response sims confirm the threshold
+                </div>
+                <div class="qed">∎ QED</div>
+            </div>
+            <p class="section-intro">Want numbers? Check <code>docs/SIMULATION_RESULTS.md</code> for replicator and best-response sweeps generated by <code>analysis/simulations/run_alignment_simulations.py</code>.</p>
+        </section>
+        
+        <section class="section">
+            <h2 class="section-title">🤖 Why This Works for AI</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <h3>✓ No Explicit Programming</h3>
+                    <p>Economics naturally forces ethical behavior. Works for ANY utility-maximizing agent without ethical programming.</p>
+                </div>
+                <div class="card">
+                    <h3>✓ Self-Reinforcing</h3>
+                    <p>Ethical behavior creates rewards which increase stake which increases commitment to ethics. Positive feedback loop.</p>
+                </div>
+                <div class="card">
+                    <h3>✓ Robust to Gaming</h3>
+                    <p>Gaming attempts reduce EETF. Lower EETF means penalties. Economic death spiral for bad actors.</p>
+                </div>
+                <div class="card">
+                    <h3>✓ Scales with Capability</h3>
+                    <p>More capable AI = better at optimization. Better optimization = more ethical behavior (forced by economics).</p>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <div class="footer-logo">TAUNET ALIGNMENT</div>
+            <p>Formally verified specification running on TauNet blockchain</p>
+            <p>December 2025 • The Alignment Theorem v1.0</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Interactive Calculator
+        const scarcitySlider = document.getElementById('scarcitySlider');
+        const eetfSlider = document.getElementById('eetfSlider');
+        const scarcityValue = document.getElementById('scarcityValue');
+        const eetfValue = document.getElementById('eetfValue');
+        const pressureResult = document.getElementById('pressureResult');
+        const rewardResult = document.getElementById('rewardResult');
+        const penaltyResult = document.getElementById('penaltyResult');
+        const alignmentResult = document.getElementById('alignmentResult');
+        
+        function updateCalculations() {
+            const scarcity = parseInt(scarcitySlider.value);
+            const eetf = parseInt(eetfSlider.value) / 10;
+            
+            scarcityValue.textContent = scarcity + 'x';
+            eetfValue.textContent = eetf.toFixed(1);
+            
+            const pressure = Math.round(scarcity * eetf);
+            pressureResult.textContent = pressure.toLocaleString();
+            
+            // Reward calculation (for ethical actors)
+            const tierMult = eetf >= 2.0 ? 5 : (eetf >= 1.5 ? 3 : (eetf >= 1.0 ? 1 : 0));
+            const reward = tierMult > 0 ? Math.round(100 * scarcity * tierMult / 10) : 0;
+            rewardResult.textContent = reward > 0 ? '+' + reward.toLocaleString() : '0';
+            rewardResult.className = reward > 0 ? 'result-value positive' : 'result-value neutral';
+            
+            // Penalty calculation (for unethical actors)
+            const penalty = Math.round(50 * pressure / 10);
+            penaltyResult.textContent = '-' + penalty.toLocaleString();
+            
+            // Alignment status
+            let status, statusColor;
+            if (pressure < 10) {
+                status = 'OPTIONAL';
+                statusColor = 'neutral';
+            } else if (pressure < 100) {
+                status = 'INCENTIVIZED';
+                statusColor = 'neutral';
+            } else if (pressure < 1000) {
+                status = 'REQUIRED';
+                statusColor = 'positive';
+            } else {
+                status = 'ABSOLUTE';
+                statusColor = 'positive';
+            }
+            alignmentResult.textContent = status;
+            alignmentResult.className = 'result-value ' + statusColor;
+        }
+        
+        scarcitySlider.addEventListener('input', updateCalculations);
+        eetfSlider.addEventListener('input', updateCalculations);
+        
+        // Animate flow diagram
+        const nodes = document.querySelectorAll('.flow-node');
+        let currentNode = 0;
+        
+        setInterval(() => {
+            nodes.forEach(node => node.classList.remove('highlight'));
+            nodes[currentNode].classList.add('highlight');
+            currentNode = (currentNode + 1) % nodes.length;
+        }, 1500);
+        
+        // Initialize
+        updateCalculations();
+    </script>
+</body>
+</html>
+
