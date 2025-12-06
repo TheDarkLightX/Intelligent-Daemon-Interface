@@ -51,6 +51,7 @@
 - Rust crate under `idi/training/rust/idi_iann/` mirrors the same abstractions (traits for env, policy, serializer) and ships unit/property tests so both stacks stay aligned.
 - Devkit (`idi/devkit/`):
   - `builder.py` CLI wraps the trainer, writes `streams/`, installs them into Tau inputs, and emits `artifact_manifest.json`.
+  - `build_layers.py` reads `configs/layer_plan.json` and runs multiple configs (macro/micro/emote) for multi-layer deployments.
   - `manifest.py` computes SHA-256 fingerprints for every stream so zk proof verifiers know exactly what was trained.
 - Shared YAML/JSON manifest ensures reproducibility across languages and fuels regression tests.
 
@@ -113,8 +114,8 @@
 5. Commit manifests/proof hashes in documentation (never commit the private lookup tables unless intentionally open-source).
 
 ## 13. Devkit + zk workflow
-1. Author a JSON config under `idi/devkit/configs/`.
-2. Run `python -m idi.devkit.builder --config ... --out ... --install-inputs idi/specs/V38_Minimal_Core/inputs`.
+1. Author a JSON config under `idi/devkit/configs/` (or edit the provided `regime_macro.json`, `regime_micro.json`, `emote_balanced.json`).
+2. Run `python -m idi.devkit.builder --config ... --out ... --install-inputs idi/specs/V38_Minimal_Core/inputs` or batch multiple via `python -m idi.devkit.build_layers`.
 3. Feed the resulting `artifact_manifest.json` + `streams/` into `idi/zk/proof_manager.py` (stub or real prover) to produce `proof.bin` and `receipt.json`.
 4. Only after proof verification succeeds should the Tau daemon consume the new `q_*` streams.
 

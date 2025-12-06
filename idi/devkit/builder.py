@@ -35,7 +35,7 @@ def load_training_config(config_path: Path) -> TrainingConfig:
     )
 
 
-def metadata_from_args(pairs: List[str]) -> Dict[str, str]:
+def metadata_from_pairs(pairs: List[str]) -> Dict[str, str]:
     metadata: Dict[str, str] = {}
     for pair in pairs:
         if "=" not in pair:
@@ -49,6 +49,46 @@ def copy_streams(stream_dir: Path, install_dir: Path) -> None:
     install_dir.mkdir(parents=True, exist_ok=True)
     for stream_file in stream_dir.glob("*.in"):
         shutil.copy2(stream_file, install_dir / stream_file.name)
+
+
+def build_artifact(
+    *,
+    config_path: Path,
+    out_dir: Path,
+    install_inputs: Path | None = None,
+    metadata_pairs: List[str] | None = None,
+) -> Path:
+    """Train, export, and optionally install a lookup-table artifact."""
+
+    training_config = load_training_config(config_path)
+    builder = QTrainer(training_config)
+    policy, trace = builder.run()
+
+    streams_dir = out_dir / "streams"
+    policy_manifest_path = out_dir / "policy_manifest.json"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if streams_dir.exists():
+        shutil.rmtree(streams_dir)
+    streams_dir.mkdir()
+    trace.export(streams_dir)
+
+    if hasattr(policy, "serialize_manifest"):
+        policy.serialize_manifest(policy_manifest_path)  # type: ignore[attr-defined]
+
+    metadata_pairs = metadata_pairs or []
+    metadata = metadata_from_pairs(metadata_pairs)
+    manifest = build_manifest(
+        config_path=config_path,
+        stream_dir=streams_dir,
+        metadata=metadata,
+    )
+    manifest_path = out_dir / "artifact_manifest.json"
+    write_manifest(manifest, manifest_path)
+
+    if install_inputs:
+        copy_streams(streams_dir, install_inputs)
+
+    return manifest_path
 
 
 def main() -> None:
@@ -69,39 +109,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    training_config = load_training_config(args.config)
-    builder = QTrainer(training_config)
-    policy, trace = builder.run()
-
-    streams_dir = args.out / "streams"
-    policy_manifest_path = args.out / "policy_manifest.json"
-    args.out.mkdir(parents=True, exist_ok=True)
-    if streams_dir.exists():
-        shutil.rmtree(streams_dir)
-    streams_dir.mkdir()
-    trace.export(streams_dir)
-
-    if hasattr(policy, "serialize_manifest"):
-        policy.serialize_manifest(policy_manifest_path)  # type: ignore[attr-defined]
-
     try:
-        metadata = metadata_from_args(args.meta)
+        build_artifact(
+            config_path=args.config,
+            out_dir=args.out,
+            install_inputs=args.install_inputs,
+            metadata_pairs=args.meta,
+        )
     except ValueError as exc:
         parser.error(str(exc))
-    manifest = build_manifest(
-        config_path=args.config,
-        stream_dir=streams_dir,
-        metadata=metadata,
-    )
-    manifest_path = args.out / "artifact_manifest.json"
-    write_manifest(manifest, manifest_path)
-
-    if args.install_inputs:
-        copy_streams(streams_dir, args.install_inputs)
-
     print("✅ IDI artifact generated")
-    print(f" - Streams dir: {streams_dir}")
-    print(f" - Manifest:    {manifest_path}")
+    print(f" - Streams dir: {args.out / 'streams'}")
+    print(f" - Manifest:    {args.out / 'artifact_manifest.json'}")
     if args.install_inputs:
         print(f" - Installed to: {args.install_inputs}")
 

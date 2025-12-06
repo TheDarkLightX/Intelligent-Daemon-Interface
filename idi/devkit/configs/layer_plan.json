@@ -1,0 +1,31 @@
+[
+  {
+    "name": "macro-regime",
+    "config": "idi/devkit/configs/regime_macro.json",
+    "out": "idi/artifacts/regime_macro",
+    "install_inputs": "idi/specs/V38_Minimal_Core/inputs",
+    "metadata": [
+      "layer=macro",
+      "purpose=regime_selector"
+    ]
+  },
+  {
+    "name": "micro-regime",
+    "config": "idi/devkit/configs/regime_micro.json",
+    "out": "idi/artifacts/regime_micro",
+    "metadata": [
+      "layer=micro",
+      "purpose=action_refinement"
+    ]
+  },
+  {
+    "name": "emote-balanced",
+    "config": "idi/devkit/configs/emote_balanced.json",
+    "out": "idi/artifacts/emote_balanced",
+    "metadata": [
+      "layer=emote",
+      "purpose=communication"
+    ]
+  }
+]
+

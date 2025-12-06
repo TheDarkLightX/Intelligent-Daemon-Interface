@@ -19,6 +19,12 @@ PY
 ```
 The stub uses SHA-256 commitments to emulate a proof so downstream automation (Tau daemon, ledger, etc.) can proceed even before the real zkVM integration is wired up.
 
+Batch all manifests under `idi/artifacts/` with:
+```
+python -m idi.zk.run_stub_proofs --artifacts-root idi/artifacts
+```
+This creates `proof_stub/` folders next to each artifact (regime layers, emotive layers, etc.) and verifies the receipts in one go.
+
 ## Integrating Risc0 (example)
 ```
 export IDI_RISC0_CMD='risc0 prove --elf idi/risc0/idi_prover.elf --manifest {manifest} --streams {streams} --output {output}'
