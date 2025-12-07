@@ -54,6 +54,7 @@ class StrategyStepFrame(StepFrame):
             ("momentum", "Follow the Trend 📈\nBuy when prices go up"),
             ("mean_reversion", "Buy Low, Sell High 📊\nBuy dips, sell spikes"),
             ("regime_aware", "Smart Adaptation 🧠\nChange strategy with market"),
+            ("ensemble", "Ensemble Voting 👥\nMultiple agents vote together"),
         ]
         
         for value, description in strategies:
@@ -66,12 +67,101 @@ class StrategyStepFrame(StepFrame):
                 value=value,
                 text=description,
                 font=("Arial", 11),
+                command=self.on_strategy_change,
             )
             radio.pack(anchor=tk.W)
+        
+        # Ensemble configuration frame (shown when ensemble selected)
+        self.ensemble_frame = ttk.LabelFrame(self, text="Ensemble Configuration", padding=15)
+        self.ensemble_frame.pack(fill=tk.X, padx=40, pady=10)
+        
+        # Pattern selection
+        ttk.Label(self.ensemble_frame, text="Voting Pattern:", font=("Arial", 11)).pack(anchor=tk.W, pady=5)
+        self.pattern_var = tk.StringVar(value="majority")
+        pattern_frame = ttk.Frame(self.ensemble_frame)
+        pattern_frame.pack(fill=tk.X, pady=5)
+        
+        patterns = [
+            ("majority", "Majority Voting (N-of-M)"),
+            ("unanimous", "Unanimous Consensus (All Agree)"),
+            ("custom", "Custom Expression"),
+        ]
+        
+        for value, label in patterns:
+            ttk.Radiobutton(
+                pattern_frame,
+                variable=self.pattern_var,
+                value=value,
+                text=label,
+                font=("Arial", 10),
+                command=self.on_pattern_change,
+            ).pack(anchor=tk.W, pady=2)
+        
+        # Majority configuration
+        self.majority_frame = ttk.Frame(self.ensemble_frame)
+        self.majority_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Label(self.majority_frame, text="Threshold (N):", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
+        self.threshold_var = tk.IntVar(value=2)
+        threshold_spin = ttk.Spinbox(self.majority_frame, from_=1, to=10, textvariable=self.threshold_var, width=5)
+        threshold_spin.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Label(self.majority_frame, text="of", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
+        self.total_var = tk.IntVar(value=3)
+        total_spin = ttk.Spinbox(self.majority_frame, from_=2, to=10, textvariable=self.total_var, width=5)
+        total_spin.pack(side=tk.LEFT, padx=5)
+        
+        # Custom expression
+        self.custom_frame = ttk.Frame(self.ensemble_frame)
+        ttk.Label(self.custom_frame, text="Expression:", font=("Arial", 10)).pack(anchor=tk.W, pady=5)
+        self.expression_var = tk.StringVar(value="a[t] & b[t]")
+        expression_entry = ttk.Entry(self.custom_frame, textvariable=self.expression_var, width=40, font=("Courier", 9))
+        expression_entry.pack(fill=tk.X, pady=5)
+        ttk.Label(
+            self.custom_frame,
+            text="Use stream names like 'a[t]', 'b[t]' or indices like 'i0[t]', 'i1[t]'",
+            font=("Arial", 8),
+            foreground="gray",
+        ).pack(anchor=tk.W)
+        
+        # Initially hide ensemble frame
+        self.ensemble_frame.pack_forget()
+        self.on_strategy_change()
+    
+    def on_strategy_change(self):
+        """Handle strategy selection change."""
+        if self.strategy_var.get() == "ensemble":
+            self.ensemble_frame.pack(fill=tk.X, padx=40, pady=10, after=self.winfo_children()[-2])
+            self.on_pattern_change()
+        else:
+            self.ensemble_frame.pack_forget()
+    
+    def on_pattern_change(self):
+        """Handle pattern selection change."""
+        pattern = self.pattern_var.get()
+        if pattern == "majority":
+            self.majority_frame.pack(fill=tk.X, pady=10)
+            self.custom_frame.pack_forget()
+        elif pattern == "custom":
+            self.majority_frame.pack_forget()
+            self.custom_frame.pack(fill=tk.X, pady=10)
+        else:  # unanimous
+            self.majority_frame.pack_forget()
+            self.custom_frame.pack_forget()
     
     def get_data(self) -> dict:
         """Get strategy selection."""
-        return {"strategy": self.strategy_var.get()}
+        data = {"strategy": self.strategy_var.get()}
+        
+        if self.strategy_var.get() == "ensemble":
+            data["ensemble_pattern"] = self.pattern_var.get()
+            if self.pattern_var.get() == "majority":
+                data["ensemble_threshold"] = self.threshold_var.get()
+                data["ensemble_total"] = self.total_var.get()
+            elif self.pattern_var.get() == "custom":
+                data["custom_expression"] = self.expression_var.get()
+        
+        return data
 
 
 class InputsStepFrame(StepFrame):
@@ -104,19 +194,47 @@ class InputsStepFrame(StepFrame):
         inputs_frame = ttk.LabelFrame(self, text="Market Signals", padding=20)
         inputs_frame.pack(fill=tk.BOTH, expand=True, padx=40, pady=10)
         
-        input_options = {
-            "q_buy": "Q-Learning Buy Signal",
-            "q_sell": "Q-Learning Sell Signal",
-            "price_up": "Price Going Up",
-            "price_down": "Price Going Down",
-            "trend": "Price Trend",
-            "volume": "Trading Volume",
-            "regime": "Market Regime",
-            "risk_budget_ok": "Risk Budget OK",
-        }
+        # Check if ensemble strategy (may not be set yet, check both)
+        is_ensemble = getattr(self.controller.data, 'strategy', None) == "ensemble"
+        
+        if is_ensemble:
+            # For ensemble, show agent inputs
+            input_options = {
+                "agent1": "Agent 1 Vote",
+                "agent2": "Agent 2 Vote",
+                "agent3": "Agent 3 Vote",
+                "agent4": "Agent 4 Vote",
+                "agent5": "Agent 5 Vote",
+                "q_buy": "Q-Learning Buy Signal",
+                "q_sell": "Q-Learning Sell Signal",
+                "price_up": "Price Going Up",
+                "price_down": "Price Going Down",
+            }
+            ttk.Label(
+                inputs_frame,
+                text="Select which agents/signals will vote:",
+                font=("Arial", 10),
+                foreground="blue",
+            ).pack(anchor=tk.W, pady=5)
+        else:
+            input_options = {
+                "q_buy": "Q-Learning Buy Signal",
+                "q_sell": "Q-Learning Sell Signal",
+                "price_up": "Price Going Up",
+                "price_down": "Price Going Down",
+                "trend": "Price Trend",
+                "volume": "Trading Volume",
+                "regime": "Market Regime",
+                "risk_budget_ok": "Risk Budget OK",
+            }
+        
+        # Default selections based on strategy
+        default_selected = ["q_buy", "q_sell", "price_up", "price_down"]
+        if is_ensemble:
+            default_selected = ["agent1", "agent2", "agent3"]
         
         for key, label in input_options.items():
-            var = tk.BooleanVar(value=(key in ["q_buy", "q_sell", "price_up", "price_down"]))
+            var = tk.BooleanVar(value=(key in default_selected))
             self.input_vars[key] = var
             
             cb = ttk.Checkbutton(

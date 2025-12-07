@@ -19,6 +19,9 @@ from .config import (
     LayerConfig,
     TileCoderConfig,
     CommunicationConfig,
+    FractalConfig,
+    FractalLevelConfig,
+    MultiLayerConfig,
 )
 from .abstraction import TileCoder
 from .env import SyntheticMarketEnv, EmoteChannel
@@ -35,6 +38,10 @@ from .emote import EmotionEngine, EmotionState
 from .communication import CommunicationPolicy
 from .rewards import CommunicationRewardShaper
 from .factories import create_environment, create_policy, create_trainer
+from .fractal_abstraction import (
+    FractalStateEncoder, HierarchicalTileCoder, FractalQTable, FractalPolicy
+)
+from .multi_layer_trainer import MultiLayerTrainer, LayerCoordinator
 from .domain import Action, Regime, Transition, Observation
 
 __all__ = [
@@ -76,6 +83,9 @@ __all__ = [
     "TileCoderConfig",
     "CommunicationConfig",
     "EmoteConfig",
+    "FractalConfig",
+    "FractalLevelConfig",
+    "MultiLayerConfig",
     "SyntheticMarketEnv",
     "CryptoMarket",
     "MarketParams",
@@ -95,6 +105,12 @@ __all__ = [
     "create_environment",
     "create_policy",
     "create_trainer",
+    "FractalStateEncoder",
+    "HierarchicalTileCoder",
+    "FractalQTable",
+    "FractalPolicy",
+    "MultiLayerTrainer",
+    "LayerCoordinator",
     "Action",
     "Regime",
     "Transition",

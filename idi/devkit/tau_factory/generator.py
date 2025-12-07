@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 from pathlib import Path
 from typing import Dict, List
@@ -51,12 +52,37 @@ def _generate_input_mirrors(streams: tuple[StreamConfig, ...]) -> List[str]:
 
 
 def _get_stream_index(stream_name: str, streams: tuple[StreamConfig, ...], is_input: bool) -> str:
-    """Get hex index for a stream name."""
+    """Get hex index for a stream name.
+    
+    For inputs: searches only input streams (i0, i1, ...)
+    For outputs: searches only output streams (o0, o1, ...)
+    """
     filtered = [s for s in streams if s.is_input == is_input]
     for idx, stream in enumerate(filtered):
         if stream.name == stream_name:
             return hex(idx)[2:].upper()
-    raise ValueError(f"Stream {stream_name} not found")
+    raise ValueError(f"Stream {stream_name} not found (is_input={is_input})")
+
+
+def _get_stream_index_any(stream_name: str, streams: tuple[StreamConfig, ...]) -> tuple[str, bool]:
+    """Get hex index for a stream name, searching both inputs and outputs.
+    
+    Returns:
+        (hex_index, is_input) tuple
+    """
+    # Try inputs first
+    try:
+        idx = _get_stream_index(stream_name, streams, is_input=True)
+        return (idx, True)
+    except ValueError:
+        pass
+    
+    # Try outputs
+    try:
+        idx = _get_stream_index(stream_name, streams, is_input=False)
+        return (idx, False)
+    except ValueError:
+        raise ValueError(f"Stream {stream_name} not found in any stream type")
 
 
 def _generate_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
@@ -64,12 +90,29 @@ def _generate_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) ->
     if len(block.inputs) < 2:
         raise ValueError("FSM pattern requires at least 2 inputs (buy, sell)")
     
-    buy_idx = _get_stream_index(block.inputs[0], streams, is_input=True)
-    sell_idx = _get_stream_index(block.inputs[1], streams, is_input=True)
+    # Inputs can be either input streams or output streams (from other logic blocks)
+    buy_idx, buy_is_input = _get_stream_index_any(block.inputs[0], streams)
+    sell_idx, sell_is_input = _get_stream_index_any(block.inputs[1], streams)
     output_idx = _get_stream_index(block.output, streams, is_input=False)
     
+    # Use 'i' prefix for inputs, 'o' prefix for outputs
+    buy_ref = f"i{buy_idx}[t]" if buy_is_input else f"o{buy_idx}[t]"
+    sell_ref = f"i{sell_idx}[t]" if sell_is_input else f"o{sell_idx}[t]"
+    
+    # Find output stream type
+    output_stream = next(s for s in streams if s.name == block.output)
+    is_sbf = output_stream.stream_type == "sbf"
+    
     # Position FSM: buy sets position, sell clears it, otherwise maintain
-    return f"(o{output_idx}[t] = i{buy_idx}[t] | (o{output_idx}[t-1] & i{sell_idx}[t]'))"
+    fsm_logic = f"(o{output_idx}[t] = {buy_ref} | (o{output_idx}[t-1] & {sell_ref}'))"
+    
+    # Add initial condition: position starts at 0
+    if is_sbf:
+        init_condition = f" && (o{output_idx}[0] = 0)"
+    else:
+        init_condition = f" && (o{output_idx}[0] = {{0}}:bv[{output_stream.width}])"
+    
+    return fsm_logic + init_condition
 
 
 def _generate_passthrough_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
@@ -77,10 +120,11 @@ def _generate_passthrough_logic(block: LogicBlock, streams: tuple[StreamConfig, 
     if len(block.inputs) != 1:
         raise ValueError("Passthrough pattern requires exactly 1 input")
     
-    input_idx = _get_stream_index(block.inputs[0], streams, is_input=True)
+    input_idx, input_is_input = _get_stream_index_any(block.inputs[0], streams)
     output_idx = _get_stream_index(block.output, streams, is_input=False)
     
-    return f"(o{output_idx}[t] = i{input_idx}[t])"
+    input_ref = f"i{input_idx}[t]" if input_is_input else f"o{input_idx}[t]"
+    return f"(o{output_idx}[t] = {input_ref})"
 
 
 def _generate_counter_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
@@ -88,11 +132,26 @@ def _generate_counter_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]
     if len(block.inputs) != 1:
         raise ValueError("Counter pattern requires exactly 1 input")
     
-    event_idx = _get_stream_index(block.inputs[0], streams, is_input=True)
+    event_idx, event_is_input = _get_stream_index_any(block.inputs[0], streams)
     output_idx = _get_stream_index(block.output, streams, is_input=False)
     
+    # Find output stream type
+    output_stream = next(s for s in streams if s.name == block.output)
+    is_sbf = output_stream.stream_type == "sbf"
+    
+    # Use correct reference for event input
+    event_ref = f"i{event_idx}[t]" if event_is_input else f"o{event_idx}[t]"
+    
     # Toggle counter: flip on event
-    return f"(o{output_idx}[t] = (i{event_idx}[t] & o{output_idx}[t-1]') | (i{event_idx}[t]' & o{output_idx}[t-1]))"
+    counter_logic = f"(o{output_idx}[t] = ({event_ref} & o{output_idx}[t-1]') | ({event_ref}' & o{output_idx}[t-1]))"
+    
+    # Add initial condition: counter starts at 0
+    if is_sbf:
+        init_condition = f" && (o{output_idx}[0] = 0)"
+    else:
+        init_condition = f" && (o{output_idx}[0] = {{0}}:bv[{output_stream.width}])"
+    
+    return counter_logic + init_condition
 
 
 def _generate_accumulator_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
@@ -100,14 +159,15 @@ def _generate_accumulator_logic(block: LogicBlock, streams: tuple[StreamConfig, 
     if len(block.inputs) != 1:
         raise ValueError("Accumulator pattern requires exactly 1 input")
     
-    input_idx = _get_stream_index(block.inputs[0], streams, is_input=True)
+    input_idx, input_is_input = _get_stream_index_any(block.inputs[0], streams)
     output_idx = _get_stream_index(block.output, streams, is_input=False)
     
     # Find output stream width
     output_stream = next(s for s in streams if s.name == block.output)
     width = output_stream.width if output_stream.stream_type == "bv" else 8
     
-    return f"(o{output_idx}[t] = o{output_idx}[t-1] + i{input_idx}[t]) && (o{output_idx}[0] = {{0}}:bv[{width}])"
+    input_ref = f"i{input_idx}[t]" if input_is_input else f"o{input_idx}[t]"
+    return f"(o{output_idx}[t] = o{output_idx}[t-1] + {input_ref}) && (o{output_idx}[0] = {{0}}:bv[{width}])"
 
 
 def _generate_vote_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
@@ -115,12 +175,1016 @@ def _generate_vote_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -
     if len(block.inputs) < 2:
         raise ValueError("Vote pattern requires at least 2 inputs")
     
-    input_indices = [_get_stream_index(inp, streams, is_input=True) for inp in block.inputs]
+    input_refs = []
+    for inp in block.inputs:
+        inp_idx, inp_is_input = _get_stream_index_any(inp, streams)
+        ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        input_refs.append(ref)
+    
     output_idx = _get_stream_index(block.output, streams, is_input=False)
     
     # OR all inputs together
-    vote_expr = " | ".join(f"i{idx}[t]" for idx in input_indices)
+    vote_expr = " | ".join(input_refs)
     return f"(o{output_idx}[t] = {vote_expr})"
+
+
+def _generate_majority_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate majority voting pattern logic (N-of-M).
+    
+    Example: 2-of-3 majority = (a & b) | (a & c) | (b & c)
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("Majority pattern requires at least 2 inputs")
+    
+    # Get threshold and total from params, or use defaults
+    threshold = block.params.get("threshold", len(block.inputs) // 2 + 1)
+    total = block.params.get("total", len(block.inputs))
+    
+    if threshold < 1:
+        raise ValueError(f"Majority threshold must be >= 1, got {threshold}")
+    if threshold > total:
+        raise ValueError(f"Majority threshold ({threshold}) cannot exceed total ({total})")
+    if total > len(block.inputs):
+        raise ValueError(f"Total ({total}) cannot exceed number of inputs ({len(block.inputs)})")
+    
+    # Get input references (can be inputs or outputs)
+    input_refs = []
+    for inp in block.inputs[:total]:
+        inp_idx, inp_is_input = _get_stream_index_any(inp, streams)
+        ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        input_refs.append((ref, inp_idx))
+    
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    
+    # Generate all combinations of threshold inputs
+    combinations = list(itertools.combinations(input_refs, threshold))
+    
+    if not combinations:
+        raise ValueError(f"No valid combinations for threshold={threshold}, total={total}")
+    
+    # Create AND expressions for each combination, then OR them together
+    and_exprs = []
+    for combo in combinations:
+        and_expr = " & ".join(ref for ref, _ in combo)
+        and_exprs.append(f"({and_expr})")
+    
+    majority_expr = " | ".join(and_exprs)
+    return f"(o{output_idx}[t] = {majority_expr})"
+
+
+def _generate_unanimous_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate unanimous consensus pattern logic (all inputs must agree)."""
+    if len(block.inputs) < 2:
+        raise ValueError("Unanimous pattern requires at least 2 inputs")
+    
+    input_refs = []
+    for inp in block.inputs:
+        inp_idx, inp_is_input = _get_stream_index_any(inp, streams)
+        ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        input_refs.append(ref)
+    
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    
+    # AND all inputs together
+    unanimous_expr = " & ".join(input_refs)
+    return f"(o{output_idx}[t] = {unanimous_expr})"
+
+
+def _generate_supervisor_worker_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate supervisor-worker pattern logic.
+    
+    Creates a supervisor FSM that coordinates multiple worker FSMs.
+    Supervisor outputs enable/disable workers based on supervisor state.
+    
+    NOTE: This pattern generates MULTIPLE outputs (supervisor + enables + workers).
+    The 'output' parameter should be the supervisor output name.
+    Additional outputs must be declared in streams.
+    """
+    # Parse supervisor and worker inputs from params or infer from block.inputs
+    supervisor_inputs = block.params.get("supervisor_inputs", block.inputs[:2] if len(block.inputs) >= 2 else [block.inputs[0]])
+    worker_inputs = block.params.get("worker_inputs", block.inputs[2:] if len(block.inputs) > 2 else [])
+    
+    if len(supervisor_inputs) < 1:
+        raise ValueError("Supervisor-worker pattern requires at least 1 supervisor input")
+    if len(worker_inputs) < 1:
+        raise ValueError("Supervisor-worker pattern requires at least 1 worker input")
+    
+    # Get supervisor FSM inputs (buy/sell for supervisor)
+    supervisor_buy = supervisor_inputs[0]
+    supervisor_sell = supervisor_inputs[1] if len(supervisor_inputs) > 1 else supervisor_inputs[0]
+    
+    # Get supervisor output (main output)
+    supervisor_output_name = block.output
+    supervisor_idx = _get_stream_index(supervisor_output_name, streams, is_input=False)
+    
+    # Generate supervisor FSM
+    supervisor_buy_idx, supervisor_buy_is_input = _get_stream_index_any(supervisor_buy, streams)
+    supervisor_sell_idx, supervisor_sell_is_input = _get_stream_index_any(supervisor_sell, streams)
+    
+    supervisor_buy_ref = f"i{supervisor_buy_idx}[t]" if supervisor_buy_is_input else f"o{supervisor_buy_idx}[t]"
+    supervisor_sell_ref = f"i{supervisor_sell_idx}[t]" if supervisor_sell_is_input else f"o{supervisor_sell_idx}[t]"
+    
+    # Supervisor FSM: mode=1 enters ACTIVE, mode=0 exits ACTIVE
+    # Standard FSM: (o[t] = buy | (o[t-1] & sell'))
+    # For supervisor: buy=mode, sell=mode' (when mode=0, we want to exit)
+    # But we want: mode=1 → ACTIVE, mode=0 → IDLE
+    # So: (o[t] = mode | (o[t-1] & mode')) - when mode=1, set; when mode=0, maintain if already active; when mode=0, clear
+    # Actually simpler: supervisor directly follows mode (passthrough FSM)
+    # Or: (o[t] = mode | (o[t-1] & mode')) - mode=1 sets, mode=0 maintains if already set
+    # But we want mode=0 to clear, so: (o[t] = mode)
+    # However, for FSM semantics, we want: mode=1 enters, mode=0 exits
+    # Standard: (o[t] = mode | (o[t-1] & mode')) - this maintains when mode=0
+    # We want: (o[t] = mode) - direct passthrough, but that's not FSM
+    # Correct FSM: (o[t] = mode | (o[t-1] & mode')) - mode=1 sets, mode=0 maintains if already set
+    # But test expects mode=0 to clear, so use passthrough: (o[t] = mode)
+    supervisor_logic = f"(o{supervisor_idx}[t] = {supervisor_buy_ref}) && (o{supervisor_idx}[0] = 0)"
+    
+    # Generate worker enable signals and worker FSMs
+    worker_logics = []
+    num_workers = len(worker_inputs)
+    
+    # Get output names from params or generate defaults
+    enable_outputs = block.params.get("worker_enable_outputs", [f"worker{i+1}_enable" for i in range(num_workers)])
+    worker_outputs = block.params.get("worker_outputs", [f"worker{i+1}_state" for i in range(num_workers)])
+    
+    for i, worker_input in enumerate(worker_inputs):
+        # Worker enable: active when supervisor = ACTIVE (supervisor = 1)
+        enable_name = enable_outputs[i] if i < len(enable_outputs) else f"worker{i+1}_enable"
+        try:
+            enable_idx = _get_stream_index(enable_name, streams, is_input=False)
+        except ValueError:
+            # Enable output not declared - skip this worker
+            continue
+        
+        # Enable when supervisor is active
+        enable_logic = f"(o{enable_idx}[t] = o{supervisor_idx}[t])"
+        worker_logics.append(enable_logic)
+        
+        # Worker FSM (enabled by enable signal)
+        worker_name = worker_outputs[i] if i < len(worker_outputs) else f"worker{i+1}_state"
+        try:
+            worker_idx = _get_stream_index(worker_name, streams, is_input=False)
+        except ValueError:
+            # Worker output not declared - skip
+            continue
+        
+        # Worker signal input
+        worker_signal_idx, worker_signal_is_input = _get_stream_index_any(worker_input, streams)
+        worker_signal_ref = f"i{worker_signal_idx}[t]" if worker_signal_is_input else f"o{worker_signal_idx}[t]"
+        
+        # Worker FSM: enabled by enable signal, controlled by worker signal
+        # Worker can only enter LONG when enabled, exits on signal
+        # Logic: (enable & signal) sets worker, (worker[t-1] & enable & signal') maintains worker, disabled when enable=0
+        worker_fsm_logic = f"(o{worker_idx}[t] = (o{enable_idx}[t] & {worker_signal_ref}) | (o{worker_idx}[t-1] & o{enable_idx}[t] & {worker_signal_ref}')) && (o{worker_idx}[0] = 0)"
+        worker_logics.append(worker_fsm_logic)
+    
+    # Combine all logic
+    all_logic = [supervisor_logic] + worker_logics
+    return " &&\n    ".join(all_logic)
+
+
+def _generate_weighted_vote_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate weighted voting pattern logic using bitvector arithmetic.
+    
+    Computes weighted sum: sum(weight[i] * vote[i]) and compares to threshold.
+    Uses bitvector arithmetic and comparisons directly in recurrence.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Weighted vote pattern requires at least 1 input")
+    
+    # Get weights and threshold from params
+    weights = block.params.get("weights", [1] * len(block.inputs))
+    threshold = block.params.get("threshold", sum(weights) // 2 + 1)
+    
+    if len(weights) != len(block.inputs):
+        raise ValueError(f"Weights length ({len(weights)}) must match inputs length ({len(block.inputs)})")
+    
+    # Get output stream
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Determine bitvector width (use max of threshold and weights)
+    max_value = max(threshold, max(weights, default=1))
+    # Width needed: ceil(log2(max_value + 1)) + some headroom
+    import math
+    width = max(8, min(32, math.ceil(math.log2(max_value + 1)) + 4))
+    
+    # Build weighted sum expression
+    # For each input: weight[i] * vote[i] (vote is 0 or 1, so weight[i] if vote=1, else 0)
+    weighted_terms = []
+    for i, (inp_name, weight) in enumerate(zip(block.inputs, weights)):
+        inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+        inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        
+        # Convert boolean to bitvector: (vote ? weight : 0)
+        # Tau supports ternary operator: (condition ? value_true : value_false)
+        # For boolean input, convert to bitvector: (vote ? {weight}:bv[width] : {0}:bv[width])
+        inp_stream = next((s for s in streams if s.name == inp_name), None)
+        if inp_stream and inp_stream.stream_type == "bv":
+            # Input is already bitvector, multiply directly
+            weighted_terms.append(f"({inp_ref} * {{{weight}}}:bv[{width}])")
+        else:
+            # Input is boolean, convert to bitvector using ternary
+            # Tau syntax: (condition ? value_true : value_false)
+            weighted_terms.append(f"(({inp_ref} ? {{{weight}}}:bv[{width}] : {{0}}:bv[{width}]))")
+    
+    # Sum all weighted terms
+    if len(weighted_terms) == 1:
+        weighted_sum = weighted_terms[0]
+    else:
+        weighted_sum = " + ".join(f"({term})" for term in weighted_terms)
+    
+    # Output can be boolean (sbf) for comparison result, or bitvector (bv) for weighted sum
+    if output_stream.stream_type == "sbf":
+        # Output boolean: weighted_sum >= threshold
+        return f"(o{output_idx}[t] = ({weighted_sum}) >= {{{threshold}}}:bv[{width}])"
+    else:
+        # Output the weighted sum itself (bitvector)
+        # Need to ensure output width matches
+        output_width = output_stream.width if output_stream.width else width
+        return f"(o{output_idx}[t] = {weighted_sum}) && (o{output_idx}[0] = {{0}}:bv[{output_width}])"
+
+
+def _generate_time_lock_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate time-lock pattern logic using bitvector arithmetic.
+    
+    Computes: remaining_time = lock_start + lock_duration - current_time
+    Outputs: lock_active = (remaining_time > 0)
+    """
+    # Get inputs from params or infer
+    lock_start_name = block.params.get("lock_start", block.inputs[0] if len(block.inputs) > 0 else None)
+    lock_duration_name = block.params.get("lock_duration", block.inputs[1] if len(block.inputs) > 1 else None)
+    current_time_name = block.params.get("current_time", block.inputs[2] if len(block.inputs) > 2 else None)
+    
+    if not lock_start_name or not lock_duration_name or not current_time_name:
+        raise ValueError("Time-lock pattern requires lock_start, lock_duration, and current_time inputs")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get input indices
+    lock_start_idx, lock_start_is_input = _get_stream_index_any(lock_start_name, streams)
+    lock_duration_idx, lock_duration_is_input = _get_stream_index_any(lock_duration_name, streams)
+    current_time_idx, current_time_is_input = _get_stream_index_any(current_time_name, streams)
+    
+    # Get stream types to determine width
+    lock_start_stream = next((s for s in streams if s.name == lock_start_name), None)
+    lock_duration_stream = next((s for s in streams if s.name == lock_duration_name), None)
+    current_time_stream = next((s for s in streams if s.name == current_time_name), None)
+    
+    # Determine bitvector width (use max width of inputs, or default 16)
+    widths = []
+    if lock_start_stream and lock_start_stream.stream_type == "bv":
+        widths.append(lock_start_stream.width)
+    if lock_duration_stream and lock_duration_stream.stream_type == "bv":
+        widths.append(lock_duration_stream.width)
+    if current_time_stream and current_time_stream.stream_type == "bv":
+        widths.append(current_time_stream.width)
+    
+    width = max(widths) if widths else 16
+    
+    # Build references
+    lock_start_ref = f"i{lock_start_idx}[t]" if lock_start_is_input else f"o{lock_start_idx}[t]"
+    lock_duration_ref = f"i{lock_duration_idx}[t]" if lock_duration_is_input else f"o{lock_duration_idx}[t]"
+    current_time_ref = f"i{current_time_idx}[t]" if current_time_is_input else f"o{current_time_idx}[t]"
+    
+    # Compute remaining time: remaining = (lock_start + lock_duration) - current_time
+    # Handle overflow: if (lock_start + lock_duration) < current_time, lock has expired
+    remaining_time_expr = f"(({lock_start_ref} + {lock_duration_ref}) - {current_time_ref})"
+    
+    # Output: lock_active = (remaining_time > 0)
+    if output_stream.stream_type == "sbf":
+        # Output boolean comparison
+        return f"(o{output_idx}[t] = ({remaining_time_expr}) > {{0}}:bv[{width}])"
+    else:
+        # Output remaining time as bitvector
+        return f"(o{output_idx}[t] = {remaining_time_expr}) && (o{output_idx}[0] = {{0}}:bv[{width}])"
+
+
+def _generate_hex_stake_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate Hex staking pattern logic.
+    
+    Implements time-lock staking system with FSM:
+    - UNSTAKED (0) → ACTIVE_STAKE (1) → MATURED_STAKE (2) or EARLY_ENDED_STAKE (3) → UNSTAKED
+    
+    States:
+    - 0: UNSTAKED - No active stake
+    - 1: ACTIVE_STAKE - Stake is active and locked
+    - 2: MATURED_STAKE - Stake has reached maturity
+    - 3: EARLY_ENDED_STAKE - Stake ended before maturity
+    """
+    # Get inputs from params or infer from block.inputs
+    stake_amount_name = block.params.get("stake_amount", block.inputs[0] if len(block.inputs) > 0 else None)
+    stake_duration_name = block.params.get("stake_duration", block.inputs[1] if len(block.inputs) > 1 else None)
+    current_time_name = block.params.get("current_time", block.inputs[2] if len(block.inputs) > 2 else None)
+    action_stake_name = block.params.get("action_stake", block.inputs[3] if len(block.inputs) > 3 else None)
+    action_end_name = block.params.get("action_end", block.inputs[4] if len(block.inputs) > 4 else None)
+    
+    if not stake_amount_name or not stake_duration_name or not current_time_name:
+        raise ValueError("Hex stake pattern requires stake_amount, stake_duration, and current_time inputs")
+    if not action_stake_name or not action_end_name:
+        raise ValueError("Hex stake pattern requires action_stake and action_end inputs")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get input indices
+    stake_amount_idx, stake_amount_is_input = _get_stream_index_any(stake_amount_name, streams)
+    stake_duration_idx, stake_duration_is_input = _get_stream_index_any(stake_duration_name, streams)
+    current_time_idx, current_time_is_input = _get_stream_index_any(current_time_name, streams)
+    action_stake_idx, action_stake_is_input = _get_stream_index_any(action_stake_name, streams)
+    action_end_idx, action_end_is_input = _get_stream_index_any(action_end_name, streams)
+    
+    # Get stream types to determine width
+    stake_amount_stream = next((s for s in streams if s.name == stake_amount_name), None)
+    stake_duration_stream = next((s for s in streams if s.name == stake_duration_name), None)
+    current_time_stream = next((s for s in streams if s.name == current_time_name), None)
+    
+    # Determine bitvector widths (Tau max is 32 bits)
+    amount_width = stake_amount_stream.width if stake_amount_stream and stake_amount_stream.stream_type == "bv" else 32
+    duration_width = stake_duration_stream.width if stake_duration_stream and stake_duration_stream.stream_type == "bv" else 16
+    time_width = current_time_stream.width if current_time_stream and current_time_stream.stream_type == "bv" else 32
+    
+    # Get params
+    max_duration = block.params.get("max_duration", 3650)
+    lock_start_name = block.params.get("lock_start", None)
+    
+    # Build references
+    stake_amount_ref = f"i{stake_amount_idx}[t]" if stake_amount_is_input else f"o{stake_amount_idx}[t]"
+    stake_duration_ref = f"i{stake_duration_idx}[t]" if stake_duration_is_input else f"o{stake_duration_idx}[t]"
+    current_time_ref = f"i{current_time_idx}[t]" if current_time_is_input else f"o{current_time_idx}[t]"
+    action_stake_ref = f"i{action_stake_idx}[t]" if action_stake_is_input else f"o{action_stake_idx}[t]"
+    action_end_ref = f"i{action_end_idx}[t]" if action_end_is_input else f"o{action_end_idx}[t]"
+    
+    # Get lock_start (if provided, otherwise use a state variable)
+    if lock_start_name:
+        lock_start_idx, lock_start_is_input = _get_stream_index_any(lock_start_name, streams)
+        lock_start_ref = f"i{lock_start_idx}[t]" if lock_start_is_input else f"o{lock_start_idx}[t]"
+    else:
+        # Use a state variable to track lock_start
+        # We'll need to add this as an output stream
+        lock_start_ref = f"o{hex(int(output_idx, 16) + 1)[2:].upper()}[t]"  # Next output index
+    
+    # State encoding: 0=UNSTAKED, 1=ACTIVE_STAKE, 2=MATURED_STAKE, 3=EARLY_ENDED_STAKE
+    # Use 2-bit state: bv[2]
+    state_width = 2
+    
+    # Calculate end_time and remaining_days
+    # end_time = lock_start + stake_duration
+    # remaining_days = end_time - current_time
+    # is_matured = current_time >= end_time
+    
+    # FSM logic:
+    # UNSTAKED (0) → action_stake & valid → ACTIVE_STAKE (1)
+    # ACTIVE_STAKE (1) → action_end & matured → MATURED_STAKE (2)
+    # ACTIVE_STAKE (1) → action_end & early → EARLY_ENDED_STAKE (3)
+    # MATURED_STAKE (2) → action_end → UNSTAKED (0)
+    # EARLY_ENDED_STAKE (3) → action_end → UNSTAKED (0)
+    
+    # For simplicity, we'll use a simplified state machine that tracks:
+    # - lock_active (sbf): Is stake active
+    # - is_matured (sbf): Is stake matured
+    # - is_early (sbf): Is early exit
+    
+    # We need to find or create additional output streams
+    lock_active_name = block.params.get("lock_active_output", "lock_active")
+    remaining_days_name = block.params.get("remaining_days_output", "remaining_days")
+    is_matured_name = block.params.get("is_matured_output", "is_matured")
+    is_early_name = block.params.get("is_early_output", "is_early")
+    
+    try:
+        lock_active_idx = _get_stream_index(lock_active_name, streams, is_input=False)
+        lock_active_ref = f"o{lock_active_idx}"
+    except ValueError:
+        # Lock active not declared - skip
+        lock_active_ref = None
+    
+    try:
+        remaining_days_idx = _get_stream_index(remaining_days_name, streams, is_input=False)
+        remaining_days_ref = f"o{remaining_days_idx}"
+    except ValueError:
+        remaining_days_ref = None
+    
+    try:
+        is_matured_idx = _get_stream_index(is_matured_name, streams, is_input=False)
+        is_matured_ref = f"o{is_matured_idx}"
+    except ValueError:
+        is_matured_ref = None
+    
+    try:
+        is_early_idx = _get_stream_index(is_early_name, streams, is_input=False)
+        is_early_ref = f"o{is_early_idx}"
+    except ValueError:
+        is_early_ref = None
+    
+    # Generate Hex stake logic
+    # Core FSM: UNSTAKED → ACTIVE_STAKE → (MATURED_STAKE | EARLY_ENDED_STAKE) → UNSTAKED
+    
+    # We need to track lock_start time when stake is created
+    # lock_start[t] = action_stake ? current_time : lock_start[t-1]
+    # This requires an additional output stream for lock_start
+    
+    # For Phase 1, let's implement basic lock_active tracking
+    # lock_active[t] = action_stake | (lock_active[t-1] & !action_end)
+    
+    # Check if we have additional outputs for lock_start, remaining_days, etc.
+    lock_start_output = block.params.get("lock_start_output", None)
+    remaining_days_output = block.params.get("remaining_days_output", None)
+    is_matured_output = block.params.get("is_matured_output", None)
+    
+    logic_parts = []
+    
+    # Primary output: lock_active (or stake_state)
+    if output_stream.stream_type == "sbf":
+        # Boolean output: lock_active
+        logic_parts.append(f"(o{output_idx}[t] = {action_stake_ref} | (o{output_idx}[t-1] & {action_end_ref}')) && (o{output_idx}[0] = 0)")
+    else:
+        # Bitvector output: stake_state (0=UNSTAKED, 1=ACTIVE_STAKE, 2=MATURED_STAKE, 3=EARLY_ENDED_STAKE)
+        # For Phase 1, simplify to boolean-like: 0=UNSTAKED, 1=ACTIVE_STAKE
+        logic_parts.append(f"(o{output_idx}[t] = ({action_stake_ref} ? {{1}}:bv[{state_width}] : ((o{output_idx}[t-1] & {action_end_ref}') ? o{output_idx}[t-1] : {{0}}:bv[{state_width}]))) && (o{output_idx}[0] = {{0}}:bv[{state_width}])")
+    
+    # Try to add lock_start tracking if output stream exists
+    if lock_start_output:
+        try:
+            lock_start_idx = _get_stream_index(lock_start_output, streams, is_input=False)
+            lock_start_stream = next(s for s in streams if s.name == lock_start_output and not s.is_input)
+            lock_start_width = lock_start_stream.width if lock_start_stream.width else time_width
+            # lock_start[t] = action_stake ? current_time : lock_start[t-1]
+            logic_parts.append(f"(o{lock_start_idx}[t] = ({action_stake_ref} ? {current_time_ref} : o{lock_start_idx}[t-1])) && (o{lock_start_idx}[0] = {{0}}:bv[{lock_start_width}])")
+        except ValueError:
+            pass  # Lock start output not declared
+    
+    # Try to add remaining_days calculation if output stream exists
+    if remaining_days_output and lock_start_output:
+        try:
+            remaining_days_idx = _get_stream_index(remaining_days_output, streams, is_input=False)
+            remaining_days_stream = next(s for s in streams if s.name == remaining_days_output and not s.is_input)
+            remaining_days_width = remaining_days_stream.width if remaining_days_stream.width else duration_width
+            lock_start_idx = _get_stream_index(lock_start_output, streams, is_input=False)
+            lock_start_ref_state = f"o{lock_start_idx}[t]"
+            # remaining_days = (lock_start + stake_duration) - current_time
+            # Only calculate if lock is active, clamp to 0 if negative
+            # Use same width for calculation
+            calc_width = max(time_width, duration_width)
+            logic_parts.append(f"(o{remaining_days_idx}[t] = (o{output_idx}[t] ? ((({lock_start_ref_state} + {stake_duration_ref}) - {current_time_ref}) > {{0}}:bv[{calc_width}] ? (({lock_start_ref_state} + {stake_duration_ref}) - {current_time_ref}) : {{0}}:bv[{remaining_days_width}]) : {{0}}:bv[{remaining_days_width}])) && (o{remaining_days_idx}[0] = {{0}}:bv[{remaining_days_width}])")
+        except ValueError:
+            pass
+    
+    # Try to add is_matured check if output stream exists
+    if is_matured_output and lock_start_output:
+        try:
+            is_matured_idx = _get_stream_index(is_matured_output, streams, is_input=False)
+            lock_start_idx = _get_stream_index(lock_start_output, streams, is_input=False)
+            lock_start_ref_state = f"o{lock_start_idx}[t]"
+            # is_matured = current_time >= (lock_start + stake_duration) & lock_active
+            logic_parts.append(f"(o{is_matured_idx}[t] = o{output_idx}[t] & ({current_time_ref} >= ({lock_start_ref_state} + {stake_duration_ref})))")
+        except ValueError:
+            pass
+    
+    # Phase 2: Add share calculation, rewards, and penalties if requested
+    include_shares = block.params.get("include_shares", False)
+    include_rewards = block.params.get("include_rewards", False)
+    include_penalties = block.params.get("include_penalties", False)
+    
+    # Share calculation: user_shares = stake_amount * duration_multiplier
+    if include_shares:
+        user_shares_output = block.params.get("user_shares_output", "user_shares")
+        try:
+            user_shares_idx = _get_stream_index(user_shares_output, streams, is_input=False)
+            user_shares_stream = next(s for s in streams if s.name == user_shares_output and not s.is_input)
+            user_shares_width = user_shares_stream.width if user_shares_stream.width else amount_width
+            
+            # Duration multiplier: duration / max_duration (linear scaling)
+            # For sqrt scaling, would need external computation
+            duration_scaling = block.params.get("duration_scaling", "linear")
+            max_duration = block.params.get("max_duration", 3650)
+            
+            if duration_scaling == "linear":
+                # Linear: multiplier = duration / max_duration
+                # user_shares = stake_amount * (duration / max_duration)
+                # Simplified: user_shares = stake_amount * duration / max_duration
+                logic_parts.append(f"(o{user_shares_idx}[t] = (o{output_idx}[t] ? (({stake_amount_ref} * {stake_duration_ref}) / {{{max_duration}}}:bv[{duration_width}]) : {{0}}:bv[{user_shares_width}])) && (o{user_shares_idx}[0] = {{0}}:bv[{user_shares_width}])")
+            else:
+                # Sqrt scaling would need external computation
+                # For now, use linear
+                logic_parts.append(f"(o{user_shares_idx}[t] = (o{output_idx}[t] ? (({stake_amount_ref} * {stake_duration_ref}) / {{{max_duration}}}:bv[{duration_width}]) : {{0}}:bv[{user_shares_width}])) && (o{user_shares_idx}[0] = {{0}}:bv[{user_shares_width}])")
+        except ValueError:
+            pass  # User shares output not declared
+    
+    # Reward accrual: accrued_rewards = (user_shares / total_shares) * daily_inflation * elapsed_days
+    if include_rewards:
+        accrued_rewards_output = block.params.get("accrued_rewards_output", "accrued_rewards")
+        total_shares_name = block.params.get("total_shares", "total_shares")
+        daily_inflation_name = block.params.get("daily_inflation", "daily_inflation")
+        
+        try:
+            accrued_rewards_idx = _get_stream_index(accrued_rewards_output, streams, is_input=False)
+            accrued_rewards_stream = next(s for s in streams if s.name == accrued_rewards_output and not s.is_input)
+            accrued_rewards_width = accrued_rewards_stream.width if accrued_rewards_stream.width else amount_width
+            
+            # Get external inputs
+            total_shares_idx, total_shares_is_input = _get_stream_index_any(total_shares_name, streams)
+            daily_inflation_idx, daily_inflation_is_input = _get_stream_index_any(daily_inflation_name, streams)
+            
+            total_shares_ref = f"i{total_shares_idx}[t]" if total_shares_is_input else f"o{total_shares_idx}[t]"
+            daily_inflation_ref = f"i{daily_inflation_idx}[t]" if daily_inflation_is_input else f"o{daily_inflation_idx}[t]"
+            
+            # Calculate elapsed_days = current_time - lock_start
+            if lock_start_output:
+                lock_start_idx = _get_stream_index(lock_start_output, streams, is_input=False)
+                lock_start_ref_state = f"o{lock_start_idx}[t]"
+                elapsed_days_expr = f"({current_time_ref} - {lock_start_ref_state})"
+            else:
+                # Can't calculate without lock_start
+                elapsed_days_expr = "{0}:bv[16]"
+            
+            # Get user_shares reference
+            if include_shares:
+                user_shares_idx = _get_stream_index(user_shares_output, streams, is_input=False)
+                user_shares_ref = f"o{user_shares_idx}[t]"
+            else:
+                # Use stake_amount as proxy
+                user_shares_ref = stake_amount_ref
+            
+            # accrued_rewards = (user_shares / total_shares) * daily_inflation * elapsed_days
+            # Only calculate if lock is active
+            logic_parts.append(f"(o{accrued_rewards_idx}[t] = (o{output_idx}[t] ? ((({user_shares_ref} / {total_shares_ref}) * {daily_inflation_ref}) * {elapsed_days_expr}) : {{0}}:bv[{accrued_rewards_width}])) && (o{accrued_rewards_idx}[0] = {{0}}:bv[{accrued_rewards_width}])")
+        except ValueError:
+            pass  # Accrued rewards output not declared or external inputs missing
+    
+    # Penalty calculation: penalty = base_penalty_rate * (remaining_days / total_days) * stake_amount / 100
+    if include_penalties:
+        penalty_amount_output = block.params.get("penalty_amount_output", "penalty_amount")
+        base_penalty_rate = block.params.get("base_penalty_rate", 50)  # 50%
+        
+        try:
+            penalty_amount_idx = _get_stream_index(penalty_amount_output, streams, is_input=False)
+            penalty_amount_stream = next(s for s in streams if s.name == penalty_amount_output and not s.is_input)
+            penalty_amount_width = penalty_amount_stream.width if penalty_amount_stream.width else amount_width
+            
+            # Penalty only applies if early exit (lock_active & !is_matured & action_end)
+            # penalty = base_penalty_rate * (remaining_days / stake_duration) * stake_amount / 100
+            
+            if remaining_days_output and is_matured_output:
+                remaining_days_idx = _get_stream_index(remaining_days_output, streams, is_input=False)
+                is_matured_idx = _get_stream_index(is_matured_output, streams, is_input=False)
+                remaining_days_ref = f"o{remaining_days_idx}[t]"
+                is_matured_ref = f"o{is_matured_idx}[t]"
+                
+                # penalty = (lock_active & !is_matured) ? (base_penalty_rate * remaining_days * stake_amount) / (stake_duration * 100) : 0
+                logic_parts.append(f"(o{penalty_amount_idx}[t] = ((o{output_idx}[t] & {is_matured_ref}') ? ((({{{base_penalty_rate}}}:bv[8] * {remaining_days_ref}) * {stake_amount_ref}) / (({stake_duration_ref} * {{100}}:bv[8]))) : {{0}}:bv[{penalty_amount_width}])) && (o{penalty_amount_idx}[0] = {{0}}:bv[{penalty_amount_width}])")
+        except ValueError:
+            pass  # Penalty amount output not declared
+    
+    return " &&\n    ".join(logic_parts)
+
+
+def _generate_multi_bit_counter_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate multi-bit counter pattern logic.
+    
+    Implements a counter with configurable width (2-bit, 3-bit, etc.).
+    Supports increment and reset operations.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Multi-bit counter pattern requires at least 1 input (increment)")
+    
+    # Get inputs
+    increment_name = block.inputs[0]
+    reset_name = block.inputs[1] if len(block.inputs) > 1 else None
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get width from params or output stream
+    width = block.params.get("width", output_stream.width if output_stream.width else 2)
+    if width < 1 or width > 32:
+        raise ValueError(f"Multi-bit counter width must be 1-32, got {width}")
+    
+    # Get input indices
+    increment_idx, increment_is_input = _get_stream_index_any(increment_name, streams)
+    increment_ref = f"i{increment_idx}[t]" if increment_is_input else f"o{increment_idx}[t]"
+    
+    # Build counter logic: counter[t] = reset ? 0 : (increment ? counter[t-1] + 1 : counter[t-1])
+    # Tau doesn't support ternary in recurrence, so use: (reset & 0) | (reset' & (increment ? counter[t-1] + 1 : counter[t-1]))
+    # Simplified: counter[t] = reset ? 0 : (increment ? counter[t-1] + 1 : counter[t-1])
+    
+    if reset_name:
+        reset_idx, reset_is_input = _get_stream_index_any(reset_name, streams)
+        reset_ref = f"i{reset_idx}[t]" if reset_is_input else f"o{reset_idx}[t]"
+        # counter[t] = reset ? 0 : (increment ? counter[t-1] + 1 : counter[t-1])
+        counter_logic = f"(o{output_idx}[t] = ({reset_ref} ? {{0}}:bv[{width}] : ({increment_ref} ? (o{output_idx}[t-1] + {{1}}:bv[{width}]) : o{output_idx}[t-1])))"
+    else:
+        # No reset: counter[t] = increment ? counter[t-1] + 1 : counter[t-1]
+        counter_logic = f"(o{output_idx}[t] = ({increment_ref} ? (o{output_idx}[t-1] + {{1}}:bv[{width}]) : o{output_idx}[t-1]))"
+    
+    # Initial condition
+    initial_value = block.params.get("initial_value", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_value}}}:bv[{width}])"
+    
+    return counter_logic + init_logic
+
+
+def _generate_streak_counter_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate streak counter pattern logic.
+    
+    Tracks consecutive events (win/loss streaks).
+    Resets on opposite event or explicit reset.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Streak counter pattern requires at least 1 input (event)")
+    
+    # Get inputs
+    event_name = block.inputs[0]
+    reset_name = block.inputs[1] if len(block.inputs) > 1 else None
+    opposite_event_name = block.params.get("opposite_event", None)
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get width from params or output stream
+    width = block.params.get("width", output_stream.width if output_stream.width else 4)
+    if width < 1 or width > 32:
+        raise ValueError(f"Streak counter width must be 1-32, got {width}")
+    
+    # Get input indices
+    event_idx, event_is_input = _get_stream_index_any(event_name, streams)
+    event_ref = f"i{event_idx}[t]" if event_is_input else f"o{event_idx}[t]"
+    
+    # Streak logic:
+    # - If event occurs: streak[t] = streak[t-1] + 1
+    # - If opposite event occurs: streak[t] = 0
+    # - If reset: streak[t] = 0
+    # - Otherwise: streak[t] = streak[t-1]
+    
+    reset_conditions = []
+    if reset_name:
+        reset_idx, reset_is_input = _get_stream_index_any(reset_name, streams)
+        reset_ref = f"i{reset_idx}[t]" if reset_is_input else f"o{reset_idx}[t]"
+        reset_conditions.append(reset_ref)
+    
+    if opposite_event_name:
+        opposite_idx, opposite_is_input = _get_stream_index_any(opposite_event_name, streams)
+        opposite_ref = f"i{opposite_idx}[t]" if opposite_is_input else f"o{opposite_idx}[t]"
+        reset_conditions.append(opposite_ref)
+    
+    # Build logic: streak[t] = (reset | opposite) ? 0 : (event ? streak[t-1] + 1 : streak[t-1])
+    if reset_conditions:
+        reset_expr = " | ".join(reset_conditions)
+        streak_logic = f"(o{output_idx}[t] = (({reset_expr}) ? {{0}}:bv[{width}] : ({event_ref} ? (o{output_idx}[t-1] + {{1}}:bv[{width}]) : o{output_idx}[t-1])))"
+    else:
+        # No reset: streak[t] = event ? streak[t-1] + 1 : streak[t-1]
+        streak_logic = f"(o{output_idx}[t] = ({event_ref} ? (o{output_idx}[t-1] + {{1}}:bv[{width}]) : o{output_idx}[t-1]))"
+    
+    # Initial condition
+    initial_value = block.params.get("initial_value", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_value}}}:bv[{width}])"
+    
+    return streak_logic + init_logic
+
+
+def _generate_mode_switch_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate mode switch pattern logic.
+    
+    Switches between modes (e.g., AGGRESSIVE/DEFENSIVE) based on conditions.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Mode switch pattern requires at least 1 input")
+    
+    # Get modes from params
+    modes = block.params.get("modes", ["MODE1", "MODE2"])
+    if len(modes) < 2:
+        raise ValueError("Mode switch pattern requires at least 2 modes")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Determine state width (log2 of number of modes)
+    import math
+    state_width = max(1, math.ceil(math.log2(len(modes))))
+    
+    # Get transitions from params
+    transitions = block.params.get("transitions", {})
+    
+    # Build mode switch logic
+    # For each mode, check transition conditions
+    # mode[t] = (transition_to_mode1 ? mode1 : (transition_to_mode2 ? mode2 : mode[t-1]))
+    
+    # Build mode switch logic using boolean expressions
+    # For each mode, create a condition that selects that mode value
+    # mode[t] = (cond1 ? mode1 : (cond2 ? mode2 : current))
+    # But Tau doesn't support nested ternary well, so use boolean logic:
+    # mode[t] = (cond1 & mode1) | (cond1' & cond2 & mode2) | (cond1' & cond2' & current)
+    
+    # Simple approach: use first input to switch between modes
+    # For 2 modes: mode[t] = (signal ? mode1 : mode0)
+    # For more modes, use bitvector encoding
+    
+    if len(modes) == 2:
+        # Simple 2-mode switch
+        if len(block.inputs) >= 1:
+            inp_idx, inp_is_input = _get_stream_index_any(block.inputs[0], streams)
+            inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+            # Switch to mode 1 on input, mode 0 otherwise
+            mode_logic = f"(o{output_idx}[t] = ({inp_ref} ? {{1}}:bv[{state_width}] : {{0}}:bv[{state_width}]))"
+        else:
+            mode_logic = f"(o{output_idx}[t] = o{output_idx}[t-1])"
+    else:
+        # Multi-mode: use transitions to build conditions
+        # For now, use first input as mode selector (simplified)
+        if len(block.inputs) >= 1:
+            inp_idx, inp_is_input = _get_stream_index_any(block.inputs[0], streams)
+            inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+            # Use input as mode index (simplified - assumes input is mode value)
+            mode_logic = f"(o{output_idx}[t] = ({inp_ref} ? {inp_ref} : o{output_idx}[t-1]))"
+        else:
+            mode_logic = f"(o{output_idx}[t] = o{output_idx}[t-1])"
+    
+    # Initial condition
+    initial_mode = block.params.get("initial_mode", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_mode}}}:bv[{state_width}])"
+    
+    return mode_logic + init_logic
+
+
+def _generate_proposal_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate proposal FSM pattern logic.
+    
+    Implements governance proposal lifecycle: DRAFT → VOTING → PASSED → EXECUTED → CANCELLED
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Proposal FSM pattern requires at least 1 input")
+    
+    # Get inputs (create, vote, execute, cancel)
+    create_name = block.params.get("create_input", block.inputs[0] if len(block.inputs) > 0 else None)
+    vote_name = block.params.get("vote_input", block.inputs[1] if len(block.inputs) > 1 else None)
+    execute_name = block.params.get("execute_input", block.inputs[2] if len(block.inputs) > 2 else None)
+    cancel_name = block.params.get("cancel_input", block.inputs[3] if len(block.inputs) > 3 else None)
+    
+    if not create_name:
+        raise ValueError("Proposal FSM pattern requires create_input")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # States: 0=DRAFT, 1=VOTING, 2=PASSED, 3=EXECUTED, 4=CANCELLED
+    # Use 3-bit state (supports up to 8 states)
+    state_width = 3
+    
+    # Get input indices
+    create_idx, create_is_input = _get_stream_index_any(create_name, streams)
+    create_ref = f"i{create_idx}[t]" if create_is_input else f"o{create_idx}[t]"
+    
+    vote_ref = None
+    if vote_name:
+        vote_idx, vote_is_input = _get_stream_index_any(vote_name, streams)
+        vote_ref = f"i{vote_idx}[t]" if vote_is_input else f"o{vote_idx}[t]"
+    
+    execute_ref = None
+    if execute_name:
+        execute_idx, execute_is_input = _get_stream_index_any(execute_name, streams)
+        execute_ref = f"i{execute_idx}[t]" if execute_is_input else f"o{execute_idx}[t]"
+    
+    cancel_ref = None
+    if cancel_name:
+        cancel_idx, cancel_is_input = _get_stream_index_any(cancel_name, streams)
+        cancel_ref = f"i{cancel_idx}[t]" if cancel_is_input else f"o{cancel_idx}[t]"
+    
+    # Get quorum/vote result (optional external input)
+    quorum_met_name = block.params.get("quorum_met", None)
+    quorum_met_ref = None
+    if quorum_met_name:
+        quorum_idx, quorum_is_input = _get_stream_index_any(quorum_met_name, streams)
+        quorum_met_ref = f"i{quorum_idx}[t]" if quorum_is_input else f"o{quorum_idx}[t]"
+    
+    # State transitions:
+    # DRAFT (0) → create → VOTING (1)
+    # VOTING (1) → (vote & quorum_met) → PASSED (2)
+    # PASSED (2) → execute → EXECUTED (3)
+    # Any state → cancel → CANCELLED (4)
+    
+    # Build transition logic using boolean expressions
+    # State transitions:
+    # DRAFT (0) → create → VOTING (1)
+    # VOTING (1) → (vote & quorum_met) → PASSED (2)
+    # PASSED (2) → execute → EXECUTED (3)
+    # Any state → cancel → CANCELLED (4)
+    
+    # Use boolean logic: state[t] = (cond1 & val1) | (cond1' & cond2 & val2) | (cond1' & cond2' & cond3 & val3) | (cond1' & cond2' & cond3' & cond4 & val4) | (cond1' & cond2' & cond3' & cond4' & current)
+    
+    conditions = []
+    
+    # Cancel has highest priority (any state → CANCELLED)
+    if cancel_ref:
+        conditions.append(f"({cancel_ref} ? {{4}}:bv[{state_width}] : {{0}}:bv[{state_width}])")
+    
+    # DRAFT → VOTING: create
+    conditions.append(f"((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {create_ref} ? {{1}}:bv[{state_width}] : {{0}}:bv[{state_width}])")
+    
+    # VOTING → PASSED: vote & quorum_met
+    if vote_ref and quorum_met_ref:
+        conditions.append(f"((o{output_idx}[t-1] = {{1}}:bv[{state_width}]) & {vote_ref} & {quorum_met_ref} ? {{2}}:bv[{state_width}] : {{0}}:bv[{state_width}])")
+    elif vote_ref:
+        conditions.append(f"((o{output_idx}[t-1] = {{1}}:bv[{state_width}]) & {vote_ref} ? {{2}}:bv[{state_width}] : {{0}}:bv[{state_width}])")
+    
+    # PASSED → EXECUTED: execute
+    if execute_ref:
+        conditions.append(f"((o{output_idx}[t-1] = {{2}}:bv[{state_width}]) & {execute_ref} ? {{3}}:bv[{state_width}] : {{0}}:bv[{state_width}])")
+    
+    # Combine: use OR to combine conditions, but need to handle priority
+    # For now, use simple approach: check conditions in order, first match wins
+    # This is simplified - proper implementation would need priority logic
+    if conditions:
+        # Use nested ternary with proper fallback
+        # For cancel: if cancel, state=4, else check other transitions
+        if cancel_ref:
+            # Cancel first, then other transitions, then maintain state
+            other_conditions = " : ".join(conditions[1:]) if len(conditions) > 1 else f"o{output_idx}[t-1]"
+            proposal_logic = f"(o{output_idx}[t] = ({cancel_ref} ? {{4}}:bv[{state_width}] : ({other_conditions})))"
+        else:
+            # No cancel, use transitions with fallback
+            transition_expr = " : ".join(conditions) + f" : o{output_idx}[t-1]"
+            proposal_logic = f"(o{output_idx}[t] = {transition_expr})"
+    else:
+        # Fallback: simple create → voting
+        proposal_logic = f"(o{output_idx}[t] = ({create_ref} ? {{1}}:bv[{state_width}] : o{output_idx}[t-1]))"
+    
+    # Initial condition: DRAFT
+    init_logic = f" && (o{output_idx}[0] = {{0}}:bv[{state_width}])"
+    
+    return proposal_logic + init_logic
+
+
+def _generate_risk_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate risk FSM pattern logic.
+    
+    Implements risk state machine: NORMAL → WARNING → CRITICAL
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Risk FSM pattern requires at least 1 input")
+    
+    # Get inputs (risk signals)
+    warning_signal_name = block.params.get("warning_signal", block.inputs[0] if len(block.inputs) > 0 else None)
+    critical_signal_name = block.params.get("critical_signal", block.inputs[1] if len(block.inputs) > 1 else None)
+    normal_signal_name = block.params.get("normal_signal", block.inputs[2] if len(block.inputs) > 2 else None)
+    
+    if not warning_signal_name:
+        raise ValueError("Risk FSM pattern requires warning_signal")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # States: 0=NORMAL, 1=WARNING, 2=CRITICAL
+    # Use 2-bit state
+    state_width = 2
+    
+    # Get input indices
+    warning_idx, warning_is_input = _get_stream_index_any(warning_signal_name, streams)
+    warning_ref = f"i{warning_idx}[t]" if warning_is_input else f"o{warning_idx}[t]"
+    
+    critical_ref = None
+    if critical_signal_name:
+        critical_idx, critical_is_input = _get_stream_index_any(critical_signal_name, streams)
+        critical_ref = f"i{critical_idx}[t]" if critical_is_input else f"o{critical_idx}[t]"
+    
+    normal_ref = None
+    if normal_signal_name:
+        normal_idx, normal_is_input = _get_stream_index_any(normal_signal_name, streams)
+        normal_ref = f"i{normal_idx}[t]" if normal_is_input else f"o{normal_idx}[t]"
+    
+    # State transitions:
+    # NORMAL (0) → warning → WARNING (1)
+    # WARNING (1) → critical → CRITICAL (2)
+    # WARNING (1) → normal → NORMAL (0)
+    # CRITICAL (2) → normal → NORMAL (0)
+    
+    # Build transition logic using boolean expressions
+    # State transitions:
+    # NORMAL (0) → warning → WARNING (1)
+    # WARNING (1) → critical → CRITICAL (2)
+    # WARNING (1) → normal → NORMAL (0)
+    # CRITICAL (2) → normal → NORMAL (0)
+    
+    # Priority: normal > critical > warning
+    # normal signal resets to NORMAL from any state
+    # critical signal moves WARNING → CRITICAL
+    # warning signal moves NORMAL → WARNING
+    
+    if normal_ref:
+        # Normal signal has highest priority (resets to NORMAL)
+        # If normal, state=0, else check other transitions
+        if critical_ref:
+            # normal ? 0 : (critical & warning_state ? 2 : (warning & normal_state ? 1 : current))
+            risk_logic = f"(o{output_idx}[t] = ({normal_ref} ? {{0}}:bv[{state_width}] : ((o{output_idx}[t-1] = {{1}}:bv[{state_width}]) & {critical_ref} ? {{2}}:bv[{state_width}] : ((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {warning_ref} ? {{1}}:bv[{state_width}] : o{output_idx}[t-1]))))"
+        else:
+            # normal ? 0 : (warning & normal_state ? 1 : current)
+            risk_logic = f"(o{output_idx}[t] = ({normal_ref} ? {{0}}:bv[{state_width}] : ((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {warning_ref} ? {{1}}:bv[{state_width}] : o{output_idx}[t-1])))"
+    elif critical_ref:
+        # No normal signal, check critical and warning
+        risk_logic = f"(o{output_idx}[t] = ((o{output_idx}[t-1] = {{1}}:bv[{state_width}]) & {critical_ref} ? {{2}}:bv[{state_width}] : ((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {warning_ref} ? {{1}}:bv[{state_width}] : o{output_idx}[t-1])))"
+    else:
+        # Only warning signal
+        risk_logic = f"(o{output_idx}[t] = ((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {warning_ref} ? {{1}}:bv[{state_width}] : o{output_idx}[t-1]))"
+    
+    # Initial condition: NORMAL
+    init_logic = f" && (o{output_idx}[0] = {{0}}:bv[{state_width}])"
+    
+    return risk_logic + init_logic
+
+
+def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate quorum pattern logic (uses majority internally).
+    
+    Quorum is essentially majority voting with a threshold.
+    Example: 3-of-5 quorum = majority with threshold=3, total=5
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("Quorum pattern requires at least 2 inputs")
+    
+    # Get threshold from params
+    threshold = block.params.get("threshold", len(block.inputs) // 2 + 1)
+    total = block.params.get("total", len(block.inputs))
+    
+    if threshold < 1:
+        raise ValueError(f"Quorum threshold must be >= 1, got {threshold}")
+    if threshold > total:
+        raise ValueError(f"Quorum threshold ({threshold}) cannot exceed total ({total})")
+    if total > len(block.inputs):
+        raise ValueError(f"Total ({total}) cannot exceed number of inputs ({len(block.inputs)})")
+    
+    # Use majority logic internally
+    input_refs = []
+    for inp in block.inputs[:total]:
+        inp_idx, inp_is_input = _get_stream_index_any(inp, streams)
+        ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        input_refs.append((ref, inp_idx))
+    
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    
+    # Generate all combinations of threshold inputs
+    combinations = list(itertools.combinations(input_refs, threshold))
+    
+    if not combinations:
+        raise ValueError(f"No valid combinations for threshold={threshold}, total={total}")
+    
+    # Create AND expressions for each combination, then OR them together
+    and_exprs = []
+    for combo in combinations:
+        and_expr = " & ".join(ref for ref, _ in combo)
+        and_exprs.append(f"({and_expr})")
+    
+    quorum_expr = " | ".join(and_exprs)
+    return f"(o{output_idx}[t] = {quorum_expr})"
+
+
+def _generate_custom_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate custom boolean expression pattern logic.
+    
+    The expression string should use placeholders like {i0}, {i1}, etc. for inputs,
+    or use stream names that will be replaced with indices.
+    """
+    if "expression" not in block.params:
+        raise ValueError("Custom pattern requires 'expression' parameter")
+    
+    expression = block.params["expression"]
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    
+    # Replace stream names with indices in the expression
+    # Process in reverse order to avoid replacing already-replaced indices
+    # First, replace stream names with placeholders
+    name_to_placeholder = {}
+    for inp_name in block.inputs:
+        inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+        prefix = "i" if inp_is_input else "o"
+        name_to_placeholder[inp_name] = f"__PLACEHOLDER_{prefix}{inp_idx}__"
+    
+    # Replace stream names with placeholders
+    for inp_name, placeholder in name_to_placeholder.items():
+        expression = expression.replace(f"{inp_name}[t]", placeholder)
+        expression = expression.replace(f"{{{inp_name}}}", placeholder)
+    
+    # Replace placeholders with actual indices
+    for inp_name, placeholder in name_to_placeholder.items():
+        inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+        prefix = "i" if inp_is_input else "o"
+        expression = expression.replace(placeholder, f"{prefix}{inp_idx}[t]")
+    
+    # Also handle direct index placeholders like {i0}, {i1}
+    for idx, inp_name in enumerate(block.inputs):
+        inp_idx = _get_stream_index(inp_name, streams, is_input=True)
+        expression = expression.replace(f"{{i{idx}}}", f"i{inp_idx}[t]")
+    
+    # Replace output placeholder
+    expression = expression.replace("{output}", f"o{output_idx}")
+    expression = expression.replace("{output_idx}", f"o{output_idx}")
+    
+    return f"(o{output_idx}[t] = {expression})"
 
 
 def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
@@ -139,6 +1203,32 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_accumulator_logic(block, schema.streams))
         elif block.pattern == "vote":
             logic_lines.append(_generate_vote_logic(block, schema.streams))
+        elif block.pattern == "majority":
+            logic_lines.append(_generate_majority_logic(block, schema.streams))
+        elif block.pattern == "unanimous":
+            logic_lines.append(_generate_unanimous_logic(block, schema.streams))
+        elif block.pattern == "custom":
+            logic_lines.append(_generate_custom_logic(block, schema.streams))
+        elif block.pattern == "quorum":
+            logic_lines.append(_generate_quorum_logic(block, schema.streams))
+        elif block.pattern == "supervisor_worker":
+            logic_lines.append(_generate_supervisor_worker_logic(block, schema.streams))
+        elif block.pattern == "weighted_vote":
+            logic_lines.append(_generate_weighted_vote_logic(block, schema.streams))
+        elif block.pattern == "time_lock":
+            logic_lines.append(_generate_time_lock_logic(block, schema.streams))
+        elif block.pattern == "hex_stake":
+            logic_lines.append(_generate_hex_stake_logic(block, schema.streams))
+        elif block.pattern == "multi_bit_counter":
+            logic_lines.append(_generate_multi_bit_counter_logic(block, schema.streams))
+        elif block.pattern == "streak_counter":
+            logic_lines.append(_generate_streak_counter_logic(block, schema.streams))
+        elif block.pattern == "mode_switch":
+            logic_lines.append(_generate_mode_switch_logic(block, schema.streams))
+        elif block.pattern == "proposal_fsm":
+            logic_lines.append(_generate_proposal_fsm_logic(block, schema.streams))
+        elif block.pattern == "risk_fsm":
+            logic_lines.append(_generate_risk_fsm_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     
@@ -159,14 +1249,18 @@ def _generate_execution_commands(num_steps: int) -> List[str]:
     return lines
 
 
-def generate_tau_spec(schema: AgentSchema) -> str:
+def generate_tau_spec(schema: AgentSchema, validate: bool = True) -> str:
     """Generate a complete Tau Language spec from an AgentSchema.
     
     Args:
         schema: The agent schema to compile
+        validate: Whether to validate the generated spec
         
     Returns:
         Complete Tau spec as a string
+        
+    Raises:
+        ValueError: If validation fails and validate=True
     """
     lines = [
         f"# {schema.name} Agent (Auto-generated)",
@@ -194,5 +1288,15 @@ def generate_tau_spec(schema: AgentSchema) -> str:
     # Execution commands
     lines.extend(_generate_execution_commands(schema.num_steps))
     
-    return "\n".join(lines)
+    spec = "\n".join(lines)
+    
+    # Validate if requested
+    if validate:
+        from idi.devkit.tau_factory.spec_validator import validate_tau_spec
+        is_valid, errors = validate_tau_spec(spec)
+        if not is_valid:
+            error_msg = "\n".join(f"  - {e}" for e in errors)
+            raise ValueError(f"Generated spec validation failed:\n{error_msg}\n\nSpec:\n{spec}")
+    
+    return spec
 
