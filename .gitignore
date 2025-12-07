@@ -37,4 +37,26 @@ idi/artifacts/
 **/.docker/**
 **/.cache/**
 
+# LaTeX compiler binary
+tectonic
+
+# Python test artifacts
+.coverage
+.hypothesis/
+*.cover
+.pytest_cache/
+
+# Lean build artifacts
+.lake/
+*.olean
+*.olean.lock
+*.olean.trace
+
+# Large binary files
+*.zip
+alignment_theorem_package.zip
+
+# Embedded git repos (submodules should be configured properly)
+.lake/packages/
+
 

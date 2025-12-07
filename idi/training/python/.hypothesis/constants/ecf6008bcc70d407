@@ -1,4 +1,0 @@
-# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/backtest.py
-# hypothesis_version: 6.148.7
-
-[-0.02, 0.0, 1e-09, 0.05, 10000.0, ',', '-', '--calibrate-only', '--config', '--fee-bps', '--out', '--policy', '--price-col', '--risk-col', '--volume-col', '.parquet', '=', 'Backtest Results', 'Calibration:', 'Output directory.', 'Price column name.', 'Volume column name.', '__main__', 'action_buy_pct', 'action_hold_pct', 'action_sell_pct', 'actions.txt', 'alert_f1', 'alert_precision', 'alert_recall', 'buy', 'calibration', 'calibration.json', 'cvar_5', 'data', 'drift', 'drop', 'first', 'hold', 'kpis', 'kpis.json', 'max_drawdown', 'mean', 'mood_bucket', 'n_steps', 'outputs/backtest', 'price', 'price_bucket', 'scarcity_bucket', 'sell', 'sharpe_like', 'std', 'store_true', 'total_return', 'trend_bucket', 'utf-8', 'value', 'vol', 'volume_bucket', 'win_rate']

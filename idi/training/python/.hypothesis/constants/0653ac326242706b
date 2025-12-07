@@ -1,4 +1,0 @@
-# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/idi_iann/trainer.py
-# hypothesis_version: 6.148.7
-
-[0.0, 0.01, 1.0, 'alert', 'as_state', 'bear', 'bull', 'buy', 'chop', 'comm_action_counts', 'contrarian', 'episodes', 'last_return', 'mean_reward', 'momentum', 'panic', 'persistence', 'pnl', 'position', 'positive', 'price', 'price_down', 'price_down.in', 'price_up', 'price_up.in', 'q_buy', 'q_buy.in', 'q_emote_alert', 'q_emote_alert.in', 'q_emote_persistence', 'q_emote_positive', 'q_emote_positive.in', 'q_regime', 'q_regime.in', 'q_sell', 'q_sell.in', 'regime', 'risk_budget_ok', 'risk_budget_ok.in', 'risk_event', 'risk_signal', 'sell', 'trend', 'utf-8', 'weight_contra', 'weight_contra.in', 'weight_momentum', 'weight_momentum.in', 'weight_trend', 'weight_trend.in']

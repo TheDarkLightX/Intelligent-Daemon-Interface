@@ -1,4 +1,0 @@
-# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/idi_iann/calibration.py
-# hypothesis_version: 6.148.7
-
-[0.0, 0.99, 1.0, 'action', 'buckets', 'calibration_error', 'count', 'ece', 'mce', 'n_samples', 'predicted_mean', 'realized_mean', 'rewards', 'rollouts', 'state']
