@@ -10,7 +10,7 @@
 #![no_main]
 
 use risc0_zkvm::guest::env;
-use risc0_zkvm::sha::{Digest, Sha256};
+use risc0_zkvm::sha::Sha256;
 use serde::{Deserialize, Serialize};
 
 risc0_zkvm::guest::entry!(main);
@@ -82,11 +82,16 @@ fn main() {
         }
         
         // Verify root matches
-        assert_eq!(current_hash, input.q_table_root, "Merkle proof verification failed");
+        assert_eq!(
+            current_hash.as_slice(),
+            &input.q_table_root,
+            "Merkle proof verification failed"
+        );
     } else {
         // Small table: verify entry hash matches root (simplified)
         let entry_hash = hash_q_entry(&input.state_key, &input.q_entry);
         // For small tables, root is hash of all entries - simplified check
+        // In production, would verify against full table hash
     }
     
     // Verify action selection (argmax)
@@ -107,7 +112,7 @@ fn main() {
     
     let proof_hash = hasher.finalize();
     
-    // Commit to journal
+    // Commit to journal (public output)
     env::commit(&proof_hash);
 }
 
@@ -118,7 +123,8 @@ fn hash_q_entry(state_key: &str, entry: &QEntry) -> [u8; 32] {
     hasher.update(&entry.q_hold.to_le_bytes());
     hasher.update(&entry.q_buy.to_le_bytes());
     hasher.update(&entry.q_sell.to_le_bytes());
-    hasher.finalize().as_bytes().try_into().unwrap()
+    let digest = hasher.finalize();
+    digest.as_bytes().try_into().unwrap()
 }
 
 /// Find action with maximum Q-value

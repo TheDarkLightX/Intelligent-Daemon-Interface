@@ -1110,6 +1110,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "idi_risc0_methods_qtable_guest"
+version = "0.1.0"
+dependencies = [
+ "risc0-zkvm",
+ "serde",
+ "sha2",
+]
+
+[[package]]
 name = "include_bytes_aligned"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
