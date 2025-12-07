@@ -20,6 +20,12 @@ tau_daemon_alpha/ledger/**
 tau_daemon_alpha/.tau_lang_cache/**
 tau-lang*/
 tau_lang*/
+tau-lang-latest/
+tau_lang_latest/
+
+# Practice/development folder (work in progress agents)
+practice/
+.practice/
 
 # Editor/OS
 .DS_Store
