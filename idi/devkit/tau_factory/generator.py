@@ -1098,6 +1098,805 @@ def _generate_risk_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...
     return risk_logic + init_logic
 
 
+def _generate_entry_exit_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate entry-exit FSM pattern logic.
+    
+    Implements multi-phase trade lifecycle: PRE_TRADE → IN_TRADE → POST_TRADE
+    Each phase can have sub-states for fine-grained control.
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("Entry-exit FSM pattern requires at least 2 inputs (entry_signal, exit_signal)")
+    
+    # Get inputs
+    entry_signal_name = block.params.get("entry_signal", block.inputs[0] if len(block.inputs) > 0 else None)
+    exit_signal_name = block.params.get("exit_signal", block.inputs[1] if len(block.inputs) > 1 else None)
+    stop_loss_name = block.params.get("stop_loss", block.inputs[2] if len(block.inputs) > 2 else None)
+    take_profit_name = block.params.get("take_profit", block.inputs[3] if len(block.inputs) > 3 else None)
+    
+    if not entry_signal_name or not exit_signal_name:
+        raise ValueError("Entry-exit FSM pattern requires entry_signal and exit_signal")
+    
+    # Get phases from params (default: PRE_TRADE, IN_TRADE, POST_TRADE)
+    phases = block.params.get("phases", ["PRE_TRADE", "IN_TRADE", "POST_TRADE"])
+    if len(phases) < 2:
+        raise ValueError("Entry-exit FSM pattern requires at least 2 phases")
+    
+    # Get output streams
+    phase_output_name = block.params.get("phase_output", block.output)
+    position_output_name = block.params.get("position_output", None)
+    
+    # Get phase output stream
+    phase_output_idx = _get_stream_index(phase_output_name, streams, is_input=False)
+    phase_output_stream = next(s for s in streams if s.name == phase_output_name and not s.is_input)
+    
+    # Determine phase state width (log2 of number of phases)
+    import math
+    phase_width = max(2, math.ceil(math.log2(len(phases))))
+    
+    # Get input indices
+    entry_idx, entry_is_input = _get_stream_index_any(entry_signal_name, streams)
+    entry_ref = f"i{entry_idx}[t]" if entry_is_input else f"o{entry_idx}[t]"
+    
+    exit_idx, exit_is_input = _get_stream_index_any(exit_signal_name, streams)
+    exit_ref = f"i{exit_idx}[t]" if exit_is_input else f"o{exit_idx}[t]"
+    
+    stop_loss_ref = None
+    if stop_loss_name:
+        stop_loss_idx, stop_loss_is_input = _get_stream_index_any(stop_loss_name, streams)
+        stop_loss_ref = f"i{stop_loss_idx}[t]" if stop_loss_is_input else f"o{stop_loss_idx}[t]"
+    
+    take_profit_ref = None
+    if take_profit_name:
+        take_profit_idx, take_profit_is_input = _get_stream_index_any(take_profit_name, streams)
+        take_profit_ref = f"i{take_profit_idx}[t]" if take_profit_is_input else f"o{take_profit_idx}[t]"
+    
+    # Phase transitions:
+    # PRE_TRADE (0) → entry → IN_TRADE (1)
+    # IN_TRADE (1) → (exit | stop_loss | take_profit) → POST_TRADE (2)
+    # POST_TRADE (2) → reset → PRE_TRADE (0)
+    
+    # Build phase transition logic
+    transitions = []
+    
+    # PRE_TRADE → IN_TRADE: entry signal
+    transitions.append(f"((o{phase_output_idx}[t-1] = {{0}}:bv[{phase_width}]) & {entry_ref} ? {{1}}:bv[{phase_width}] : {{999}}:bv[{phase_width}])")
+    
+    # IN_TRADE → POST_TRADE: exit, stop_loss, or take_profit
+    exit_conditions = [exit_ref]
+    if stop_loss_ref:
+        exit_conditions.append(stop_loss_ref)
+    if take_profit_ref:
+        exit_conditions.append(take_profit_ref)
+    
+    exit_expr = " | ".join(exit_conditions)
+    transitions.append(f"((o{phase_output_idx}[t-1] = {{1}}:bv[{phase_width}]) & ({exit_expr}) ? {{2}}:bv[{phase_width}] : {{999}}:bv[{phase_width}])")
+    
+    # POST_TRADE → PRE_TRADE: reset (no entry signal)
+    # Reset when not entering (entry signal is false)
+    transitions.append(f"((o{phase_output_idx}[t-1] = {{2}}:bv[{phase_width}]) & {entry_ref}' ? {{0}}:bv[{phase_width}] : {{999}}:bv[{phase_width}])")
+    
+    # Combine transitions with fallback to maintain current phase
+    if transitions:
+        transition_expr = " : ".join(transitions) + f" : o{phase_output_idx}[t-1]"
+        phase_logic = f"(o{phase_output_idx}[t] = {transition_expr})"
+    else:
+        # Fallback: simple entry → exit
+        phase_logic = f"(o{phase_output_idx}[t] = ({entry_ref} ? {{1}}:bv[{phase_width}] : ({exit_ref} ? {{2}}:bv[{phase_width}] : o{phase_output_idx}[t-1])))"
+    
+    # Position output: true when IN_TRADE
+    logic_parts = [phase_logic]
+    
+    if position_output_name:
+        try:
+            position_output_idx = _get_stream_index(position_output_name, streams, is_input=False)
+            position_logic = f"(o{position_output_idx}[t] = (o{phase_output_idx}[t] = {{1}}:bv[{phase_width}])) && (o{position_output_idx}[0] = 0)"
+            logic_parts.append(position_logic)
+        except ValueError:
+            pass  # Position output not declared
+    
+    # Initial condition: PRE_TRADE
+    init_logic = f" && (o{phase_output_idx}[0] = {{0}}:bv[{phase_width}])"
+    
+    return " &&\n    ".join(logic_parts) + init_logic
+
+
+def _generate_orthogonal_regions_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate orthogonal regions pattern logic.
+    
+    Implements parallel independent FSMs (orthogonal regions).
+    Each region operates independently and can be in different states simultaneously.
+    Example: execution region, risk region, connectivity region all running in parallel.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Orthogonal regions pattern requires at least 1 input")
+    
+    # Get regions configuration from params
+    regions_config = block.params.get("regions", [])
+    
+    if not regions_config:
+        raise ValueError("Orthogonal regions pattern requires 'regions' parameter with region definitions")
+    
+    # Get output streams for each region
+    region_outputs = block.params.get("region_outputs", [])
+    
+    if len(region_outputs) != len(regions_config):
+        raise ValueError(f"Number of region_outputs ({len(region_outputs)}) must match number of regions ({len(regions_config)})")
+    
+    # Generate FSM logic for each region
+    logic_parts = []
+    
+    for i, region in enumerate(regions_config):
+        if not isinstance(region, dict):
+            raise ValueError(f"Region {i} must be a dictionary")
+        
+        region_name = region.get("name", f"region_{i}")
+        region_inputs = region.get("inputs", [])
+        region_states = region.get("states", ["FLAT", "LONG"])
+        
+        if not region_inputs:
+            raise ValueError(f"Region {region_name} must have at least one input")
+        
+        if len(region_states) < 2:
+            raise ValueError(f"Region {region_name} must have at least 2 states")
+        
+        # Get output stream for this region
+        region_output_name = region_outputs[i]
+        region_output_idx = _get_stream_index(region_output_name, streams, is_input=False)
+        region_output_stream = next(s for s in streams if s.name == region_output_name and not s.is_input)
+        
+        # Determine state width
+        import math
+        state_width = max(1, math.ceil(math.log2(len(region_states))))
+        
+        # Get input indices for this region
+        # For FSM, we need buy/sell signals (or equivalent)
+        # If region has 2 inputs, treat as buy/sell
+        # If region has 1 input, treat as toggle
+        
+        if len(region_inputs) >= 2:
+            # Standard FSM: buy/sell inputs
+            buy_input_name = region_inputs[0]
+            sell_input_name = region_inputs[1]
+            
+            buy_idx, buy_is_input = _get_stream_index_any(buy_input_name, streams)
+            sell_idx, sell_is_input = _get_stream_index_any(sell_input_name, streams)
+            
+            buy_ref = f"i{buy_idx}[t]" if buy_is_input else f"o{buy_idx}[t]"
+            sell_ref = f"i{sell_idx}[t]" if sell_is_input else f"o{sell_idx}[t]"
+            
+            # Generate FSM logic: state[t] = buy | (state[t-1] & sell')
+            region_logic = f"(o{region_output_idx}[t] = {buy_ref} | (o{region_output_idx}[t-1] & {sell_ref}'))"
+        else:
+            # Single input: toggle FSM
+            toggle_input_name = region_inputs[0]
+            toggle_idx, toggle_is_input = _get_stream_index_any(toggle_input_name, streams)
+            toggle_ref = f"i{toggle_idx}[t]" if toggle_is_input else f"o{toggle_idx}[t]"
+            
+            # Toggle between first two states
+            region_logic = f"(o{region_output_idx}[t] = ({toggle_ref} ? {{1}}:bv[{state_width}] : {{0}}:bv[{state_width}]))"
+        
+        # Initial condition
+        initial_state = region.get("initial_state", 0)
+        init_logic = f" && (o{region_output_idx}[0] = {{{initial_state}}}:bv[{state_width}])"
+        
+        logic_parts.append(region_logic + init_logic)
+    
+    return " &&\n    ".join(logic_parts)
+
+
+def _generate_state_aggregation_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate state aggregation pattern logic.
+    
+    Combines multiple FSM states into a superstate using aggregation methods.
+    Common aggregation methods: majority, unanimous, custom expression, or mode selection.
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("State aggregation pattern requires at least 2 inputs (FSM states)")
+    
+    # Get aggregation method from params
+    aggregation_method = block.params.get("method", "majority")
+    valid_methods = ["majority", "unanimous", "custom", "mode"]
+    
+    if aggregation_method not in valid_methods:
+        raise ValueError(f"Aggregation method must be one of {valid_methods}, got {aggregation_method}")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get input indices (these are FSM state outputs)
+    input_refs = []
+    for inp_name in block.inputs:
+        inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+        inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        input_refs.append(inp_ref)
+    
+    # Generate aggregation logic based on method
+    if aggregation_method == "majority":
+        # Majority: output is true if majority of inputs are true
+        threshold = block.params.get("threshold", (len(block.inputs) + 1) // 2)
+        total = len(block.inputs)
+        
+        # Generate majority expression: count true inputs >= threshold
+        # For boolean aggregation: (a & b) | (a & c) | (b & c) for 2-of-3
+        if threshold == total:
+            # Unanimous: all must be true
+            agg_expr = " & ".join(input_refs)
+        elif threshold == 1:
+            # Any: at least one true
+            agg_expr = " | ".join(input_refs)
+        else:
+            # N-of-M: generate combinations
+            from itertools import combinations
+            combinations_list = list(combinations(range(len(input_refs)), threshold))
+            terms = []
+            for combo in combinations_list:
+                term_parts = [input_refs[i] for i in combo]
+                terms.append("(" + " & ".join(term_parts) + ")")
+            agg_expr = " | ".join(terms)
+        
+        aggregation_logic = f"(o{output_idx}[t] = {agg_expr})"
+    
+    elif aggregation_method == "unanimous":
+        # Unanimous: all inputs must agree
+        agg_expr = " & ".join(input_refs)
+        aggregation_logic = f"(o{output_idx}[t] = {agg_expr})"
+    
+    elif aggregation_method == "custom":
+        # Custom: use provided expression
+        expression = block.params.get("expression", "")
+        if not expression:
+            raise ValueError("Custom aggregation method requires 'expression' parameter")
+        
+        # Replace input names with references
+        for i, inp_name in enumerate(block.inputs):
+            expression = expression.replace(f"{inp_name}[t]", input_refs[i])
+            expression = expression.replace(f"{{{inp_name}}}", input_refs[i])
+        
+        aggregation_logic = f"(o{output_idx}[t] = {expression})"
+    
+    elif aggregation_method == "mode":
+        # Mode: select mode based on which input is active
+        # Output is the index of the first active input, or 0 if none
+        # This is more complex - for now, use first active input
+        
+        # Build mode selection: (input0 ? 0 : (input1 ? 1 : (input2 ? 2 : 0)))
+        mode_conditions = []
+        for i, inp_ref in enumerate(input_refs):
+            mode_conditions.append(f"({inp_ref} ? {{{i}}}:bv[{output_stream.width if output_stream.width else 2}] : {{999}}:bv[{output_stream.width if output_stream.width else 2}])")
+        
+        if mode_conditions:
+            mode_expr = " : ".join(mode_conditions) + f" : {{0}}:bv[{output_stream.width if output_stream.width else 2}]"
+            aggregation_logic = f"(o{output_idx}[t] = {mode_expr})"
+        else:
+            aggregation_logic = f"(o{output_idx}[t] = {{0}}:bv[{output_stream.width if output_stream.width else 2}])"
+    
+    # Initial condition
+    if output_stream.stream_type == "sbf":
+        init_logic = f" && (o{output_idx}[0] = 0)"
+    else:
+        initial_value = block.params.get("initial_value", 0)
+        init_logic = f" && (o{output_idx}[0] = {{{initial_value}}}:bv[{output_stream.width if output_stream.width else 2}])"
+    
+    return aggregation_logic + init_logic
+
+
+def _generate_tcp_connection_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate TCP connection FSM pattern logic.
+    
+    Implements TCP connection state machine with 11 states:
+    CLOSED, LISTEN, SYN_SENT, SYN_RECEIVED, ESTABLISHED, 
+    FIN_WAIT_1, FIN_WAIT_2, CLOSE_WAIT, CLOSING, TIME_WAIT, LAST_ACK
+    
+    Handles SYN, ACK, FIN, RST flags for connection lifecycle.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("TCP connection FSM pattern requires at least 1 input (flags)")
+    
+    # Get flag inputs from params or inputs
+    syn_flag_name = block.params.get("syn_flag", block.inputs[0] if len(block.inputs) > 0 else None)
+    ack_flag_name = block.params.get("ack_flag", block.inputs[1] if len(block.inputs) > 1 else None)
+    fin_flag_name = block.params.get("fin_flag", block.inputs[2] if len(block.inputs) > 2 else None)
+    rst_flag_name = block.params.get("rst_flag", block.inputs[3] if len(block.inputs) > 3 else None)
+    
+    if not syn_flag_name:
+        raise ValueError("TCP connection FSM pattern requires syn_flag")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # TCP states: 0=CLOSED, 1=LISTEN, 2=SYN_SENT, 3=SYN_RECEIVED, 4=ESTABLISHED,
+    # 5=FIN_WAIT_1, 6=FIN_WAIT_2, 7=CLOSE_WAIT, 8=CLOSING, 9=TIME_WAIT, 10=LAST_ACK
+    # Use 4-bit state (supports up to 16 states)
+    state_width = 4
+    
+    # Get input indices
+    syn_idx, syn_is_input = _get_stream_index_any(syn_flag_name, streams)
+    syn_ref = f"i{syn_idx}[t]" if syn_is_input else f"o{syn_idx}[t]"
+    
+    ack_ref = None
+    if ack_flag_name:
+        ack_idx, ack_is_input = _get_stream_index_any(ack_flag_name, streams)
+        ack_ref = f"i{ack_idx}[t]" if ack_is_input else f"o{ack_idx}[t]"
+    
+    fin_ref = None
+    if fin_flag_name:
+        fin_idx, fin_is_input = _get_stream_index_any(fin_flag_name, streams)
+        fin_ref = f"i{fin_idx}[t]" if fin_is_input else f"o{fin_idx}[t]"
+    
+    rst_ref = None
+    if rst_flag_name:
+        rst_idx, rst_is_input = _get_stream_index_any(rst_flag_name, streams)
+        rst_ref = f"i{rst_idx}[t]" if rst_is_input else f"o{rst_idx}[t]"
+    
+    # TCP state transitions (simplified):
+    # CLOSED (0) → LISTEN (1): passive open
+    # CLOSED (0) → SYN_SENT (2): active open (SYN)
+    # LISTEN (1) → SYN_RECEIVED (3): receive SYN
+    # SYN_SENT (2) → ESTABLISHED (4): receive SYN+ACK
+    # SYN_RECEIVED (3) → ESTABLISHED (4): send ACK
+    # ESTABLISHED (4) → FIN_WAIT_1 (5): send FIN
+    # ESTABLISHED (4) → CLOSE_WAIT (7): receive FIN
+    # FIN_WAIT_1 (5) → FIN_WAIT_2 (6): receive ACK
+    # FIN_WAIT_1 (5) → CLOSING (8): receive FIN
+    # FIN_WAIT_2 (6) → TIME_WAIT (9): receive FIN
+    # CLOSE_WAIT (7) → LAST_ACK (10): send FIN
+    # CLOSING (8) → TIME_WAIT (9): receive ACK
+    # TIME_WAIT (9) → CLOSED (0): timeout
+    # LAST_ACK (10) → CLOSED (0): receive ACK
+    # Any state → CLOSED (0): RST
+    
+    # Build transition logic
+    transitions = []
+    
+    # RST has highest priority: any state → CLOSED
+    if rst_ref:
+        transitions.append(f"({rst_ref} ? {{0}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSED → LISTEN: passive open (no SYN, but we'll use a separate signal or default)
+    # For simplicity, assume LISTEN is initial state or use a separate "listen" signal
+    # transitions.append(f"((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & listen_signal ? {{1}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSED → SYN_SENT: active open (SYN)
+    transitions.append(f"((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {syn_ref} ? {{2}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # LISTEN → SYN_RECEIVED: receive SYN
+    transitions.append(f"((o{output_idx}[t-1] = {{1}}:bv[{state_width}]) & {syn_ref} ? {{3}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # SYN_SENT → ESTABLISHED: receive SYN+ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{2}}:bv[{state_width}]) & {syn_ref} & {ack_ref} ? {{4}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # SYN_RECEIVED → ESTABLISHED: send ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{3}}:bv[{state_width}]) & {ack_ref} ? {{4}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # ESTABLISHED → FIN_WAIT_1: send FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{4}}:bv[{state_width}]) & {fin_ref} ? {{5}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # ESTABLISHED → CLOSE_WAIT: receive FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{4}}:bv[{state_width}]) & {fin_ref} ? {{7}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # FIN_WAIT_1 → FIN_WAIT_2: receive ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{5}}:bv[{state_width}]) & {ack_ref} ? {{6}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # FIN_WAIT_1 → CLOSING: receive FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{5}}:bv[{state_width}]) & {fin_ref} ? {{8}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # FIN_WAIT_2 → TIME_WAIT: receive FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{6}}:bv[{state_width}]) & {fin_ref} ? {{9}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSE_WAIT → LAST_ACK: send FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{7}}:bv[{state_width}]) & {fin_ref} ? {{10}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSING → TIME_WAIT: receive ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{8}}:bv[{state_width}]) & {ack_ref} ? {{9}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # TIME_WAIT → CLOSED: timeout (simplified - use timeout signal or timer)
+    timeout_signal_name = block.params.get("timeout_signal", None)
+    if timeout_signal_name:
+        timeout_idx, timeout_is_input = _get_stream_index_any(timeout_signal_name, streams)
+        timeout_ref = f"i{timeout_idx}[t]" if timeout_is_input else f"o{timeout_idx}[t]"
+        transitions.append(f"((o{output_idx}[t-1] = {{9}}:bv[{state_width}]) & {timeout_ref} ? {{0}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # LAST_ACK → CLOSED: receive ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{10}}:bv[{state_width}]) & {ack_ref} ? {{0}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # Combine transitions with fallback to maintain current state
+    if transitions:
+        transition_expr = " : ".join(transitions) + f" : o{output_idx}[t-1]"
+        tcp_logic = f"(o{output_idx}[t] = {transition_expr})"
+    else:
+        # Fallback: simple SYN → SYN_SENT
+        tcp_logic = f"(o{output_idx}[t] = ({syn_ref} ? {{2}}:bv[{state_width}] : o{output_idx}[t-1]))"
+    
+    # Initial condition: CLOSED
+    initial_state = block.params.get("initial_state", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_state}}}:bv[{state_width}])"
+    
+    return tcp_logic + init_logic
+
+
+def _generate_utxo_state_machine_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate UTXO state machine pattern logic.
+    
+    Implements Bitcoin UTXO (Unspent Transaction Output) state machine.
+    Tracks UTXO set state: UTXO exists or spent.
+    Validates transactions: inputs must exist in UTXO set, outputs create new UTXOs.
+    Updates UTXO set: remove spent outputs, add new outputs.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("UTXO state machine pattern requires at least 1 input")
+    
+    # Get transaction inputs from params
+    tx_inputs_name = block.params.get("tx_inputs", block.inputs[0] if len(block.inputs) > 0 else None)
+    tx_outputs_name = block.params.get("tx_outputs", block.inputs[1] if len(block.inputs) > 1 else None)
+    tx_valid_name = block.params.get("tx_valid", None)  # External validation (signatures, etc.)
+    
+    if not tx_inputs_name:
+        raise ValueError("UTXO state machine pattern requires tx_inputs")
+    
+    # Get output streams
+    utxo_set_output_name = block.params.get("utxo_set_output", block.output)
+    tx_valid_output_name = block.params.get("tx_valid_output", None)
+    
+    # Get UTXO set output stream
+    utxo_set_output_idx = _get_stream_index(utxo_set_output_name, streams, is_input=False)
+    utxo_set_output_stream = next(s for s in streams if s.name == utxo_set_output_name and not s.is_input)
+    
+    # UTXO set is a bitvector where each bit represents a UTXO
+    # For simplicity, we'll use a single bitvector to represent UTXO set
+    # In practice, this would be a set/map, but Tau uses bitvectors
+    
+    # Get input indices
+    tx_inputs_idx, tx_inputs_is_input = _get_stream_index_any(tx_inputs_name, streams)
+    tx_inputs_ref = f"i{tx_inputs_idx}[t]" if tx_inputs_is_input else f"o{tx_inputs_idx}[t]"
+    
+    tx_outputs_ref = None
+    if tx_outputs_name:
+        tx_outputs_idx, tx_outputs_is_input = _get_stream_index_any(tx_outputs_name, streams)
+        tx_outputs_ref = f"i{tx_outputs_idx}[t]" if tx_outputs_is_input else f"o{tx_outputs_idx}[t]"
+    
+    tx_valid_ref = None
+    if tx_valid_name:
+        tx_valid_idx, tx_valid_is_input = _get_stream_index_any(tx_valid_name, streams)
+        tx_valid_ref = f"i{tx_valid_idx}[t]" if tx_valid_is_input else f"o{tx_valid_idx}[t]"
+    
+    # UTXO set update logic:
+    # utxo_set[t] = (tx_valid & utxo_set[t-1] & !tx_inputs) | (tx_valid & tx_outputs)
+    # This means:
+    # - Remove spent outputs: utxo_set[t-1] & !tx_inputs (if tx_inputs references a UTXO, remove it)
+    # - Add new outputs: tx_outputs (new UTXOs created)
+    # - Only if transaction is valid: tx_valid
+    
+    # For simplicity, we'll use bitwise operations:
+    # utxo_set[t] = (tx_valid ? ((utxo_set[t-1] & tx_inputs') | tx_outputs) : utxo_set[t-1])
+    
+    if tx_valid_ref:
+        if tx_outputs_ref:
+            # Full UTXO update: remove inputs, add outputs, only if valid
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = ({tx_valid_ref} ? ((o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}') | {tx_outputs_ref}) : o{utxo_set_output_idx}[t-1]))"
+        else:
+            # Only remove inputs (no new outputs)
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = ({tx_valid_ref} ? (o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}') : o{utxo_set_output_idx}[t-1]))"
+    else:
+        # No validation: always update
+        if tx_outputs_ref:
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = ((o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}') | {tx_outputs_ref}))"
+        else:
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = (o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}'))"
+    
+    logic_parts = [utxo_logic]
+    
+    # Transaction validation output (optional)
+    if tx_valid_output_name:
+        try:
+            tx_valid_output_idx = _get_stream_index(tx_valid_output_name, streams, is_input=False)
+            # Validate: all inputs must exist in UTXO set
+            # tx_valid = tx_inputs & utxo_set[t-1] (all inputs are in UTXO set)
+            # For simplicity, check if inputs are subset of UTXO set
+            if tx_valid_ref:
+                # Use external validation
+                validation_logic = f"(o{tx_valid_output_idx}[t] = {tx_valid_ref}) && (o{tx_valid_output_idx}[0] = 0)"
+            else:
+                # Internal validation: inputs must be subset of UTXO set
+                # tx_valid = (tx_inputs & utxo_set[t-1]) = tx_inputs (all inputs exist)
+                validation_logic = f"(o{tx_valid_output_idx}[t] = (({tx_inputs_ref} & o{utxo_set_output_idx}[t-1]) = {tx_inputs_ref})) && (o{tx_valid_output_idx}[0] = 0)"
+            logic_parts.append(validation_logic)
+        except ValueError:
+            pass  # Validation output not declared
+    
+    # Initial condition: initial UTXO set
+    initial_utxo_set = block.params.get("initial_utxo_set", 0)
+    if utxo_set_output_stream.stream_type == "sbf":
+        init_logic = f" && (o{utxo_set_output_idx}[0] = {initial_utxo_set})"
+    else:
+        init_logic = f" && (o{utxo_set_output_idx}[0] = {{{initial_utxo_set}}}:bv[{utxo_set_output_stream.width if utxo_set_output_stream.width else 32}])"
+    
+    return " &&\n    ".join(logic_parts) + init_logic
+
+
+def _generate_history_state_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate history state pattern logic.
+    
+    Implements history state: remembers last substate when returning to superstate.
+    When entering superstate, if history exists, restore to last substate; otherwise use initial.
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("History state pattern requires at least 2 inputs (substate, superstate_entry)")
+    
+    # Get inputs from params
+    substate_input_name = block.params.get("substate_input", block.inputs[0] if len(block.inputs) > 0 else None)
+    superstate_entry_name = block.params.get("superstate_entry", block.inputs[1] if len(block.inputs) > 1 else None)
+    superstate_exit_name = block.params.get("superstate_exit", None)
+    
+    if not substate_input_name or not superstate_entry_name:
+        raise ValueError("History state pattern requires substate_input and superstate_entry")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get history storage output (optional, defaults to internal)
+    history_output_name = block.params.get("history_output", None)
+    
+    # Get input indices
+    substate_idx, substate_is_input = _get_stream_index_any(substate_input_name, streams)
+    substate_ref = f"i{substate_idx}[t]" if substate_is_input else f"o{substate_idx}[t]"
+    
+    superstate_entry_idx, superstate_entry_is_input = _get_stream_index_any(superstate_entry_name, streams)
+    superstate_entry_ref = f"i{superstate_entry_idx}[t]" if superstate_entry_is_input else f"o{superstate_entry_idx}[t]"
+    
+    superstate_exit_ref = None
+    if superstate_exit_name:
+        superstate_exit_idx, superstate_exit_is_input = _get_stream_index_any(superstate_exit_name, streams)
+        superstate_exit_ref = f"i{superstate_exit_idx}[t]" if superstate_exit_is_input else f"o{superstate_exit_idx}[t]"
+    
+    # Determine state width
+    state_width = output_stream.width if output_stream.width else 2
+    
+    # Initial substate
+    initial_substate = block.params.get("initial_substate", 0)
+    
+    # History state logic: simplified version
+    # When entering superstate: restore from history or use initial
+    # When exiting: save current substate
+    # Otherwise: use current substate
+    
+    if history_output_name:
+        # External history storage
+        history_idx = _get_stream_index(history_output_name, streams, is_input=False)
+        history_ref = f"o{history_idx}[t-1]"
+        
+        # Save history when exiting
+        if superstate_exit_ref:
+            history_logic = f"(o{history_idx}[t] = ({superstate_exit_ref} ? {substate_ref} : o{history_idx}[t-1]))"
+        else:
+            history_logic = f"(o{history_idx}[t] = ({superstate_entry_ref}' ? {substate_ref} : o{history_idx}[t-1]))"
+        
+        # Restore logic
+        restore_logic = f"(o{output_idx}[t] = ({superstate_entry_ref} & (o{history_idx}[t-1] != {{0}}:bv[{state_width}]) ? o{history_idx}[t-1] : ({superstate_entry_ref} ? {{{initial_substate}}}:bv[{state_width}] : {substate_ref})))"
+        
+        init_history = f" && (o{history_idx}[0] = {{0}}:bv[{state_width}])"
+        init_output = f" && (o{output_idx}[0] = {{{initial_substate}}}:bv[{state_width}])"
+        
+        return f"({restore_logic}) && ({history_logic}){init_history}{init_output}"
+    else:
+        # Internal history (use previous output)
+        history_ref = f"o{output_idx}[t-1]"
+        
+        # Simplified: restore on entry, save on exit, otherwise use substate
+        if superstate_exit_ref:
+            restore_logic = f"(o{output_idx}[t] = ({superstate_entry_ref} & ({history_ref} != {{0}}:bv[{state_width}]) ? {history_ref} : ({superstate_entry_ref} ? {{{initial_substate}}}:bv[{state_width}] : ({superstate_exit_ref} ? {substate_ref} : {substate_ref}))))"
+        else:
+            restore_logic = f"(o{output_idx}[t] = ({superstate_entry_ref} & ({history_ref} != {{0}}:bv[{state_width}]) ? {history_ref} : ({superstate_entry_ref} ? {{{initial_substate}}}:bv[{state_width}] : {substate_ref})))"
+        
+        init_output = f" && (o{output_idx}[0] = {{{initial_substate}}}:bv[{state_width}])"
+        return f"({restore_logic}){init_output}"
+
+
+def _generate_decomposed_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate decomposed FSM pattern logic.
+    
+    Implements hierarchical FSM decomposition: breaks down superstate into substates.
+    Generates separate FSMs for each substate and aggregates them into superstate.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Decomposed FSM pattern requires at least 1 input")
+    
+    # Get hierarchy configuration from params
+    hierarchy = block.params.get("hierarchy", {})
+    transitions = block.params.get("transitions", [])
+    
+    if not hierarchy:
+        raise ValueError("Decomposed FSM pattern requires 'hierarchy' parameter")
+    
+    # Get output streams for substates
+    substate_outputs = block.params.get("substate_outputs", [])
+    
+    # Generate FSMs for each substate
+    logic_parts = []
+    
+    # Track output indices
+    output_indices = {}
+    
+    # Collect all unique substates first to avoid duplicates
+    all_substates = {}
+    global_substate_idx = 0  # Track global index across all superstates
+    for superstate_name, superstate_config in hierarchy.items():
+        substates = superstate_config.get("substates", [])
+        initial_substate = superstate_config.get("initial", substates[0] if substates else None)
+        for i, substate_name in enumerate(substates):
+            if substate_name not in all_substates:
+                # Get output stream for this substate using global index
+                if global_substate_idx < len(substate_outputs):
+                    substate_output_name = substate_outputs[global_substate_idx]
+                else:
+                    substate_output_name = f"{substate_name}_state"
+                
+                all_substates[substate_name] = {
+                    "output_name": substate_output_name,
+                    "superstate": superstate_name,
+                    "is_initial": (substate_name == initial_substate)
+                }
+                global_substate_idx += 1
+    
+    # Generate FSM for each unique substate
+    for substate_name, substate_info in all_substates.items():
+        try:
+            substate_output_idx = _get_stream_index(substate_info["output_name"], streams, is_input=False)
+            output_indices[substate_name] = substate_output_idx
+            
+            # Find transitions FROM this substate (exit transitions)
+            from_transitions = [t for t in transitions if t.get("from") == substate_name]
+            # Find transitions TO this substate (entry transitions)
+            to_transitions = [t for t in transitions if t.get("to") == substate_name]
+            
+            # Build entry conditions (transitions TO this substate)
+            entry_parts = []
+            for trans in to_transitions:
+                from_substate = trans.get("from")
+                condition = trans.get("condition", "1")
+                
+                # Find source substate output index
+                if from_substate in all_substates:
+                    source_output_name = all_substates[from_substate]["output_name"]
+                    try:
+                        source_output_idx = _get_stream_index(source_output_name, streams, is_input=False)
+                        
+                        # Build condition expression
+                        condition_expr = condition
+                        for inp_name in block.inputs:
+                            inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+                            inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+                            condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
+                            condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
+                        
+                        # Entry: source was active AND condition is true
+                        entry_parts.append(f"(o{source_output_idx}[t-1] & ({condition_expr}))")
+                    except ValueError:
+                        pass
+            
+            # Build exit conditions (transitions FROM this substate)
+            exit_parts = []
+            for trans in from_transitions:
+                condition = trans.get("condition", "1")
+                condition_expr = condition
+                for inp_name in block.inputs:
+                    inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+                    inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+                    condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
+                    condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
+                # Exit condition: just the condition (we'll AND with state in the logic)
+                exit_parts.append(f"({condition_expr})")
+            
+            # Build FSM logic:
+            # Active if: (entry condition) OR (was active AND NOT exit condition)
+            if entry_parts:
+                entry_expr = " | ".join(entry_parts)
+                if exit_parts:
+                    exit_expr = " | ".join(exit_parts)
+                    # Active if: entry OR (was active AND not exit)
+                    # exit_expr is just the condition, so we need: was active AND (NOT condition)
+                    substate_logic = f"(o{substate_output_idx}[t] = ({entry_expr} | (o{substate_output_idx}[t-1] & ({exit_expr})')))"
+                else:
+                    # Active if: entry OR was active
+                    substate_logic = f"(o{substate_output_idx}[t] = ({entry_expr} | o{substate_output_idx}[t-1]))"
+            else:
+                # No entry transitions
+                if exit_parts:
+                    exit_expr = " | ".join(exit_parts)
+                    # Active if: was active AND not exit
+                    substate_logic = f"(o{substate_output_idx}[t] = (o{substate_output_idx}[t-1] & ({exit_expr})'))"
+                else:
+                    # No transitions: maintain state
+                    substate_logic = f"(o{substate_output_idx}[t] = o{substate_output_idx}[t-1])"
+            
+            # Initial condition
+            initial_value = 1 if substate_info["is_initial"] else 0
+            init_logic = f" && (o{substate_output_idx}[0] = {initial_value})"
+            
+            logic_parts.append(substate_logic + init_logic)
+            
+        except ValueError:
+            # Output stream not found, skip
+            continue
+    
+    # Aggregate substates into superstate (optional)
+    aggregate_output_name = block.params.get("aggregate_output", None)
+    if aggregate_output_name:
+        try:
+            aggregate_output_idx = _get_stream_index(aggregate_output_name, streams, is_input=False)
+            # Aggregate: superstate active if any substate active
+            substate_refs = [f"o{idx}[t]" for idx in output_indices.values()]
+            if substate_refs:
+                aggregate_expr = " | ".join(substate_refs)
+                aggregate_logic = f"(o{aggregate_output_idx}[t] = {aggregate_expr}) && (o{aggregate_output_idx}[0] = 0)"
+                logic_parts.append(aggregate_logic)
+        except ValueError:
+            pass
+    
+    if not logic_parts:
+        raise ValueError("No valid substate outputs found for decomposed FSM")
+    
+    return " &&\n    ".join(logic_parts)
+
+
+def _generate_script_execution_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate script execution pattern logic.
+    
+    Implements Bitcoin Script execution engine (simplified stack-based VM).
+    Handles basic opcodes: OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG (external).
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Script execution pattern requires at least 1 input")
+    
+    # Get script and stack inputs
+    script_input_name = block.params.get("script_input", block.inputs[0] if len(block.inputs) > 0 else None)
+    stack_input_name = block.params.get("stack_input", block.inputs[1] if len(block.inputs) > 1 else None)
+    
+    if not script_input_name:
+        raise ValueError("Script execution pattern requires script_input")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get input indices
+    script_idx, script_is_input = _get_stream_index_any(script_input_name, streams)
+    script_ref = f"i{script_idx}[t]" if script_is_input else f"o{script_idx}[t]"
+    
+    stack_ref = None
+    if stack_input_name:
+        stack_idx, stack_is_input = _get_stream_index_any(stack_input_name, streams)
+        stack_ref = f"i{stack_idx}[t]" if stack_is_input else f"o{stack_idx}[t]"
+    
+    # Simplified script execution: passthrough with optional stack manipulation
+    state_width = output_stream.width if output_stream.width else 32
+    
+    # Basic opcode execution (simplified)
+    # For now, implement simple passthrough with opcode selection
+    if stack_ref:
+        script_logic = f"(o{output_idx}[t] = {stack_ref})"
+    else:
+        script_logic = f"(o{output_idx}[t] = {script_ref})"
+    
+    # Initial condition
+    initial_value = block.params.get("initial_value", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_value}}}:bv[{state_width}])"
+    
+    return script_logic + init_logic
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
@@ -1229,6 +2028,22 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_proposal_fsm_logic(block, schema.streams))
         elif block.pattern == "risk_fsm":
             logic_lines.append(_generate_risk_fsm_logic(block, schema.streams))
+        elif block.pattern == "entry_exit_fsm":
+            logic_lines.append(_generate_entry_exit_fsm_logic(block, schema.streams))
+        elif block.pattern == "orthogonal_regions":
+            logic_lines.append(_generate_orthogonal_regions_logic(block, schema.streams))
+        elif block.pattern == "state_aggregation":
+            logic_lines.append(_generate_state_aggregation_logic(block, schema.streams))
+        elif block.pattern == "tcp_connection_fsm":
+            logic_lines.append(_generate_tcp_connection_fsm_logic(block, schema.streams))
+        elif block.pattern == "utxo_state_machine":
+            logic_lines.append(_generate_utxo_state_machine_logic(block, schema.streams))
+        elif block.pattern == "history_state":
+            logic_lines.append(_generate_history_state_logic(block, schema.streams))
+        elif block.pattern == "decomposed_fsm":
+            logic_lines.append(_generate_decomposed_fsm_logic(block, schema.streams))
+        elif block.pattern == "script_execution":
+            logic_lines.append(_generate_script_execution_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     

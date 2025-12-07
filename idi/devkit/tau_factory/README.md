@@ -113,13 +113,40 @@ tau_factory/
 4. **Safety**: Add risk management options
 5. **Review**: Preview and save generated spec
 
-## Supported Patterns
+## Supported Patterns (19/26)
 
+### Basic Patterns
 - **FSM**: Finite State Machine for position tracking
 - **Counter**: Toggle counter on events
 - **Accumulator**: Accumulate values over time
 - **Vote**: Weighted voting from multiple signals
 - **Passthrough**: Pass input directly to output
+
+### Composite Patterns
+- **Majority**: N-of-M majority voting (e.g., 2-of-3, 3-of-5)
+- **Unanimous**: All-agree consensus
+- **Custom**: Custom boolean expressions
+- **Quorum**: Minimum votes required
+
+### Hierarchical Patterns
+- **Supervisor-Worker**: Hierarchical FSM coordination
+
+### Bitvector Patterns
+- **Weighted Vote**: Weighted voting with bitvector arithmetic
+- **Time Lock**: Time-based locking with bitvector arithmetic
+
+### Domain Patterns
+- **Hex Stake**: Time-lock staking system
+- **Entry-Exit FSM**: Multi-phase trade lifecycle (PRE_TRADE → IN_TRADE → POST_TRADE) ✅ NEW
+- **Proposal FSM**: Governance proposal lifecycle
+- **Risk FSM**: Risk state machine (NORMAL/WARNING/CRITICAL)
+
+### Advanced Patterns
+- **Multi-Bit Counter**: Multi-bit counters with increment/reset
+- **Streak Counter**: Consecutive event tracking with reset
+- **Mode Switch**: Adaptive mode switching
+
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for complete list and progress.
 
 ## Design Principles
 
