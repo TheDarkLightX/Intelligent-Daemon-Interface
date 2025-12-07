@@ -1381,6 +1381,151 @@ def _generate_state_aggregation_logic(block: LogicBlock, streams: tuple[StreamCo
     return aggregation_logic + init_logic
 
 
+def _generate_tcp_connection_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate TCP connection FSM pattern logic.
+    
+    Implements TCP connection state machine with 11 states:
+    CLOSED, LISTEN, SYN_SENT, SYN_RECEIVED, ESTABLISHED, 
+    FIN_WAIT_1, FIN_WAIT_2, CLOSE_WAIT, CLOSING, TIME_WAIT, LAST_ACK
+    
+    Handles SYN, ACK, FIN, RST flags for connection lifecycle.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("TCP connection FSM pattern requires at least 1 input (flags)")
+    
+    # Get flag inputs from params or inputs
+    syn_flag_name = block.params.get("syn_flag", block.inputs[0] if len(block.inputs) > 0 else None)
+    ack_flag_name = block.params.get("ack_flag", block.inputs[1] if len(block.inputs) > 1 else None)
+    fin_flag_name = block.params.get("fin_flag", block.inputs[2] if len(block.inputs) > 2 else None)
+    rst_flag_name = block.params.get("rst_flag", block.inputs[3] if len(block.inputs) > 3 else None)
+    
+    if not syn_flag_name:
+        raise ValueError("TCP connection FSM pattern requires syn_flag")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # TCP states: 0=CLOSED, 1=LISTEN, 2=SYN_SENT, 3=SYN_RECEIVED, 4=ESTABLISHED,
+    # 5=FIN_WAIT_1, 6=FIN_WAIT_2, 7=CLOSE_WAIT, 8=CLOSING, 9=TIME_WAIT, 10=LAST_ACK
+    # Use 4-bit state (supports up to 16 states)
+    state_width = 4
+    
+    # Get input indices
+    syn_idx, syn_is_input = _get_stream_index_any(syn_flag_name, streams)
+    syn_ref = f"i{syn_idx}[t]" if syn_is_input else f"o{syn_idx}[t]"
+    
+    ack_ref = None
+    if ack_flag_name:
+        ack_idx, ack_is_input = _get_stream_index_any(ack_flag_name, streams)
+        ack_ref = f"i{ack_idx}[t]" if ack_is_input else f"o{ack_idx}[t]"
+    
+    fin_ref = None
+    if fin_flag_name:
+        fin_idx, fin_is_input = _get_stream_index_any(fin_flag_name, streams)
+        fin_ref = f"i{fin_idx}[t]" if fin_is_input else f"o{fin_idx}[t]"
+    
+    rst_ref = None
+    if rst_flag_name:
+        rst_idx, rst_is_input = _get_stream_index_any(rst_flag_name, streams)
+        rst_ref = f"i{rst_idx}[t]" if rst_is_input else f"o{rst_idx}[t]"
+    
+    # TCP state transitions (simplified):
+    # CLOSED (0) → LISTEN (1): passive open
+    # CLOSED (0) → SYN_SENT (2): active open (SYN)
+    # LISTEN (1) → SYN_RECEIVED (3): receive SYN
+    # SYN_SENT (2) → ESTABLISHED (4): receive SYN+ACK
+    # SYN_RECEIVED (3) → ESTABLISHED (4): send ACK
+    # ESTABLISHED (4) → FIN_WAIT_1 (5): send FIN
+    # ESTABLISHED (4) → CLOSE_WAIT (7): receive FIN
+    # FIN_WAIT_1 (5) → FIN_WAIT_2 (6): receive ACK
+    # FIN_WAIT_1 (5) → CLOSING (8): receive FIN
+    # FIN_WAIT_2 (6) → TIME_WAIT (9): receive FIN
+    # CLOSE_WAIT (7) → LAST_ACK (10): send FIN
+    # CLOSING (8) → TIME_WAIT (9): receive ACK
+    # TIME_WAIT (9) → CLOSED (0): timeout
+    # LAST_ACK (10) → CLOSED (0): receive ACK
+    # Any state → CLOSED (0): RST
+    
+    # Build transition logic
+    transitions = []
+    
+    # RST has highest priority: any state → CLOSED
+    if rst_ref:
+        transitions.append(f"({rst_ref} ? {{0}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSED → LISTEN: passive open (no SYN, but we'll use a separate signal or default)
+    # For simplicity, assume LISTEN is initial state or use a separate "listen" signal
+    # transitions.append(f"((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & listen_signal ? {{1}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSED → SYN_SENT: active open (SYN)
+    transitions.append(f"((o{output_idx}[t-1] = {{0}}:bv[{state_width}]) & {syn_ref} ? {{2}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # LISTEN → SYN_RECEIVED: receive SYN
+    transitions.append(f"((o{output_idx}[t-1] = {{1}}:bv[{state_width}]) & {syn_ref} ? {{3}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # SYN_SENT → ESTABLISHED: receive SYN+ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{2}}:bv[{state_width}]) & {syn_ref} & {ack_ref} ? {{4}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # SYN_RECEIVED → ESTABLISHED: send ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{3}}:bv[{state_width}]) & {ack_ref} ? {{4}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # ESTABLISHED → FIN_WAIT_1: send FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{4}}:bv[{state_width}]) & {fin_ref} ? {{5}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # ESTABLISHED → CLOSE_WAIT: receive FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{4}}:bv[{state_width}]) & {fin_ref} ? {{7}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # FIN_WAIT_1 → FIN_WAIT_2: receive ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{5}}:bv[{state_width}]) & {ack_ref} ? {{6}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # FIN_WAIT_1 → CLOSING: receive FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{5}}:bv[{state_width}]) & {fin_ref} ? {{8}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # FIN_WAIT_2 → TIME_WAIT: receive FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{6}}:bv[{state_width}]) & {fin_ref} ? {{9}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSE_WAIT → LAST_ACK: send FIN
+    if fin_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{7}}:bv[{state_width}]) & {fin_ref} ? {{10}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # CLOSING → TIME_WAIT: receive ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{8}}:bv[{state_width}]) & {ack_ref} ? {{9}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # TIME_WAIT → CLOSED: timeout (simplified - use timeout signal or timer)
+    timeout_signal_name = block.params.get("timeout_signal", None)
+    if timeout_signal_name:
+        timeout_idx, timeout_is_input = _get_stream_index_any(timeout_signal_name, streams)
+        timeout_ref = f"i{timeout_idx}[t]" if timeout_is_input else f"o{timeout_idx}[t]"
+        transitions.append(f"((o{output_idx}[t-1] = {{9}}:bv[{state_width}]) & {timeout_ref} ? {{0}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # LAST_ACK → CLOSED: receive ACK
+    if ack_ref:
+        transitions.append(f"((o{output_idx}[t-1] = {{10}}:bv[{state_width}]) & {ack_ref} ? {{0}}:bv[{state_width}] : {{999}}:bv[{state_width}])")
+    
+    # Combine transitions with fallback to maintain current state
+    if transitions:
+        transition_expr = " : ".join(transitions) + f" : o{output_idx}[t-1]"
+        tcp_logic = f"(o{output_idx}[t] = {transition_expr})"
+    else:
+        # Fallback: simple SYN → SYN_SENT
+        tcp_logic = f"(o{output_idx}[t] = ({syn_ref} ? {{2}}:bv[{state_width}] : o{output_idx}[t-1]))"
+    
+    # Initial condition: CLOSED
+    initial_state = block.params.get("initial_state", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_state}}}:bv[{state_width}])"
+    
+    return tcp_logic + init_logic
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
@@ -1518,6 +1663,8 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_orthogonal_regions_logic(block, schema.streams))
         elif block.pattern == "state_aggregation":
             logic_lines.append(_generate_state_aggregation_logic(block, schema.streams))
+        elif block.pattern == "tcp_connection_fsm":
+            logic_lines.append(_generate_tcp_connection_fsm_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     

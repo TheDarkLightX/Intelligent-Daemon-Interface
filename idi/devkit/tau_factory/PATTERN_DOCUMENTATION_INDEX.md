@@ -27,8 +27,9 @@ Complete reference guide for all implemented patterns in the Tau Agent Factory.
 | Entry-Exit FSM | ✅ | [ENTRY_EXIT_FSM_PATTERN.md](ENTRY_EXIT_FSM_PATTERN.md) | Trade lifecycle |
 | Orthogonal Regions | ✅ | [ORTHOGONAL_REGIONS_PATTERN.md](ORTHOGONAL_REGIONS_PATTERN.md) | Parallel FSMs |
 | State Aggregation | ✅ | [STATE_AGGREGATION_PATTERN.md](STATE_AGGREGATION_PATTERN.md) | State composition |
+| TCP Connection FSM | ✅ | [TCP_CONNECTION_FSM_PATTERN.md](TCP_CONNECTION_FSM_PATTERN.md) | Network protocol |
 
-**Total: 21/26 patterns (81%)**
+**Total: 22/26 patterns (85%)**
 
 ## Pattern Categories
 
@@ -85,10 +86,12 @@ Patterns designed for specific application domains.
 - **Entry-Exit FSM**: Multi-phase trade lifecycle (PRE_TRADE → IN_TRADE → POST_TRADE)
 - **Proposal FSM**: Governance proposal lifecycle (DRAFT → VOTING → PASSED → EXECUTED)
 - **Risk FSM**: Risk state machine (NORMAL → WARNING → CRITICAL)
+- **TCP Connection FSM**: TCP connection state machine (11 states)
 
 **Documentation**: 
 - [HEX_SUMMARY.md](HEX_SUMMARY.md)
 - [ENTRY_EXIT_FSM_PATTERN.md](ENTRY_EXIT_FSM_PATTERN.md)
+- [TCP_CONNECTION_FSM_PATTERN.md](TCP_CONNECTION_FSM_PATTERN.md)
 - [HIGH_PRIORITY_PATTERNS_COMPLETE.md](HIGH_PRIORITY_PATTERNS_COMPLETE.md)
 
 ### Advanced Patterns

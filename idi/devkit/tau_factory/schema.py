@@ -32,14 +32,14 @@ class StreamConfig:
 class LogicBlock:
     """A reusable logic pattern block."""
 
-    pattern: Literal["fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation"]
+    pattern: Literal["fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation", "tcp_connection_fsm"]
     inputs: Tuple[str, ...]
     output: str
     params: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate logic block."""
-        valid_patterns = ("fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation")
+        valid_patterns = ("fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation", "tcp_connection_fsm")
         if self.pattern not in valid_patterns:
             raise ValueError(f"Invalid pattern: {self.pattern}. Must be one of {valid_patterns}")
 
