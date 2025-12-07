@@ -1799,8 +1799,8 @@ def _generate_decomposed_fsm_logic(block: LogicBlock, streams: tuple[StreamConfi
                     inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
                     condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
                     condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
-                # Exit: this substate was active AND condition is true
-                exit_parts.append(f"(o{substate_output_idx}[t-1] & ({condition_expr}))")
+                # Exit condition: just the condition (we'll AND with state in the logic)
+                exit_parts.append(f"({condition_expr})")
             
             # Build FSM logic:
             # Active if: (entry condition) OR (was active AND NOT exit condition)
@@ -1809,6 +1809,7 @@ def _generate_decomposed_fsm_logic(block: LogicBlock, streams: tuple[StreamConfi
                 if exit_parts:
                     exit_expr = " | ".join(exit_parts)
                     # Active if: entry OR (was active AND not exit)
+                    # exit_expr is just the condition, so we need: was active AND (NOT condition)
                     substate_logic = f"(o{substate_output_idx}[t] = ({entry_expr} | (o{substate_output_idx}[t-1] & ({exit_expr})')))"
                 else:
                     # Active if: entry OR was active
