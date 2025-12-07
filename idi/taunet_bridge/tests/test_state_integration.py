@@ -24,6 +24,9 @@ class TestStateIntegration:
 
     def test_apply_verified_transition_success(self):
         """Test successful verified transition."""
+        from unittest.mock import patch
+        import sys
+        
         mock_verifier = MagicMock()
         mock_verifier.verify.return_value = True
         set_zk_verifier(mock_verifier)
@@ -37,14 +40,13 @@ class TestStateIntegration:
         # Mock chain_state module (imported inside apply_verified_transition)
         # Note: This test requires chain_state module from Tau Testnet
         # In actual integration, chain_state would be available
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock as Mock
         
         # Create a mock module for chain_state
-        mock_chain_state = MagicMock()
-        mock_chain_state.update_balances_after_transfer = MagicMock(return_value=True)
+        mock_chain_state = Mock()
+        mock_chain_state.update_balances_after_transfer = Mock(return_value=True)
         
         # Patch sys.modules to inject mock chain_state
-        import sys
         original_chain_state = sys.modules.get("chain_state")
         sys.modules["chain_state"] = mock_chain_state
         
