@@ -32,7 +32,7 @@ class StreamConfig:
 class LogicBlock:
     """A reusable logic pattern block."""
 
-    pattern: Literal["fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation", "tcp_connection_fsm", "utxo_state_machine"]
+    pattern: Literal["fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation", "tcp_connection_fsm", "utxo_state_machine", "history_state", "decomposed_fsm", "script_execution"]
     inputs: Tuple[str, ...]
     output: str
     params: Dict[str, Any] = field(default_factory=dict)
