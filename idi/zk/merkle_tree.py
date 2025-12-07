@@ -41,41 +41,46 @@ class MerkleTreeBuilder:
         leaf_hashes = [hash for _, hash in sorted_leaves]
         keys = [key for key, _ in sorted_leaves]
         
-        # Build proofs during tree construction
-        proofs: Dict[str, List[Tuple[bytes, bool]]] = {}
+        # Initialize proofs for all keys
+        proofs: Dict[str, List[Tuple[bytes, bool]]] = {key: [] for key in keys}
         
         # Build tree bottom-up
         level = leaf_hashes.copy()
-        level_indices = list(range(len(level)))
+        level_keys = keys.copy()  # Track which keys are at each level
         
         while len(level) > 1:
             next_level = []
-            next_indices = []
-            proofs_this_level: Dict[int, List[Tuple[bytes, bool]]] = {}
+            next_keys = []
             
             for i in range(0, len(level), 2):
                 if i + 1 < len(level):
                     combined = level[i] + level[i + 1]
                     sibling_hash = level[i + 1]
                     is_right = True
+                    # Both children contribute to parent
+                    parent_key = level_keys[i]  # Use left child's key
                 else:
                     combined = level[i] + level[i]  # Duplicate odd node
                     sibling_hash = level[i]
                     is_right = False
+                    parent_key = level_keys[i]
                 
                 parent_hash = hashlib.sha256(combined).digest()
                 next_level.append(parent_hash)
-                next_indices.append(i // 2)
+                next_keys.append(parent_key)
                 
                 # Store proof for left child
-                if i < len(keys):
-                    key = keys[i]
-                    if key not in proofs:
-                        proofs[key] = []
+                if i < len(level_keys):
+                    key = level_keys[i]
                     proofs[key].append((sibling_hash, is_right))
+                
+                # Store proof for right child (if exists)
+                if i + 1 < len(level_keys):
+                    key = level_keys[i + 1]
+                    proofs[key].append((level[i], False))  # Left sibling
             
             level = next_level
-            level_indices = next_indices
+            level_keys = next_keys
         
         root_hash = level[0] if level else hashlib.sha256(b"").digest()
         
