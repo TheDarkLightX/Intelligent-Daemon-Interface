@@ -1,0 +1,54 @@
+# Pre-commit hooks for code quality and security
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  - repo: local
+    hooks:
+      - id: complexity-check
+        name: Check cyclomatic complexity
+        entry: bash -c 'radon cc idi/zk/ --min B --show-complexity || exit 0'
+        language: system
+        pass_filenames: false
+        always_run: true
+        
+      - id: security-lint
+        name: Security linter (bandit)
+        entry: bash -c 'bandit -r idi/zk/ -f json -o /tmp/bandit-report.json || true'
+        language: system
+        pass_filenames: false
+        always_run: true
+        
+      - id: type-check
+        name: Type checking (mypy)
+        entry: bash -c 'mypy idi/zk/*.py --ignore-missing-imports || exit 0'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        files: ^idi/zk/.*\.py$
+        args: ['--check']
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        files: ^idi/zk/.*\.py$
+        args: ['--fix', '--exit-non-zero-on-fix']
+

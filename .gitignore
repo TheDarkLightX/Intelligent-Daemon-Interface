@@ -53,6 +53,12 @@ tectonic
 *.cover
 .pytest_cache/
 
+# Python linting artifacts
+.ruff_cache/
+
+# Tau development artifacts
+.tau_history
+
 # Lean build artifacts
 .lake/
 *.olean
@@ -68,5 +74,7 @@ tectonic
 # Embedded git repos (submodules should be configured properly)
 .lake/packages/
 
+# Tau Testnet reference (for integration development)
+tau-testnet-ref/
 
-.cursor/
+
