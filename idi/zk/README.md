@@ -25,9 +25,11 @@ python -m idi.zk.run_stub_proofs --artifacts-root idi/artifacts
 ```
 This creates `proof_stub/` folders next to each artifact (regime layers, emotive layers, etc.) and verifies the receipts in one go.
 
-## Native Risc0 prover (alpha)
+## Native Risc0 prover ✅ Implemented
 
 - Workspace lives in `idi/zk/risc0/` (`cargo` workspace with `host/`, `methods/`, and generated guest code).
+- Guest program: `idi/zk/risc0/methods/idi-manifest/src/main.rs` - Verifies manifest and stream hashes
+- Host program: `idi/zk/risc0/host/src/main.rs` - Generates proofs via Risc0 zkVM
 - Build: `cargo run --release -p idi_risc0_host -- --help` (requires `rzup install` + the `riscv32im-risc0-zkvm-elf` toolchain).
 - Usage example:
   ```
@@ -38,6 +40,20 @@ This creates `proof_stub/` folders next to each artifact (regime layers, emotive
       --receipt idi/artifacts/regime_macro/proof_risc0/receipt.json
   ```
 - The host consumes the manifest + streams, embeds them into the guest, proves via Risc0, checks the guest digest against a deterministic host hash, and writes both the binary proof and a JSON receipt (including the method ID and digest).
+
+## Witness Generation ✅ Implemented
+
+- **witness_generator.py**: Converts Q-tables to witness data for zk proofs
+- **merkle_tree.py**: Builds Merkle trees for large Q-table commitments
+- Supports both small (in-memory) and large (Merkle tree) Q-tables
+- Fixed-point arithmetic (Q16.16) for zk-friendly Q-values
+- Example:
+  ```python
+  from idi.zk.witness_generator import generate_witness_from_q_table
+  
+  q_table = {"state_0": {"hold": 0.0, "buy": 0.5, "sell": 0.0}}
+  witness = generate_witness_from_q_table(q_table, "state_0", use_merkle=True)
+  ```
 
 ## Integrating Risc0 (example)
 ```

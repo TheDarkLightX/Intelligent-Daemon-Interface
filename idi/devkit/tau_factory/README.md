@@ -113,7 +113,7 @@ tau_factory/
 4. **Safety**: Add risk management options
 5. **Review**: Preview and save generated spec
 
-## Supported Patterns (19/26)
+## Supported Patterns (26/26) ✅ Complete
 
 ### Basic Patterns
 - **FSM**: Finite State Machine for position tracking
@@ -145,8 +145,15 @@ tau_factory/
 - **Multi-Bit Counter**: Multi-bit counters with increment/reset
 - **Streak Counter**: Consecutive event tracking with reset
 - **Mode Switch**: Adaptive mode switching
+- **Orthogonal Regions**: Parallel independent FSMs
+- **State Aggregation**: Combining FSMs into superstate
+- **TCP Connection FSM**: TCP connection state machine (11 states)
+- **UTXO State Machine**: Bitcoin UTXO set tracking
+- **History State**: Remember last substate when returning to superstate
+- **Decomposed FSM**: Hierarchical state decomposition
+- **Script Execution**: Bitcoin Script execution engine (simplified)
 
-See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for complete list and progress.
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for complete list (26/26 patterns, 100% complete ✅).
 
 ## Design Principles
 
