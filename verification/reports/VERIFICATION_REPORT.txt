@@ -1,0 +1,219 @@
+================================================================================
+DEFLATIONARY AGENT V35 - COMPREHENSIVE VERIFICATION REPORT
+Generated: 2025-12-04 00:19:31
+================================================================================
+
+
+================================================================================
+1. FINITE STATE MACHINE SUMMARY
+================================================================================
+
+Theoretical State Space: 128 states (2^7 state variables)
+Reachable States: 10
+Input Combinations: 32 (2^5 input variables)
+Total Transitions: 320
+
+State Variables:
+  o0  (executing):  Controls active trading state
+  o1  (holding):    Position held flag
+  o6,o7 (timer):    2-bit countdown timer (0-3)
+  o9  (nonce):      Replay protection
+  o10 (entry_price):Entry price level captured
+  o13 (has_burned): Burn tracking (monotonic)
+
+Input Variables:
+  i0 (price):       0=low, 1=high
+  i1 (volume):      0=stale, 1=fresh
+  i2 (trend):       0=bearish, 1=bullish
+  i3 (profit_guard):0=no guard, 1=guard active
+  i4 (failure_echo):0=ok, 1=daemon failure
+
+
+================================================================================
+2. STATE DIAGRAM (Simplified)
+================================================================================
+
+
+                              DEFLATIONARY AGENT FSM
+    
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │                                                                     │
+    │   ┌──────────────┐         valid_entry()          ┌──────────────┐ │
+    │   │              │  ─────────────────────────────>│              │ │
+    │   │     IDLE     │                                │  EXECUTING   │ │
+    │   │   (o0=0)     │  <─────────────────────────────│   (o0=1)     │ │
+    │   │              │   exit (profit/timeout/fail)   │              │ │
+    │   └──────────────┘                                └──────────────┘ │
+    │          │                                               │         │
+    │          │ all conditions fail                           │         │
+    │          └───────────────────┐          ┌────────────────┘         │
+    │                              │          │ continue (timer++)       │
+    │                              ▼          ▼                          │
+    │                        ┌──────────────────┐                        │
+    │                        │  self-loop       │                        │
+    │                        └──────────────────┘                        │
+    │                                                                     │
+    └─────────────────────────────────────────────────────────────────────┘
+    
+    Entry Conditions (valid_entry):
+      - i0=0 (price low)
+      - i1=1 (volume fresh)
+      - i2=1 (trend bullish)
+      - o1=0 (not holding)
+      - o9=0 (no nonce)
+      - i4=0 (no failure)
+      - timer < 3 (not timed out)
+    
+    Exit Conditions:
+      - Profit: i0=1 (high) & i3=1 (guard) & o1=1 (holding)
+      - Timeout: timer=3 (11 binary)
+      - Failure: i4=1
+      - Volume: i1=0
+
+
+================================================================================
+3. REACHABLE STATES
+================================================================================
+
+State Key: NAME(holding, timer, nonce, entry_price, burned)
+
+  IDLE(-,T0,-,E0,-,-)
+    └─ 32 outgoing transitions
+  IDLE(-,T0,-,E0,-,S)
+    └─ 32 outgoing transitions
+  IDLE(-,T0,-,E0,B,-)
+    └─ 32 outgoing transitions
+  IDLE(-,T0,-,E0,B,S)
+    └─ 32 outgoing transitions
+  EXEC(H,T2,N,E0,-,-)
+    └─ 32 outgoing transitions
+  EXEC(H,T2,N,E0,B,-)
+    └─ 32 outgoing transitions
+  EXEC(H,T1,N,E0,-,-)
+    └─ 32 outgoing transitions
+  EXEC(H,T1,N,E0,B,-)
+    └─ 32 outgoing transitions
+  EXEC(H,T3,N,E0,-,-)
+    └─ 32 outgoing transitions
+  EXEC(H,T3,N,E0,B,-)
+    └─ 32 outgoing transitions
+
+
+================================================================================
+4. COVERAGE ANALYSIS
+================================================================================
+
+State Coverage:      10/10 (100.0%)
+Transition Coverage: 223/320 (69.7%)
+Test Sequences:      10
+Total Test Steps:    523
+
+✓ 100% State Coverage Achieved
+
+
+================================================================================
+5. SAFETY INVARIANT VERIFICATION
+================================================================================
+
+Invariant                  Description                                    Formula
+--------------------------------------------------------------------------------
+action_exclusivity        Never buy AND sell simultaneously             ✓ PASS
+fresh_oracle              Executing requires fresh volume               ✓ PASS
+burn_profit_coupling      Burn only on profit                           ✓ PASS
+nonce_effect              No buy when nonce was set                     ✓ PASS
+monotonic_burns           Burn flag never decreases                     ✓ PASS
+lock_state                Lock equals state                             ✓ PASS
+burn_event_profit         Burn event equals profit                      ✓ PASS
+holding_consistency       Valid holding transitions                     ✓ PASS
+
+All invariants verified across all 256 transitions.
+
+
+================================================================================
+6. EDGE CASE TEST RESULTS
+================================================================================
+
+Total Tests: 55
+Passed: 55
+Failed: 0
+
+Results by Category:
+  ✓ adversarial: 2/2
+  ✓ burn: 2/2
+  ✓ entry_conditions: 5/5
+  ✓ exhaustive_idle: 32/32
+  ✓ exit_conditions: 4/4
+  ✓ nonce: 3/3
+  ✓ persistence: 2/2
+  ✓ timer: 5/5
+
+
+================================================================================
+7. MANUAL VERIFICATION CHECKLIST
+================================================================================
+
+[ ] Entry only occurs when all conditions met:
+    [ ] Price is low (i0=0)
+    [ ] Volume is fresh (i1=1)
+    [ ] Trend is bullish (i2=1)
+    [ ] Not currently holding (o1=0)
+    [ ] No active nonce (o9=0)
+    [ ] No failure echo (i4=0)
+    [ ] Timer not at max (timer<3)
+
+[ ] Exit triggers correctly:
+    [ ] Profit exit: high price + guard + holding
+    [ ] Timeout exit: timer reaches 3
+    [ ] Failure exit: i4=1 during execution
+    [ ] Volume exit: i1=0 during execution
+
+[ ] Timer behavior:
+    [ ] Starts at 1 on entry
+    [ ] Increments each tick while executing
+    [ ] Resets to 0 on exit
+    [ ] Forces exit at 3 (binary 11)
+
+[ ] Trading signals:
+    [ ] Buy signal only on entry transition
+    [ ] Sell signal only on exit transition
+    [ ] Never both simultaneously
+
+[ ] Burn tracking:
+    [ ] Set on profitable exit (o11=1)
+    [ ] Never clears once set (monotonic)
+
+[ ] All invariants hold at every tick
+
+
+================================================================================
+8. KEY SCENARIO OUTPUT TRACES
+================================================================================
+
+
+Scenario: Normal Profitable Trade
+------------------------------------------------------------
+T | State | i0 i1 i2 i3 i4 | o0 o1 o2 o3 | timer | o9 o10 o11 o13
+-----------------------------------------------------------------
+0 | EXEC |  0  1  1  1  0 |  1  1  1  0 |   1   |  1   0   0   0
+1 | EXEC |  0  1  1  1  0 |  1  1  0  0 |   2   |  1   0   0   0
+2 | IDLE |  1  1  1  1  0 |  0  0  0  1 |   0   |  0   0   1   1
+
+
+
+Scenario: Timeout Exit
+------------------------------------------------------------
+T | State | i0 i1 i2 i3 i4 | o0 o1 o2 o3 | timer | o9 o10 o11 o13
+-----------------------------------------------------------------
+0 | EXEC |  0  1  1  1  0 |  1  1  1  0 |   1   |  1   0   0   0
+1 | EXEC |  0  1  1  1  0 |  1  1  0  0 |   2   |  1   0   0   0
+2 | EXEC |  0  1  1  1  0 |  1  1  0  0 |   3   |  1   0   0   0
+3 | IDLE |  0  1  1  1  0 |  0  0  0  1 |   0   |  0   0   0   0
+
+
+
+Scenario: Failure Exit
+------------------------------------------------------------
+T | State | i0 i1 i2 i3 i4 | o0 o1 o2 o3 | timer | o9 o10 o11 o13
+-----------------------------------------------------------------
+0 | EXEC |  0  1  1  1  0 |  1  1  1  0 |   1   |  1   0   0   0
+1 | IDLE |  0  1  1  1  1 |  0  0  0  1 |   0   |  0   0   0   0

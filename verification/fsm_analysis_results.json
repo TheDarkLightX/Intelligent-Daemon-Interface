@@ -1,0 +1,691 @@
+{
+  "basic_model": {
+    "version": "v35-v45",
+    "analysis": {
+      "total_states": 2,
+      "total_transitions": 6,
+      "states": {
+        "IDLE": {
+          "encoding": [
+            0
+          ],
+          "incoming_transitions": 4,
+          "outgoing_transitions": 2,
+          "entry_conditions": [
+            "o0[t-1]=1 AND (exit_trigger OR timeout)"
+          ],
+          "exit_conditions": [
+            "valid_entry AND volume AND NOT holding"
+          ],
+          "invariants": [
+            "NOT buy_signal",
+            "NOT sell_signal",
+            "timer=0"
+          ]
+        },
+        "EXECUTING": {
+          "encoding": [
+            1
+          ],
+          "incoming_transitions": 2,
+          "outgoing_transitions": 4,
+          "entry_conditions": [
+            "valid_entry AND volume AND trend AND NOT holding"
+          ],
+          "exit_conditions": [
+            "exit_price_ok OR timeout OR failure"
+          ],
+          "invariants": [
+            "volume_required",
+            "timer_incrementing"
+          ]
+        }
+      },
+      "coverage_issues": [],
+      "edge_cases": [
+        {
+          "name": "timer_boundary",
+          "description": "Test timer at exactly timeout value",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "action": "enter",
+              "expected_timer": 0
+            },
+            {
+              "tick": 1,
+              "action": "hold",
+              "expected_timer": 1
+            },
+            {
+              "tick": 2,
+              "action": "hold",
+              "expected_timer": 2
+            },
+            {
+              "tick": 3,
+              "action": "timeout",
+              "expected_timer": 3
+            }
+          ]
+        },
+        {
+          "name": "price_exactly_at_threshold",
+          "description": "Price exactly equals entry/exit threshold",
+          "test_values": [
+            {
+              "price": 100,
+              "threshold": 100,
+              "expected": "no_trigger"
+            },
+            {
+              "price": 101,
+              "threshold": 100,
+              "expected": "exit_trigger"
+            }
+          ]
+        },
+        {
+          "name": "volume_drops_during_execution",
+          "description": "Volume becomes stale while in position",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "volume": 1,
+              "action": "enter"
+            },
+            {
+              "tick": 1,
+              "volume": 0,
+              "action": "force_exit"
+            }
+          ]
+        },
+        {
+          "name": "rapid_reentry_attempt",
+          "description": "Attempt to reenter immediately after exit",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "action": "enter"
+            },
+            {
+              "tick": 1,
+              "action": "exit"
+            },
+            {
+              "tick": 2,
+              "action": "entry_blocked_by_nonce"
+            }
+          ]
+        },
+        {
+          "name": "counter_overflow",
+          "description": "Test counters at max value",
+          "test_values": [
+            {
+              "counter": "total_wins",
+              "value": 255,
+              "action": "win",
+              "expected": "wrap_to_0_or_saturate"
+            }
+          ]
+        }
+      ]
+    },
+    "test_sequences": [
+      {
+        "name": "IDLE_to_EXECUTING",
+        "trigger": "ENTRY",
+        "guards": [
+          "price<threshold",
+          "volume",
+          "trend",
+          "NOT holding",
+          "NOT nonce"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "price<threshold",
+              "volume",
+              "trend",
+              "NOT holding",
+              "NOT nonce"
+            ],
+            "expected_transition": "ENTRY"
+          }
+        ]
+      },
+      {
+        "name": "EXECUTING_to_IDLE",
+        "trigger": "EXIT_PRICE",
+        "guards": [
+          "price>threshold"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "price<threshold",
+              "volume",
+              "trend",
+              "NOT holding",
+              "NOT nonce"
+            ],
+            "expected_transition": "ENTRY"
+          },
+          {
+            "inputs": [
+              "price>threshold"
+            ],
+            "expected_transition": "EXIT_PRICE"
+          }
+        ]
+      },
+      {
+        "name": "EXECUTING_to_EXECUTING",
+        "trigger": "CONTINUE",
+        "guards": [
+          "NOT exit_price_ok",
+          "NOT timeout",
+          "volume"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "price<threshold",
+              "volume",
+              "trend",
+              "NOT holding",
+              "NOT nonce"
+            ],
+            "expected_transition": "ENTRY"
+          },
+          {
+            "inputs": [
+              "NOT exit_price_ok",
+              "NOT timeout",
+              "volume"
+            ],
+            "expected_transition": "CONTINUE"
+          }
+        ]
+      },
+      {
+        "name": "IDLE_to_IDLE",
+        "trigger": "NO_ENTRY",
+        "guards": [
+          "NOT valid_entry OR NOT volume OR holding OR nonce"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "NOT valid_entry OR NOT volume OR holding OR nonce"
+            ],
+            "expected_transition": "NO_ENTRY"
+          }
+        ]
+      }
+    ]
+  },
+  "risk_model": {
+    "version": "v46",
+    "analysis": {
+      "total_states": 5,
+      "total_transitions": 11,
+      "states": {
+        "IDLE": {
+          "encoding": [
+            0,
+            0,
+            0
+          ],
+          "incoming_transitions": 5,
+          "outgoing_transitions": 2,
+          "entry_conditions": [
+            "cooldown_done OR take_profit"
+          ],
+          "exit_conditions": [
+            "valid_entry AND size_tier>=1"
+          ],
+          "invariants": [
+            "NOT holding",
+            "timer=0"
+          ]
+        },
+        "EXECUTING": {
+          "encoding": [
+            0,
+            0,
+            1
+          ],
+          "incoming_transitions": 2,
+          "outgoing_transitions": 4,
+          "entry_conditions": [
+            "valid_entry from IDLE"
+          ],
+          "exit_conditions": [
+            "stop_loss OR take_profit OR timeout OR emergency"
+          ],
+          "invariants": [
+            "holding",
+            "timer_active"
+          ]
+        },
+        "STOP_LOSS": {
+          "encoding": [
+            0,
+            1,
+            0
+          ],
+          "incoming_transitions": 1,
+          "outgoing_transitions": 2,
+          "entry_conditions": [
+            "price dropped > stop_loss_pct from entry"
+          ],
+          "exit_conditions": [
+            "always exits next tick"
+          ],
+          "invariants": [
+            "consecutive_losses++",
+            "sell_signal"
+          ]
+        },
+        "TAKE_PROFIT": {
+          "encoding": [
+            0,
+            1,
+            1
+          ],
+          "incoming_transitions": 1,
+          "outgoing_transitions": 1,
+          "entry_conditions": [
+            "price rose > take_profit_pct from entry"
+          ],
+          "exit_conditions": [
+            "always exits next tick"
+          ],
+          "invariants": [
+            "consecutive_losses=0",
+            "profit=1",
+            "burn"
+          ]
+        },
+        "COOLDOWN": {
+          "encoding": [
+            1,
+            0,
+            0
+          ],
+          "incoming_transitions": 2,
+          "outgoing_transitions": 2,
+          "entry_conditions": [
+            "consecutive_losses >= max_losses"
+          ],
+          "exit_conditions": [
+            "cooldown_timer >= threshold"
+          ],
+          "invariants": [
+            "NOT executing",
+            "cooldown_timer++"
+          ]
+        }
+      },
+      "coverage_issues": [],
+      "edge_cases": [
+        {
+          "name": "timer_boundary",
+          "description": "Test timer at exactly timeout value",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "action": "enter",
+              "expected_timer": 0
+            },
+            {
+              "tick": 1,
+              "action": "hold",
+              "expected_timer": 1
+            },
+            {
+              "tick": 2,
+              "action": "hold",
+              "expected_timer": 2
+            },
+            {
+              "tick": 3,
+              "action": "timeout",
+              "expected_timer": 3
+            }
+          ]
+        },
+        {
+          "name": "price_exactly_at_threshold",
+          "description": "Price exactly equals entry/exit threshold",
+          "test_values": [
+            {
+              "price": 100,
+              "threshold": 100,
+              "expected": "no_trigger"
+            },
+            {
+              "price": 101,
+              "threshold": 100,
+              "expected": "exit_trigger"
+            }
+          ]
+        },
+        {
+          "name": "volume_drops_during_execution",
+          "description": "Volume becomes stale while in position",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "volume": 1,
+              "action": "enter"
+            },
+            {
+              "tick": 1,
+              "volume": 0,
+              "action": "force_exit"
+            }
+          ]
+        },
+        {
+          "name": "rapid_reentry_attempt",
+          "description": "Attempt to reenter immediately after exit",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "action": "enter"
+            },
+            {
+              "tick": 1,
+              "action": "exit"
+            },
+            {
+              "tick": 2,
+              "action": "entry_blocked_by_nonce"
+            }
+          ]
+        },
+        {
+          "name": "stop_loss_exactly_at_threshold",
+          "description": "Price drops exactly to stop-loss level",
+          "test_values": [
+            {
+              "entry": 100,
+              "current": 95,
+              "stop_loss_pct": 5,
+              "expected": "stop_loss_triggered"
+            }
+          ]
+        },
+        {
+          "name": "consecutive_loss_max",
+          "description": "Hit max consecutive losses",
+          "test_sequence": [
+            {
+              "tick": 0,
+              "action": "stop_loss",
+              "consecutive": 1
+            },
+            {
+              "tick": 1,
+              "action": "stop_loss",
+              "consecutive": 2
+            },
+            {
+              "tick": 2,
+              "action": "stop_loss_to_cooldown",
+              "consecutive": 3
+            }
+          ]
+        },
+        {
+          "name": "counter_overflow",
+          "description": "Test counters at max value",
+          "test_values": [
+            {
+              "counter": "total_wins",
+              "value": 255,
+              "action": "win",
+              "expected": "wrap_to_0_or_saturate"
+            }
+          ]
+        }
+      ]
+    },
+    "test_sequences": [
+      {
+        "name": "IDLE_to_EXECUTING",
+        "trigger": "ENTRY",
+        "guards": [
+          "valid_entry",
+          "NOT emergency"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "valid_entry",
+              "NOT emergency"
+            ],
+            "expected_transition": "ENTRY"
+          }
+        ]
+      },
+      {
+        "name": "EXECUTING_to_STOP_LOSS",
+        "trigger": "STOP_LOSS_HIT",
+        "guards": [
+          "(entry-price)*100/entry > stop_loss_pct"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "valid_entry",
+              "NOT emergency"
+            ],
+            "expected_transition": "ENTRY"
+          },
+          {
+            "inputs": [
+              "(entry-price)*100/entry > stop_loss_pct"
+            ],
+            "expected_transition": "STOP_LOSS_HIT"
+          }
+        ]
+      },
+      {
+        "name": "EXECUTING_to_TAKE_PROFIT",
+        "trigger": "TAKE_PROFIT_HIT",
+        "guards": [
+          "(price-entry)*100/entry > take_profit_pct"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "valid_entry",
+              "NOT emergency"
+            ],
+            "expected_transition": "ENTRY"
+          },
+          {
+            "inputs": [
+              "(price-entry)*100/entry > take_profit_pct"
+            ],
+            "expected_transition": "TAKE_PROFIT_HIT"
+          }
+        ]
+      },
+      {
+        "name": "EXECUTING_to_IDLE",
+        "trigger": "TIMEOUT",
+        "guards": [
+          "timer=3"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "valid_entry",
+              "NOT emergency"
+            ],
+            "expected_transition": "ENTRY"
+          },
+          {
+            "inputs": [
+              "timer=3"
+            ],
+            "expected_transition": "TIMEOUT"
+          }
+        ]
+      },
+      {
+        "name": "STOP_LOSS_to_IDLE",
+        "trigger": "LOSS_PROCESSED",
+        "guards": [
+          "consecutive_losses < max"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "(entry-price)*100/entry > stop_loss_pct"
+            ],
+            "expected_transition": "STOP_LOSS_HIT"
+          },
+          {
+            "inputs": [
+              "consecutive_losses < max"
+            ],
+            "expected_transition": "LOSS_PROCESSED"
+          }
+        ]
+      },
+      {
+        "name": "STOP_LOSS_to_COOLDOWN",
+        "trigger": "MAX_LOSSES",
+        "guards": [
+          "consecutive_losses >= max"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "(entry-price)*100/entry > stop_loss_pct"
+            ],
+            "expected_transition": "STOP_LOSS_HIT"
+          },
+          {
+            "inputs": [
+              "consecutive_losses >= max"
+            ],
+            "expected_transition": "MAX_LOSSES"
+          }
+        ]
+      },
+      {
+        "name": "TAKE_PROFIT_to_IDLE",
+        "trigger": "PROFIT_PROCESSED",
+        "guards": [
+          "always"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "(price-entry)*100/entry > take_profit_pct"
+            ],
+            "expected_transition": "TAKE_PROFIT_HIT"
+          },
+          {
+            "inputs": [
+              "always"
+            ],
+            "expected_transition": "PROFIT_PROCESSED"
+          }
+        ]
+      },
+      {
+        "name": "COOLDOWN_to_IDLE",
+        "trigger": "COOLDOWN_DONE",
+        "guards": [
+          "cooldown_timer >= threshold"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "consecutive_losses >= max"
+            ],
+            "expected_transition": "MAX_LOSSES"
+          },
+          {
+            "inputs": [
+              "cooldown_timer >= threshold"
+            ],
+            "expected_transition": "COOLDOWN_DONE"
+          }
+        ]
+      },
+      {
+        "name": "EXECUTING_to_EXECUTING",
+        "trigger": "CONTINUE",
+        "guards": [
+          "NOT stop_loss",
+          "NOT take_profit",
+          "NOT timeout"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "valid_entry",
+              "NOT emergency"
+            ],
+            "expected_transition": "ENTRY"
+          },
+          {
+            "inputs": [
+              "NOT stop_loss",
+              "NOT take_profit",
+              "NOT timeout"
+            ],
+            "expected_transition": "CONTINUE"
+          }
+        ]
+      },
+      {
+        "name": "IDLE_to_IDLE",
+        "trigger": "NO_ENTRY",
+        "guards": [
+          "NOT valid_entry OR emergency"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "NOT valid_entry OR emergency"
+            ],
+            "expected_transition": "NO_ENTRY"
+          }
+        ]
+      },
+      {
+        "name": "COOLDOWN_to_COOLDOWN",
+        "trigger": "COOLING",
+        "guards": [
+          "cooldown_timer < threshold"
+        ],
+        "sequence": [
+          {
+            "inputs": [
+              "consecutive_losses >= max"
+            ],
+            "expected_transition": "MAX_LOSSES"
+          },
+          {
+            "inputs": [
+              "cooldown_timer < threshold"
+            ],
+            "expected_transition": "COOLING"
+          }
+        ]
+      }
+    ]
+  }
+}

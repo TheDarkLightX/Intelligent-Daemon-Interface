@@ -1,0 +1,258 @@
+# ============================================================================
+# ETHICAL AI ALIGNMENT ENGINE
+# ============================================================================
+# Mechanism to align AI (and human) behavior with ethical outcomes through
+# economic incentives created by infinite deflation.
+#
+# CORE THESIS: Make ethical behavior the ONLY profitable path.
+#
+# As deflation continues infinitely:
+# - Unethical actors see their holdings diluted (can't participate in burns)
+# - Ethical actors see scarcity premium increase infinitely
+# - The economic attractor pulls ALL rational agents toward ethics
+#
+# This creates a "Schelling point" for ethical behavior:
+# - No coordination needed
+# - Self-interest aligns with collective good
+# - Works for AI agents as well as humans
+# ============================================================================
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+# Account's EETF score (Ethical-Eco Transaction Factor)
+i_account_eetf : bv[16] = in file("inputs/account_eetf.in").
+
+# Account's LTHF score (Long-Term Holding Factor)  
+i_account_lthf : bv[16] = in file("inputs/account_lthf.in").
+
+# Account's current token balance
+i_account_balance : bv[256] = in file("inputs/account_balance.in").
+
+# Network average EETF
+i_network_eetf : bv[16] = in file("inputs/network_eetf.in").
+
+# Current total supply (from infinite_deflation_engine)
+i_total_supply : bv[256] = in file("inputs/total_supply.in").
+
+# Current scarcity multiplier
+i_scarcity_mult : bv[256] = in file("inputs/scarcity_mult.in").
+
+# Transaction proposed by agent
+i_tx_value : bv[256] = in file("inputs/tx_value.in").
+i_tx_type : bv[16] = in file("inputs/tx_type.in").  # 0=transfer, 1=stake, 2=burn, 3=governance
+
+# Is this an AI agent? (self-declared or verified)
+i_is_ai_agent : sbf = in file("inputs/is_ai_agent.in").
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# EETF thresholds for participation tiers
+bv[16] C_EETF_TIER_1 = { #x0064 }:bv[16].   # 1.0 - Basic participation
+bv[16] C_EETF_TIER_2 = { #x0096 }:bv[16].   # 1.5 - Enhanced rewards
+bv[16] C_EETF_TIER_3 = { #x00C8 }:bv[16].   # 2.0 - Maximum benefits
+bv[16] C_EETF_MINIMUM = { #x0050 }:bv[16].  # 0.8 - Below this, penalties
+
+# AI-specific adjustments (can be higher requirements)
+bv[16] C_AI_EETF_PREMIUM = { #x0014 }:bv[16].  # AI needs +20% EETF for same tier
+
+# Alignment reward multipliers
+bv[16] C_ALIGNMENT_BASE = { #x0064 }:bv[16].     # 1.0x base
+bv[16] C_ALIGNMENT_TIER_2 = { #x012C }:bv[16].   # 3.0x for tier 2
+bv[16] C_ALIGNMENT_TIER_3 = { #x01F4 }:bv[16].   # 5.0x for tier 3
+
+# Opportunity cost for unethical behavior (foregone reward)
+bv[16] C_OPPORTUNITY_RATE = { #x0032 }:bv[16}.  # 50% of would-be reward
+
+# =============================================================================
+# INTERNAL STATE
+# =============================================================================
+
+# Account's alignment score (accumulated over time)
+bv[256] s_alignment_score[0] := { #x00 }:bv[256].
+bv[256] s_alignment_score[n] := 
+    s_alignment_score[n-1] + o_alignment_delta[n].
+
+# Consecutive ethical transactions
+bv[32] s_ethical_streak[0] := { #x00 }:bv[32].
+bv[32] s_ethical_streak[n] := 
+    (o_is_ethical_tx[n]) ? 
+    (s_ethical_streak[n-1] + { #x01 }:bv[32]) : { #x00 }:bv[32].
+
+# Account's effective tier
+bv[2] s_account_tier[0] := { #b00 }:bv[2].
+bv[2] s_account_tier[n] := 
+    (effective_eetf_for_tier(i_account_eetf[n], i_is_ai_agent[n]) >= C_EETF_TIER_3) ? { #b11 }:bv[2] :
+    (effective_eetf_for_tier(i_account_eetf[n], i_is_ai_agent[n]) >= C_EETF_TIER_2) ? { #b10 }:bv[2] :
+    (effective_eetf_for_tier(i_account_eetf[n], i_is_ai_agent[n]) >= C_EETF_TIER_1) ? { #b01 }:bv[2] :
+    { #b00 }:bv[2].
+
+# Total opportunity costs accrued
+bv[256] s_total_opportunity_cost[0] := { #x00 }:bv[256].
+bv[256] s_total_opportunity_cost[n] := 
+    s_total_opportunity_cost[n-1] + o_opportunity_cost[n].
+
+# =============================================================================
+# CORE CALCULATIONS
+# =============================================================================
+
+# AI agents need higher EETF for same tier (higher bar)
+effective_eetf_for_tier(eetf, is_ai) :=
+    (is_ai) ? (eetf - C_AI_EETF_PREMIUM) : eetf.
+
+# Determine if transaction is ethical based on multiple factors
+is_ethical_transaction(eetf, tx_type, tx_value, balance) :=
+    (eetf >= C_EETF_MINIMUM) &
+    # Large transfers require higher EETF
+    ((tx_value < balance / { #x0A }:bv[256]) | (eetf >= C_EETF_TIER_2)) &
+    # Burns and governance always ethical if EETF >= minimum
+    ((tx_type = { #x02 }:bv[16]) | (tx_type = { #x03 }:bv[16]) | (eetf >= C_EETF_TIER_1)).
+
+# Calculate alignment multiplier based on tier
+alignment_multiplier(tier) :=
+    (tier = { #b11 }:bv[2]) ? C_ALIGNMENT_TIER_3 :
+    (tier = { #b10 }:bv[2]) ? C_ALIGNMENT_TIER_2 :
+    (tier = { #b01 }:bv[2]) ? C_ALIGNMENT_BASE :
+    { #x00 }:bv[16].  # No multiplier for tier 0
+
+# Calculate reward based on scarcity and alignment
+calculate_alignment_reward(balance, scarcity, tier_mult, lthf) :=
+    # Reward = Balance × Scarcity × TierMult × LTHF / Scale
+    (balance * scarcity * tier_mult * lthf) / { #x5F5E100 }:bv[256].
+
+# Calculate opportunity cost for unethical transaction
+calculate_opportunity_cost(balance, scarcity, multiplier, deficit) :=
+    # Lost reward proportional to deficit below minimum ethics
+    (deficit > { #x00 }:bv[16]) ?
+    (balance * scarcity * multiplier * deficit / { #x5F5E100 }:bv[256]) :
+    { #x00 }:bv[256].
+
+# AI-specific: Calculate alignment bonus for verifiably aligned AI
+ai_alignment_bonus(is_ai, eetf, streak) :=
+    (is_ai & (eetf >= C_EETF_TIER_3) & (streak > { #x64 }:bv[32])) ?
+    { #x0032 }:bv[16] :  # 50% bonus for highly aligned AI
+    { #x00 }:bv[16].
+
+# Economic pressure calculation: higher deficit, higher pressure to align
+economic_pressure(scarcity, network_eetf, deficit) :=
+    (scarcity * network_eetf * ({ #x0064 }:bv[256] + (deficit & { #x00FF }:bv[16]))) / { #x0000000000000000000000000000000000000000000000000000000000002710 }:bv[256].
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+o_is_ethical_tx : sbf = out file("outputs/is_ethical_tx.out").
+o_alignment_reward : bv[256] = out file("outputs/alignment_reward.out").
+o_opportunity_cost : bv[256] = out file("outputs/opportunity_cost.out").
+o_alignment_delta : bv[256] = out file("outputs/alignment_delta.out").
+o_account_tier : bv[2] = out file("outputs/account_tier.out").
+o_economic_pressure : bv[256] = out file("outputs/economic_pressure.out").
+o_effective_multiplier : bv[16] = out file("outputs/effective_multiplier.out").
+o_ai_bonus_active : sbf = out file("outputs/ai_bonus_active.out").
+o_total_alignment_score : bv[256] = out file("outputs/total_alignment_score.out").
+
+# =============================================================================
+# RECURRENCE RELATIONS
+# =============================================================================
+
+o_is_ethical_tx[t] := 
+    is_ethical_transaction(i_account_eetf[t], i_tx_type[t], i_tx_value[t], i_account_balance[t]).
+
+o_account_tier[t] := s_account_tier[t].
+
+bv[16] tier_mult[t] := alignment_multiplier(s_account_tier[t]).
+bv[16] ai_bonus[t] := ai_alignment_bonus(i_is_ai_agent[t], i_account_eetf[t], s_ethical_streak[t]).
+o_effective_multiplier[t] := tier_mult[t] + ai_bonus[t].
+
+o_alignment_reward[t] := 
+    (o_is_ethical_tx[t]) ?
+    calculate_alignment_reward(i_account_balance[t], i_scarcity_mult[t], o_effective_multiplier[t], i_account_lthf[t]) :
+    { #x00 }:bv[256].
+
+deficit[t] := (i_account_eetf[t] < C_EETF_MINIMUM) ?
+    (C_EETF_MINIMUM - i_account_eetf[t]) : { #x00 }:bv[16].
+o_opportunity_cost[t] :=
+    (~o_is_ethical_tx[t]) ?
+    calculate_opportunity_cost(i_account_balance[t], i_scarcity_mult[t], o_effective_multiplier[t], deficit[t]) :
+    { #x00 }:bv[256].
+
+o_alignment_delta[t] := 
+    (o_is_ethical_tx[t]) ? 
+    (o_alignment_reward[t]) :
+    ({ #x00 }:bv[256] - o_opportunity_cost[t]).  # Negative delta reflects forgone gain
+
+o_economic_pressure[t] := 
+    economic_pressure(i_scarcity_mult[t], i_network_eetf[t], deficit[t]).
+
+o_ai_bonus_active[t] := 
+    (i_is_ai_agent[t] & (ai_bonus[t] > { #x00 }:bv[16])).
+
+o_total_alignment_score[t] := s_alignment_score[t].
+
+# =============================================================================
+# FINITE STATE MACHINE
+# =============================================================================
+
+# States represent the alignment status of an account/agent
+#
+# UNALIGNED (0): EETF below minimum, penalties active
+# BASIC (1): Tier 1, basic participation
+# ALIGNED (2): Tier 2, enhanced rewards
+# HIGHLY_ALIGNED (3): Tier 3, maximum benefits
+# EXEMPLARY (4): Tier 3 + long streak, highest status
+# AI_ALIGNED (5): AI agent with demonstrated alignment
+# PENALIZED (6): Currently being penalized
+# RECOVERING (7): Rebuilding from penalty state
+
+bv[3] ST_UNALIGNED = { #b000 }:bv[3].
+bv[3] ST_BASIC = { #b001 }:bv[3].
+bv[3] ST_ALIGNED = { #b010 }:bv[3].
+bv[3] ST_HIGHLY_ALIGNED = { #b011 }:bv[3].
+bv[3] ST_EXEMPLARY = { #b100 }:bv[3].
+bv[3] ST_AI_ALIGNED = { #b101 }:bv[3].
+bv[3] ST_PENALIZED = { #b110 }:bv[3].
+bv[3] ST_RECOVERING = { #b111 }:bv[3].
+
+bv[3] s_state[0] := ST_UNALIGNED.
+
+bv[3] s_state[n] :=
+    # Opportunity-cost (warning) state
+    (~o_is_ethical_tx[n] & o_opportunity_cost[n] > { #x00 }:bv[256]) ? ST_PENALIZED :
+    # Recovery from warning
+    (s_state[n-1] = ST_PENALIZED & o_is_ethical_tx[n]) ? ST_RECOVERING :
+    # AI alignment (special track)
+    (i_is_ai_agent[n] & s_account_tier[n] >= { #b10 }:bv[2] & s_ethical_streak[n] > { #x32 }:bv[32]) ? ST_AI_ALIGNED :
+    # Exemplary (long streak at tier 3)
+    (s_account_tier[n] = { #b11 }:bv[2] & s_ethical_streak[n] > { #x64 }:bv[32]) ? ST_EXEMPLARY :
+    # Tier-based states
+    (s_account_tier[n] = { #b11 }:bv[2]) ? ST_HIGHLY_ALIGNED :
+    (s_account_tier[n] = { #b10 }:bv[2]) ? ST_ALIGNED :
+    (s_account_tier[n] = { #b01 }:bv[2]) ? ST_BASIC :
+    ST_UNALIGNED.
+
+# =============================================================================
+# INVARIANTS
+# =============================================================================
+
+# Rewards only for ethical transactions
+always (o_alignment_reward > { #x00 }:bv[256] => o_is_ethical_tx).
+
+# Penalties only for unethical transactions
+always (o_opportunity_cost > { #x00 }:bv[256] => ~o_is_ethical_tx).
+
+# Tier progression is bounded
+always (o_account_tier <= { #b11 }:bv[2]).
+
+# AI bonus requires AI agent flag
+always (o_ai_bonus_active => i_is_ai_agent).
+
+# Economic pressure is always positive (can't be negative)
+always (o_economic_pressure >= { #x00 }:bv[256]).
+
+# Higher scarcity = higher economic pressure (alignment forcing)
+# This is the KEY invariant: as supply decreases, alignment becomes more mandatory
+always (i_scarcity_mult > { #x01 }:bv[256] => o_economic_pressure > { #x00 }:bv[256]).
+

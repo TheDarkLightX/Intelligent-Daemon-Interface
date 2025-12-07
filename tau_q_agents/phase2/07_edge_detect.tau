@@ -1,0 +1,15 @@
+# Rising edge detector
+# Output 1 when input transitions from 0 to 1
+# o1[t] = i1[t] AND NOT i1[t-1]
+
+sbf i1 = console
+sbf o1 = console
+r o1[t] = i1[t] & i1[t-1]'
+0
+0
+1
+1
+0
+1
+q
+

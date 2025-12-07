@@ -1,0 +1,15 @@
+# Tau Language Experiment 21: Position Tracker
+# Track whether we're in a position (holding) or not
+# Tests: State machine with BitVectors
+
+# Define streams
+buy_signal : sbf = in console.
+sell_signal : sbf = in console.
+holding : sbf = out console.
+
+# State machine logic:
+# - If not holding and buy signal -> start holding
+# - If holding and sell signal -> stop holding
+# - Otherwise maintain state
+holding[t] = (holding[t-1]' & buy_signal[t]) | (holding[t-1] & sell_signal[t]').
+

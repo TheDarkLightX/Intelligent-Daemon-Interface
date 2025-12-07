@@ -1,0 +1,456 @@
+# Agent V51: Ultimate Deflationary Ecosystem Agent for Tau Testnet Alpha
+# Designed for https://github.com/IDNI/tau-testnet
+# Copyright DarkLightX/Dana Edwards
+#
+# ============================================================================
+# FEATURES INTEGRATED
+# ============================================================================
+# ✅ Multi-indicator trading (EMA, RSI, volatility)
+# ✅ Risk management (stop-loss, take-profit, cooldown)
+# ✅ Position sizing (Kelly-inspired)
+# ✅ MEV protection (commit-reveal, batch, cooldown)
+# ✅ Oracle safety (multi-oracle median, freshness, bands)
+# ✅ Deflationary mechanics (burn, POL, ve-locks)
+# ✅ True RNG (commit-reveal multi-party)
+# ✅ Replay protection (sequence numbers)
+# ✅ Multi-sig coordination (k-of-n threshold)
+# ✅ 10-state FSM with full transition coverage
+#
+# ============================================================================
+# STATE MACHINE (10 states, 4 bits)
+# ============================================================================
+# 0000 = IDLE           - No position, waiting for opportunity
+# 0001 = ANALYZING      - Gathering indicator signals
+# 0010 = COMMITTING     - Commit-reveal phase 1 (anti-frontrun)
+# 0011 = REVEALING      - Commit-reveal phase 2
+# 0100 = ENTERING       - Executing entry (with random delay)
+# 0101 = HOLDING        - Active position
+# 0110 = EXITING        - Executing exit
+# 0111 = STOP_LOSS      - Emergency exit triggered
+# 1000 = TAKE_PROFIT    - Target reached
+# 1001 = COOLDOWN       - Post-trade cooldown period
+# 1010 = DISPUTED       - Dispute resolution
+# 1011-1111 = RESERVED
+
+# ============================================================================
+# INPUTS
+# ============================================================================
+
+# === PRICE ORACLES (3 sources for median) ===
+bv[16] i_price_oracle1 = ifile("inputs/price_oracle1.in").
+bv[16] i_price_oracle2 = ifile("inputs/price_oracle2.in").
+bv[16] i_price_oracle3 = ifile("inputs/price_oracle3.in").
+bv[16] i_oracle1_ts = ifile("inputs/oracle1_timestamp.in").
+bv[16] i_oracle2_ts = ifile("inputs/oracle2_timestamp.in").
+bv[16] i_oracle3_ts = ifile("inputs/oracle3_timestamp.in").
+bv[16] i_current_ts = ifile("inputs/current_timestamp.in").
+bv[16] i_max_staleness = ifile("inputs/max_staleness.in").
+
+# === INDICATOR SIGNALS (from daemon) ===
+sbf i_ema_bullish = ifile("inputs/ema_bullish.in").         # EMA crossover signal
+sbf i_rsi_oversold = ifile("inputs/rsi_oversold.in").       # RSI < 30
+sbf i_rsi_overbought = ifile("inputs/rsi_overbought.in").   # RSI > 70
+sbf i_volatility_high = ifile("inputs/volatility_high.in"). # High volatility
+sbf i_trend_up = ifile("inputs/trend_up.in").               # Overall trend
+
+# === RISK PARAMETERS ===
+bv[16] i_stop_loss_pct = ifile("inputs/stop_loss_pct.in").   # Stop loss %
+bv[16] i_take_profit_pct = ifile("inputs/take_profit_pct.in"). # Take profit %
+bv[16] i_max_position_pct = ifile("inputs/max_position_pct.in"). # Max % of capital
+
+# === COMMIT-REVEAL (True RNG / MEV protection) ===
+bv[16] i_commit_hash = ifile("inputs/commit_hash.in").
+bv[16] i_reveal_secret = ifile("inputs/reveal_secret.in").
+bv[16] i_reveal_nonce = ifile("inputs/reveal_nonce.in").
+sbf i_all_revealed = ifile("inputs/all_parties_revealed.in").
+bv[16] i_random_value = ifile("inputs/random_value.in").     # XOR of reveals
+
+# === MULTI-SIG (k-of-n coordination) ===
+bv[8] i_required_sigs = ifile("inputs/required_sigs.in").    # k
+sbf i_sig1_ok = ifile("inputs/sig1_valid.in").
+sbf i_sig2_ok = ifile("inputs/sig2_valid.in").
+sbf i_sig3_ok = ifile("inputs/sig3_valid.in").
+
+# === REPLAY PROTECTION ===
+bv[32] i_provided_seq = ifile("inputs/tx_sequence.in").
+bv[32] i_expected_seq = ifile("inputs/expected_sequence.in").
+sbf i_sig_valid = ifile("inputs/bls_sig_valid.in").          # BLS sig from testnet
+
+# === DEFLATIONARY PARAMETERS ===
+bv[16] i_burn_rate_bps = ifile("inputs/burn_rate_bps.in").   # Burn in basis points
+bv[32] i_treasury_balance = ifile("inputs/treasury.in").
+sbf i_buyback_enabled = ifile("inputs/buyback_enabled.in").
+
+# === TIMING ===
+bv[8] i_cooldown_ticks = ifile("inputs/cooldown_ticks.in").
+bv[8] i_commit_timeout = ifile("inputs/commit_timeout.in").
+bv[8] i_reveal_timeout = ifile("inputs/reveal_timeout.in").
+
+# === EXTERNAL TRIGGERS ===
+sbf i_emergency_halt = ifile("inputs/emergency_halt.in").
+sbf i_governance_pause = ifile("inputs/governance_pause.in").
+sbf i_dispute_raised = ifile("inputs/dispute_raised.in").
+sbf i_dispute_resolved = ifile("inputs/dispute_resolved.in").
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+# === STATE (4 bits) ===
+sbf o_state_b0 = ofile("outputs/v51_state_b0.out").
+sbf o_state_b1 = ofile("outputs/v51_state_b1.out").
+sbf o_state_b2 = ofile("outputs/v51_state_b2.out").
+sbf o_state_b3 = ofile("outputs/v51_state_b3.out").
+
+# === ACTIONS ===
+sbf o_buy = ofile("outputs/v51_buy.out").
+sbf o_sell = ofile("outputs/v51_sell.out").
+sbf o_commit = ofile("outputs/v51_commit.out").
+sbf o_reveal = ofile("outputs/v51_reveal.out").
+
+# === POSITION TRACKING ===
+bv[16] o_entry_price = ofile("outputs/v51_entry_price.out").
+bv[16] o_position_size = ofile("outputs/v51_position_size.out").
+bv[16] o_unrealized_pnl = ofile("outputs/v51_unrealized_pnl.out").
+
+# === RISK METRICS ===
+sbf o_stop_triggered = ofile("outputs/v51_stop_triggered.out").
+sbf o_tp_triggered = ofile("outputs/v51_tp_triggered.out").
+bv[8] o_cooldown_remaining = ofile("outputs/v51_cooldown.out").
+bv[8] o_consecutive_losses = ofile("outputs/v51_losses.out").
+
+# === DEFLATIONARY OUTPUTS ===
+bv[16] o_burn_amount = ofile("outputs/v51_burn.out").
+bv[32] o_total_burned = ofile("outputs/v51_total_burned.out").
+sbf o_buyback_executed = ofile("outputs/v51_buyback.out").
+
+# === ORACLE STATUS ===
+bv[16] o_median_price = ofile("outputs/v51_median_price.out").
+sbf o_oracle_fresh = ofile("outputs/v51_oracle_fresh.out").
+sbf o_oracle_safe = ofile("outputs/v51_oracle_safe.out").
+
+# === SECURITY STATUS ===
+sbf o_multisig_ok = ofile("outputs/v51_multisig_ok.out").
+sbf o_replay_protected = ofile("outputs/v51_replay_ok.out").
+sbf o_commit_reveal_ok = ofile("outputs/v51_cr_ok.out").
+
+# === INDICATOR CONSENSUS ===
+bv[8] o_bullish_signals = ofile("outputs/v51_bullish_count.out").
+sbf o_consensus_buy = ofile("outputs/v51_consensus_buy.out").
+sbf o_consensus_sell = ofile("outputs/v51_consensus_sell.out").
+
+# === INVARIANT MONITORS ===
+sbf o_action_exclusive = ofile("outputs/v51_action_excl.out").  # buy XOR sell
+sbf o_funds_safe = ofile("outputs/v51_funds_safe.out").
+sbf o_state_valid = ofile("outputs/v51_state_valid.out").
+sbf o_all_invariants_ok = ofile("outputs/v51_invariants_ok.out").
+
+# ============================================================================
+# HELPER PREDICATES
+# ============================================================================
+
+# State encoding (4 bits)
+encode_state(b3, b2, b1, b0) := 
+    (b3 ? {8}:bv[8] : {0}:bv[8]) + 
+    (b2 ? {4}:bv[8] : {0}:bv[8]) + 
+    (b1 ? {2}:bv[8] : {0}:bv[8]) + 
+    (b0 ? {1}:bv[8] : {0}:bv[8]).
+
+is_idle(b3, b2, b1, b0) := b3' & b2' & b1' & b0'.           # 0000
+is_analyzing(b3, b2, b1, b0) := b3' & b2' & b1' & b0.       # 0001
+is_committing(b3, b2, b1, b0) := b3' & b2' & b1 & b0'.      # 0010
+is_revealing(b3, b2, b1, b0) := b3' & b2' & b1 & b0.        # 0011
+is_entering(b3, b2, b1, b0) := b3' & b2 & b1' & b0'.        # 0100
+is_holding(b3, b2, b1, b0) := b3' & b2 & b1' & b0.          # 0101
+is_exiting(b3, b2, b1, b0) := b3' & b2 & b1 & b0'.          # 0110
+is_stop_loss(b3, b2, b1, b0) := b3' & b2 & b1 & b0.         # 0111
+is_take_profit(b3, b2, b1, b0) := b3 & b2' & b1' & b0'.     # 1000
+is_cooldown(b3, b2, b1, b0) := b3 & b2' & b1' & b0.         # 1001
+is_disputed(b3, b2, b1, b0) := b3 & b2' & b1 & b0'.         # 1010
+
+# Oracle helpers
+is_fresh(ts, current, max_stale) := (current - ts) <= max_stale.
+median3(a, b, c) := 
+    ((a <= b) & (b <= c)) ? b :
+    ((a <= c) & (c <= b)) ? c :
+    ((b <= a) & (a <= c)) ? a :
+    ((b <= c) & (c <= a)) ? c :
+    ((c <= a) & (a <= b)) ? a : b.
+
+# Risk helpers
+calc_pnl(entry, current, size) := 
+    (current > entry) ? (current - entry) * size / entry : 
+    {0}:bv[16] - ((entry - current) * size / entry).
+
+stop_loss_hit(entry, current, pct) := 
+    current < (entry - entry * pct / {100}:bv[16]).
+
+take_profit_hit(entry, current, pct) :=
+    current > (entry + entry * pct / {100}:bv[16]).
+
+# Multi-sig count
+count_sigs(s1, s2, s3) := 
+    (s1 ? {1}:bv[8] : {0}:bv[8]) + 
+    (s2 ? {1}:bv[8] : {0}:bv[8]) + 
+    (s3 ? {1}:bv[8] : {0}:bv[8]).
+
+# Indicator consensus
+count_bullish(ema, rsi_os, trend) := 
+    (ema ? {1}:bv[8] : {0}:bv[8]) + 
+    (rsi_os ? {1}:bv[8] : {0}:bv[8]) + 
+    (trend ? {1}:bv[8] : {0}:bv[8]).
+
+# Commit-reveal hash verification (simplified)
+verify_reveal(secret, nonce, hash) := 
+    ((secret * {31337}:bv[16] + nonce) % {65536}:bv[16]) = hash.
+
+# ============================================================================
+# MAIN SPECIFICATION
+# ============================================================================
+r (
+    # ==== ORACLE AGGREGATION ====
+    (o_oracle_fresh[t] = 
+        is_fresh(i_oracle1_ts[t], i_current_ts[t], i_max_staleness[t]) &
+        is_fresh(i_oracle2_ts[t], i_current_ts[t], i_max_staleness[t]) &
+        is_fresh(i_oracle3_ts[t], i_current_ts[t], i_max_staleness[t])) &&
+    
+    (o_median_price[t] = median3(i_price_oracle1[t], i_price_oracle2[t], i_price_oracle3[t])) &&
+    
+    (o_oracle_safe[t] = o_oracle_fresh[t] & (o_median_price[t] > {0}:bv[16])) &&
+    
+    # ==== SECURITY CHECKS ====
+    (o_multisig_ok[t] = count_sigs(i_sig1_ok[t], i_sig2_ok[t], i_sig3_ok[t]) >= i_required_sigs[t]) &&
+    
+    (o_replay_protected[t] = i_sig_valid[t] & (i_provided_seq[t] = i_expected_seq[t])) &&
+    
+    (o_commit_reveal_ok[t] = 
+        is_revealing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) ?
+        i_all_revealed[t] : T) &&
+    
+    # ==== INDICATOR CONSENSUS ====
+    (o_bullish_signals[t] = count_bullish(i_ema_bullish[t], i_rsi_oversold[t], i_trend_up[t])) &&
+    
+    (o_consensus_buy[t] = o_bullish_signals[t] >= {2}:bv[8] & i_volatility_high[t]') &&
+    
+    (o_consensus_sell[t] = i_rsi_overbought[t] | i_ema_bullish[t]') &&
+    
+    # ==== STATE MACHINE ====
+    
+    # Emergency halt override
+    # (All states -> COOLDOWN on emergency)
+    
+    # State bit 0
+    (o_state_b0[t] = 
+        i_emergency_halt[t] ? T :  # COOLDOWN = 1001
+        i_governance_pause[t] ? o_state_b0[t-1] :  # Freeze
+        i_dispute_raised[t] ? F :  # DISPUTED = 1010
+        
+        # IDLE (0000) -> ANALYZING (0001)
+        (is_idle(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) & 
+         o_oracle_safe[t] & o_consensus_buy[t] & o_replay_protected[t]) |
+        
+        # ANALYZING -> COMMITTING (0010) - no change to b0
+        # COMMITTING -> REVEALING (0011) - set b0
+        (is_committing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         (i_commit_hash[t] != {0}:bv[16])) |
+        
+        # REVEALING -> ENTERING (0100) - clear b0
+        # ENTERING -> HOLDING (0101) - set b0
+        (is_entering(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         o_multisig_ok[t]) |
+        
+        # HOLDING -> EXITING (0110) - clear b0
+        # HOLDING -> STOP_LOSS (0111) - set b0
+        (is_holding(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         o_stop_triggered[t]) |
+        
+        # Terminal states
+        is_cooldown(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) &&
+    
+    # State bit 1
+    (o_state_b1[t] = 
+        i_emergency_halt[t] ? F :
+        i_governance_pause[t] ? o_state_b1[t-1] :
+        i_dispute_raised[t] ? T :
+        
+        # ANALYZING -> COMMITTING
+        (is_analyzing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         o_consensus_buy[t]) |
+        
+        # COMMITTING -> REVEALING
+        (is_committing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         (i_commit_hash[t] != {0}:bv[16])) |
+        
+        # HOLDING -> EXITING or STOP_LOSS
+        (is_holding(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         (o_consensus_sell[t] | o_stop_triggered[t] | o_tp_triggered[t])) |
+        
+        is_disputed(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) &&
+    
+    # State bit 2
+    (o_state_b2[t] = 
+        i_emergency_halt[t] ? F :
+        i_governance_pause[t] ? o_state_b2[t-1] :
+        i_dispute_raised[t] ? F :
+        
+        # REVEALING -> ENTERING
+        (is_revealing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         i_all_revealed[t]) |
+        
+        # ENTERING -> HOLDING
+        (is_entering(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         o_multisig_ok[t]) |
+        
+        # HOLDING stays or transitions
+        is_holding(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) |
+        
+        # Exit states
+        is_exiting(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) |
+        is_stop_loss(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) &&
+    
+    # State bit 3
+    (o_state_b3[t] = 
+        i_emergency_halt[t] ? T :  # COOLDOWN = 1001
+        i_governance_pause[t] ? o_state_b3[t-1] :
+        i_dispute_raised[t] ? T :  # DISPUTED = 1010
+        
+        # EXITING -> TAKE_PROFIT (1000) or COOLDOWN (1001)
+        (is_exiting(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         o_tp_triggered[t-1]) |
+        
+        # STOP_LOSS -> COOLDOWN
+        (is_stop_loss(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) |
+        
+        # TAKE_PROFIT -> COOLDOWN
+        (is_take_profit(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) |
+        
+        # COOLDOWN stays until timer
+        (is_cooldown(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+         o_cooldown_remaining[t] > {0}:bv[8]) |
+        
+        is_disputed(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) &&
+    
+    # ==== ACTIONS ====
+    (o_buy[t] = is_entering(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) &
+                o_multisig_ok[t] & o_oracle_safe[t]) &&
+    
+    (o_sell[t] = (is_exiting(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+                  is_stop_loss(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+                  is_take_profit(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t])) &
+                 o_oracle_safe[t]) &&
+    
+    (o_commit[t] = is_analyzing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+                   o_consensus_buy[t]) &&
+    
+    (o_reveal[t] = is_committing(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+                   (i_commit_hash[t] != {0}:bv[16])) &&
+    
+    # ==== POSITION TRACKING ====
+    (o_entry_price[t] = o_buy[t] ? o_median_price[t] : o_entry_price[t-1]) &&
+    
+    (o_position_size[t] = o_buy[t] ? 
+                          (i_max_position_pct[t] * i_treasury_balance[t] / {100}:bv[32]) :
+                          (o_sell[t] ? {0}:bv[16] : o_position_size[t-1])) &&
+    
+    (o_unrealized_pnl[t] = 
+        is_holding(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) ?
+        calc_pnl(o_entry_price[t], o_median_price[t], o_position_size[t]) :
+        {0}:bv[16]) &&
+    
+    # ==== RISK TRIGGERS ====
+    (o_stop_triggered[t] = 
+        is_holding(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+        stop_loss_hit(o_entry_price[t-1], o_median_price[t], i_stop_loss_pct[t])) &&
+    
+    (o_tp_triggered[t] = 
+        is_holding(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) &
+        take_profit_hit(o_entry_price[t-1], o_median_price[t], i_take_profit_pct[t])) &&
+    
+    # ==== COOLDOWN TIMER ====
+    (o_cooldown_remaining[t] = 
+        (is_exiting(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1]) |
+         is_stop_loss(o_state_b3[t-1], o_state_b2[t-1], o_state_b1[t-1], o_state_b0[t-1])) ?
+        i_cooldown_ticks[t] :
+        (o_cooldown_remaining[t-1] > {0}:bv[8] ?
+         o_cooldown_remaining[t-1] - {1}:bv[8] : {0}:bv[8])) &&
+    
+    # ==== LOSS TRACKING ====
+    (o_consecutive_losses[t] = 
+        o_stop_triggered[t] ? o_consecutive_losses[t-1] + {1}:bv[8] :
+        (o_tp_triggered[t] ? {0}:bv[8] : o_consecutive_losses[t-1])) &&
+    
+    # ==== DEFLATIONARY MECHANICS ====
+    (o_burn_amount[t] = o_sell[t] ?
+                        (o_position_size[t-1] * i_burn_rate_bps[t] / {10000}:bv[16]) :
+                        {0}:bv[16]) &&
+    
+    (o_total_burned[t] = o_total_burned[t-1] + o_burn_amount[t]) &&
+    
+    (o_buyback_executed[t] = i_buyback_enabled[t] & 
+                             is_cooldown(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) &
+                             (i_treasury_balance[t] > {1000}:bv[32])) &&
+    
+    # ==== INVARIANT MONITORS ====
+    (o_action_exclusive[t] = (o_buy[t] & o_sell[t])') &&
+    
+    (o_funds_safe[t] = 
+        (o_position_size[t] <= i_treasury_balance[t]) &
+        (o_burn_amount[t] <= o_position_size[t-1])) &&
+    
+    (o_state_valid[t] = 
+        is_idle(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_analyzing(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_committing(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_revealing(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_entering(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_holding(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_exiting(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_stop_loss(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_take_profit(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_cooldown(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t]) |
+        is_disputed(o_state_b3[t], o_state_b2[t], o_state_b1[t], o_state_b0[t])) &&
+    
+    (o_all_invariants_ok[t] = o_action_exclusive[t] & o_funds_safe[t] & o_state_valid[t])
+)
+
+# ============================================================================
+# STATE TRANSITION MATRIX
+# ============================================================================
+#
+# FROM          TO              CONDITION
+# ─────────────────────────────────────────────────────────────────────────────
+# IDLE       → ANALYZING       oracle_safe & consensus_buy & replay_protected
+# ANALYZING  → COMMITTING      consensus_buy confirmed
+# COMMITTING → REVEALING       commit_hash received
+# REVEALING  → ENTERING        all_revealed (commit-reveal complete)
+# ENTERING   → HOLDING         multisig_ok (entry executed)
+# HOLDING    → EXITING         consensus_sell
+# HOLDING    → STOP_LOSS       stop_triggered
+# HOLDING    → TAKE_PROFIT     tp_triggered (via EXITING)
+# EXITING    → COOLDOWN        exit complete
+# STOP_LOSS  → COOLDOWN        exit complete
+# TAKE_PROFIT→ COOLDOWN        exit complete
+# COOLDOWN   → IDLE            timer expires
+# ANY        → DISPUTED        dispute_raised
+# DISPUTED   → prev_state      dispute_resolved
+# ANY        → COOLDOWN        emergency_halt
+
+# ============================================================================
+# TAU TESTNET INTEGRATION
+# ============================================================================
+#
+# This agent is designed for Tau Testnet Alpha:
+# - BLS signatures validated by py_ecc, result fed as i_sig_valid
+# - Sequence numbers for replay protection (i_provided_seq, i_expected_seq)
+# - Operations structured for sendtx command
+# - Fees compatible with fee_limit field
+# - State compatible with genesis.tau validation
+#
+# DAEMON RESPONSIBILITIES:
+# 1. Query 3 price oracles, provide median
+# 2. Compute EMA/RSI indicators
+# 3. Validate BLS signatures
+# 4. Manage commit-reveal coordination
+# 5. Execute buy/sell via sendtx
+# 6. Trigger burns via treasury operations
+

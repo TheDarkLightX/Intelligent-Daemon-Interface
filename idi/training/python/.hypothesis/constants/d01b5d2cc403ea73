@@ -1,0 +1,4 @@
+# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/idi_iann/domain.py
+# hypothesis_version: 6.148.7
+
+['action', 'bear', 'bull', 'buy', 'chop', 'done', 'hold', 'next_state', 'panic', 'reward', 'sell', 'state']

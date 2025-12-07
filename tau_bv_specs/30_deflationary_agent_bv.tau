@@ -1,0 +1,77 @@
+# Tau Language: Deflationary Agent with BitVectors
+# A trading agent that burns tokens on profitable trades
+# 
+# Architecture:
+# - Monitors 8-bit price input
+# - Maintains position state (holding/not holding)
+# - Tracks buy price when entering position
+# - Burns tokens when selling at a profit
+# - Accumulates burn count (deflationary mechanism)
+#
+# Copyright DarkLightX/Dana Edwards
+
+# ============================================================
+# INPUT STREAMS
+# ============================================================
+price : bv[8] = in console.      # Market price (0-255)
+volume : bv[8] = in console.     # Trading volume (for signal quality)
+trend : sbf = in console.        # Market trend: 1=bullish, 0=bearish
+
+# ============================================================
+# OUTPUT STREAMS
+# ============================================================
+holding : sbf = out console.          # Position state: 1=long, 0=flat
+action : sbf = out console.           # Action taken this step: 1=trade executed
+is_buy : sbf = out console.           # Type of action: 1=buy, 0=sell
+buy_price : bv[8] = out console.      # Stored entry price
+is_profitable : sbf = out console.    # Was the exit profitable?
+should_burn : sbf = out console.      # Should we burn tokens?
+burn_count : bv[8] = out console.     # Cumulative burn counter
+
+# ============================================================
+# TRADING LOGIC FUNCTIONS
+# ============================================================
+
+# Buy signal: price below 80 (low price zone) AND bullish trend AND good volume (>=64)
+# Sell signal: price above 176 (high price zone) OR bearish trend
+
+# Buy conditions
+buy_cond(p, v, t, h) := p < {80}:bv[8] && v >= {64}:bv[8] && t = 1 && h = 0.
+
+# Sell conditions  
+sell_cond(p, t, h) := (p > {176}:bv[8] || t = 0) && h = 1.
+
+# ============================================================
+# MAIN SPECIFICATION
+# ============================================================
+
+# Buy signal detection
+(buy_cond(price[t], volume[t], trend[t], holding[t-1]) -> is_buy[t] = 1) &&
+(! buy_cond(price[t], volume[t], trend[t], holding[t-1]) -> is_buy[t] = 0) &&
+
+# Action detection (buy or sell occurred)
+(buy_cond(price[t], volume[t], trend[t], holding[t-1]) -> action[t] = 1) &&
+(sell_cond(price[t], trend[t], holding[t-1]) -> action[t] = 1) &&
+(! buy_cond(price[t], volume[t], trend[t], holding[t-1]) && ! sell_cond(price[t], trend[t], holding[t-1]) -> action[t] = 0) &&
+
+# Position state machine
+# Enter position on buy, exit on sell, maintain otherwise
+# Note: (action[t]' | is_buy[t]) means "NOT selling" because:
+#   - action'=1 means no action (maintain)
+#   - is_buy=1 means buy action (but buy_cond requires h=0, so this can't happen while holding)
+#   - action=1 & is_buy=0 means SELL, which makes the expression 0 (exit)
+holding[t] = (holding[t-1]' & is_buy[t] & action[t]) | (holding[t-1] & (action[t]' | is_buy[t])) &&
+
+# Store buy price when entering position
+buy_price[t] = (is_buy[t] & action[t] ? price[t] : buy_price[t-1]) &&
+
+# Check if exit is profitable (sell price > buy price)
+(holding[t-1] & action[t] & is_buy[t]' & price[t] > buy_price[t-1] -> is_profitable[t] = 1) &&
+(!(holding[t-1] & action[t] & is_buy[t]' & price[t] > buy_price[t-1]) -> is_profitable[t] = 0) &&
+
+# Burn tokens on profitable exits (deflationary mechanism)
+should_burn[t] = is_profitable[t] &&
+
+# Accumulate burn count (monotonically increasing)
+burn_count[t] = burn_count[t-1] + (should_burn[t] ? {1}:bv[8] : {0}:bv[8]).
+

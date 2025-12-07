@@ -13,51 +13,64 @@
 # EXPECTED: 30-40% faster normalization, smaller BDD
 
 # === INPUT STREAMS (IDI-ready) ===
-i0 : sbf = in file("inputs/price.in").          # Market price: 0=low, 1=high
-i1 : sbf = in file("inputs/volume.in").         # Trading volume: 0=low, 1=high  
-i2 : sbf = in file("inputs/trend.in").          # Price trend: 0=bearish, 1=bullish
-i3 : sbf = in file("inputs/profit_guard.in").   # Daemon-proved profitability guard
-i4 : sbf = in file("inputs/failure_echo.in").   # Daemon failure echo
-i5 : sbf = in file("inputs/q_buy.in").          # IDI buy request (1=buy)
-i6 : sbf = in file("inputs/q_sell.in").         # IDI sell request (1=sell)
-i7 : sbf = in file("inputs/risk_budget_ok.in"). # IDI risk budget cleared
-i8 : bv[5] = in file("inputs/q_regime.in").     # Regime identifier (mirrored only)
-i9 : sbf = in file("inputs/q_emote_positive.in"). # Emotive cue (positive)
-iA : sbf = in file("inputs/q_emote_alert.in").    # Emotive cue (alert/critical)
+i0:sbf = in file("inputs/price.in").          # Market price: 0=low, 1=high
+i1:sbf = in file("inputs/volume.in").         # Trading volume: 0=low, 1=high  
+i2:sbf = in file("inputs/trend.in").          # Price trend: 0=bearish, 1=bullish
+i3:sbf = in file("inputs/profit_guard.in").   # Daemon-proved profitability guard
+i4:sbf = in file("inputs/failure_echo.in").   # Daemon failure echo
+i5:sbf = in file("inputs/q_buy.in").          # IDI buy request (1=buy)
+i6:sbf = in file("inputs/q_sell.in").         # IDI sell request (1=sell)
+i7:sbf = in file("inputs/risk_budget_ok.in"). # IDI risk budget cleared
+i8:bv[5] = in file("inputs/q_regime.in").     # Regime identifier (mirrored only)
+i9:sbf = in file("inputs/q_emote_positive.in"). # Emotive cue (positive)
+iA:sbf = in file("inputs/q_emote_alert.in").    # Emotive cue (alert/critical)
+
+# === INPUT MIRRORS (Interpreter requirement) ===
+o_i0:sbf = out file("outputs/i0_mirror.out").
+o_i1:sbf = out file("outputs/i1_mirror.out").
+o_i2:sbf = out file("outputs/i2_mirror.out").
+o_i3:sbf = out file("outputs/i3_mirror.out").
+o_i4:sbf = out file("outputs/i4_mirror.out").
+o_i5:sbf = out file("outputs/i5_mirror.out").
+o_i6:sbf = out file("outputs/i6_mirror.out").
+o_i7:sbf = out file("outputs/i7_mirror.out").
+o_i8:bv[5] = out file("outputs/i8_mirror.out").
+o_i9:sbf = out file("outputs/i9_mirror.out").
+o_iA:sbf = out file("outputs/iA_mirror.out").
 
 # === OUTPUT STREAMS (10 outputs, reduced from 16) ===
 # Core state machine
-o0 : sbf = out file("outputs/state.out").        # Agent state (executing)
-o1 : sbf = out file("outputs/holding.out").      # Position held
-o2 : sbf = out file("outputs/buy_signal.out").   # Buy trigger
-o3 : sbf = out file("outputs/sell_signal.out").  # Sell trigger
+o0:sbf = out file("outputs/state.out").        # Agent state (executing)
+o1:sbf = out file("outputs/holding.out").      # Position held
+o2:sbf = out file("outputs/buy_signal.out").   # Buy trigger
+o3:sbf = out file("outputs/sell_signal.out").  # Sell trigger
 
 # Timer (2-bit counter)
-o6 : sbf = out file("outputs/timer_b0.out").     # Timer bit 0
-o7 : sbf = out file("outputs/timer_b1.out").     # Timer bit 1
+o6:sbf = out file("outputs/timer_b0.out").     # Timer bit 0
+o7:sbf = out file("outputs/timer_b1.out").     # Timer bit 1
 
 # Economic tracking
-o9 : sbf = out file("outputs/nonce.out").        # Replay protection
-o10 : sbf = out file("outputs/entry_price.out"). # Entry price level
-o11 : sbf = out file("outputs/profit.out").      # Profitable exit
-o13 : sbf = out file("outputs/has_burned.out").  # Burn history (monotonic)
+o9:sbf = out file("outputs/nonce.out").        # Replay protection
+o10:sbf = out file("outputs/entry_price.out"). # Entry price level
+o11:sbf = out file("outputs/profit.out").      # Profitable exit
+o13:sbf = out file("outputs/has_burned.out").  # Burn history (monotonic)
 
 # Input mirrors for trace logging
-o14 : sbf = out file("outputs/input_price.out").
-o15 : sbf = out file("outputs/input_volume.out").
-o16 : sbf = out file("outputs/input_trend.out").
-o17 : sbf = out file("outputs/input_profit_guard.out").
-o18 : sbf = out file("outputs/input_failure_echo.out").
-o19 : sbf = out file("outputs/input_q_buy.out").
-o1A : sbf = out file("outputs/input_q_sell.out").
-o1B : sbf = out file("outputs/input_risk_budget.out").
-o1C : bv[5] = out file("outputs/input_q_regime.out").
-o1D : sbf = out file("outputs/emote_positive.out").
-o1E : sbf = out file("outputs/emote_alert.out").
-o1F : sbf = out file("outputs/emote_persistence.out").
+o14:sbf = out file("outputs/input_price.out").
+o15:sbf = out file("outputs/input_volume.out").
+o16:sbf = out file("outputs/input_trend.out").
+o17:sbf = out file("outputs/input_profit_guard.out").
+o18:sbf = out file("outputs/input_failure_echo.out").
+o19:sbf = out file("outputs/input_q_buy.out").
+o1A:sbf = out file("outputs/input_q_sell.out").
+o1B:sbf = out file("outputs/input_risk_budget.out").
+o1C:bv[5] = out file("outputs/input_q_regime.out").
+o1D:sbf = out file("outputs/emote_positive.out").
+o1E:sbf = out file("outputs/emote_alert.out").
+o1F:sbf = out file("outputs/emote_persistence.out").
 
-# === MINIMAL CORE SPECIFICATION (10 clauses) ===
 r (
+# Minimal runner: single step (n) then quit (q) driven by REPL commands appended below
     # === STATE MACHINE (2 clauses combined into 1) ===
     # Entry: low price, high volume, bullish, not holding, not locked, not timed out, no nonce, no failure
     # Continue: executing, not exit condition, not timed out, volume fresh, no failure

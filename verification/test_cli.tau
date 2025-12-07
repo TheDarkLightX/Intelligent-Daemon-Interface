@@ -1,0 +1,3 @@
+i1 : sbf = in console.
+o1 : sbf = out console.
+r i1[t] = o1[t].

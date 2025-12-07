@@ -1,0 +1,4 @@
+# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/idi_iann/ensemble.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.8, 0.995, 1.0, 2.0, '-inf', 'epsilon_greedy', 'max_uncertainty', 'mean', 'mean_uncertainty', 'median', 'n_states', 'optimistic', 'pessimistic', 'ucb']

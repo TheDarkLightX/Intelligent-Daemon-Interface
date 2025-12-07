@@ -1,0 +1,48 @@
+# ASCII Communicator Agent
+# Outputs 3-bit codes that map to ASCII characters
+# 
+# Actions encoded in 3 outputs (o1,o2,o3):
+#   000 = IDLE    (.)
+#   001 = WAIT    (-)
+#   010 = BUY     (B)
+#   011 = SELL    (S)
+#   100 = HOLD    (H)
+#   101 = BURN    (!)
+#   110 = WIN     (+)
+#   111 = LOSS    (X)
+#
+# Inputs:
+#   i1 = price_up
+#   i2 = price_down
+#
+# State:
+#   o4 = position (holding)
+
+sbf i1 = console
+sbf i2 = console
+sbf o1 = console
+sbf o2 = console
+sbf o3 = console
+sbf o4 = console
+
+# Encode actions: buy=010, sell=011, hold=100, idle=000
+# o3 = LSB, o2 = middle, o1 = MSB
+# Buy: price up, not holding -> 010
+# Sell: price down, holding -> 011  
+# Hold: holding, no sell -> 100
+# Idle: not holding, no buy -> 000
+
+r o4[t] = (i1[t] & o4[t-1]') | (o4[t-1] & (i2[t] & o4[t-1])') && o1[t] = o4[t-1] & (i2[t] & o4[t-1])' && o2[t] = i1[t] & o4[t-1]' && o3[t] = (i1[t] & o4[t-1]') | (i2[t] & o4[t-1])
+
+0
+0
+1
+0
+0
+0
+0
+1
+1
+0
+q
+

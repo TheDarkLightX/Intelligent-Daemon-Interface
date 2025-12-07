@@ -1,0 +1,16 @@
+# Tau Language Experiment 13: BitVector Comparator
+# Compare two 8-bit inputs, output result as sbf
+# Tests: BitVector comparison, mixed types
+
+# Define streams
+i1 : bv[8] = in console.
+i2 : bv[8] = in console.
+o_eq : sbf = out console.    # i1 == i2
+o_lt : sbf = out console.    # i1 < i2
+o_gt : sbf = out console.    # i1 > i2
+
+# Spec: comparisons
+(i1[t] = i2[t] -> o_eq[t] = 1) && (i1[t] != i2[t] -> o_eq[t] = 0) &&
+(i1[t] < i2[t] -> o_lt[t] = 1) && (i1[t] !< i2[t] -> o_lt[t] = 0) &&
+(i1[t] > i2[t] -> o_gt[t] = 1) && (i1[t] !> i2[t] -> o_gt[t] = 0).
+

@@ -1,0 +1,12 @@
+# Tau Language Experiment 06: XOR Gate
+# Output is XOR of two inputs
+# Tests: XOR operator (^)
+
+# Define streams
+i1 : sbf = in console.
+i2 : sbf = in console.
+o1 : sbf = out console.
+
+# Spec: output is XOR of both inputs
+o1[t] = i1[t] ^ i2[t].
+

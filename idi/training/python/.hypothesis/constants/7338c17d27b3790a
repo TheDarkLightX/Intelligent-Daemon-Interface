@@ -1,0 +1,4 @@
+# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/idi_iann/registry.py
+# hypothesis_version: 6.148.7
+
+[100, '%Y%m%d_%H%M%S_%f', '1.0', 'ExperimentRecord', 'HEAD', 'artifacts', 'bundle_id', 'completed', 'config', 'config_hash', 'data_version', 'experiment_id', 'git', 'git_commit', 'hashes', 'index.json', 'metrics', 'policies.json', 'policy_path', 'rev-parse', 'running', 'status', 'tags', 'timestamp', 'trace_path']

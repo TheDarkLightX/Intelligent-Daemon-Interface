@@ -1,0 +1,9 @@
+# Test 01: Echo - File-based test
+# Input: alternating 0s and 1s
+# Expected output: same as input
+
+i1 : sbf = in file("inputs/sbf_alternating.in").
+o1 : sbf = out file("outputs/test_01_output.out").
+
+o1[t] = i1[t].
+

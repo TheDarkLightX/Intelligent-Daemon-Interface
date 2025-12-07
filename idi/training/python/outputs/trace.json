@@ -1,0 +1,514 @@
+[
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 0
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 4
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 6
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 0
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 6
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 4
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 6
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 3
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 0
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 4
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 6
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 0
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 0
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 0
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 0,
+    "q_emote_alert": 1,
+    "q_regime": 6
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 5
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 7
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 1
+  },
+  {
+    "q_buy": 1,
+    "q_sell": 0,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 4
+  },
+  {
+    "q_buy": 0,
+    "q_sell": 1,
+    "risk_budget_ok": 1,
+    "q_emote_positive": 1,
+    "q_emote_alert": 0,
+    "q_regime": 2
+  }
+]

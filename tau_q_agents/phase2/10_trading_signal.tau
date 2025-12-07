@@ -1,0 +1,30 @@
+# Simple trading signal generator
+# i1 = price_up (1 if price increased)
+# i2 = price_down (1 if price decreased)
+# o1 = position state (0=no position, 1=holding)
+# o2 = buy signal (enter on price_up when not holding)
+# o3 = sell signal (exit on price_down when holding)
+
+sbf i1 = console
+sbf i2 = console
+sbf o1 = console
+sbf o2 = console
+sbf o3 = console
+
+# Buy when price up and not holding
+# Sell when price down and holding
+# Position: set on buy, reset on sell
+r o2[t] = i1[t] & o1[t-1]' && o3[t] = i2[t] & o1[t-1] && o1[t] = o2[t] | (o1[t-1] & o3[t]')
+
+0
+0
+1
+0
+0
+0
+0
+1
+1
+0
+q
+

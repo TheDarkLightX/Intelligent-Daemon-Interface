@@ -40,13 +40,14 @@
 ```
 - **Regime selector:** multi-dimensional quantizer (volatility, scarcity, EETF, daemon health) → `q_regime : bv[5]`.
 - **Trading table:** per-regime action LUT returning 2-bit action + risk budgets.
-- **Emotion table:** maps regime + “mood” counters to emoji/text macros for the art output pipeline (feeds future demos).
+- **Emotion & communication tables:** learned Q-tables decide when to emit positive/alert/persistent cues, decoupling expressive outputs from hardcoded heuristics; reward shaping can bias alerts toward risky regimes and keep tone appropriate.
+- **State abstraction:** optional tile coding / coarse coding compresses high-dimensional regimes into compact indices so LUTs stay tractable; start coarse, refine when visitation + TD confidence allow; normalize inputs and prefer low-dimensional tilings per feature group.
 - **Mirrors/guards:** `idi/specs/libraries/idi_core/idi_core.tau` standardizes stream names, mirror outputs, and de-bounce timers so each spec can read the same schema with minimal cyclomatic complexity.
 
 ## 5. Training libraries & devkit
 - Python package under `idi/training/python/idi_iann/` exposes:
-  - `StateQuantizer`, `MarketEnvelope`, and `EmotionPalette` (SRP).
-  - `QTrainer` implementing strategy & observer patterns (pluggable reward models, benchmark hooks).
+  - `StateQuantizer`, `TileCoder`, `MarketEnvelope`, and `EmotionPalette` (SRP).
+  - `QTrainer` implementing strategy & observer patterns (pluggable reward models, benchmark hooks) plus a dedicated communication Q-table for expressive outputs.
   - CLI entrypoint for generating `.in` traces + manifest (checksums, version, proof policy).
 - Rust crate under `idi/training/rust/idi_iann/` mirrors the same abstractions (traits for env, policy, serializer) and ships unit/property tests so both stacks stay aligned.
 - Devkit (`idi/devkit/`):
@@ -88,12 +89,208 @@
 5. **Monitoring & demos**  
    - AoT checklists + truth tables per demo; run scripts collect outputs into GitHub Pages–ready folders.
 
-## 9. Directory map (worktree)
+## 9. Component Inventory & Data Flows
+
+### 9.1 Component Map
+
+#### Python Training Stack (`idi/training/python/`)
+- **`idi_iann/`** - Core RL library:
+  - `trainer.py` - Q-learning trainer with communication Q-table
+  - `env.py` - Synthetic market environment
+  - `crypto_env.py` - Realistic crypto market simulator with regimes
+  - `policy.py` - Lookup policy with Q-table storage
+  - `abstraction.py` - Tile coding for state abstraction
+  - `communication.py` - Communication policy for expressive outputs
+  - `rewards.py` - Reward shaping and mixing
+  - `strategies.py` - Exploration strategies (epsilon-greedy, etc.)
+  - `emote.py` - Emotion engine for mood-based outputs
+  - `config.py` - Configuration dataclasses
+- **`run_idi_trainer.py`** - CLI for training runs
+- **`backtest.py`** - CLI for backtesting policies
+- **`tests/`** - Unit and integration tests
+
+#### Rust Training Stack (`idi/training/rust/idi_iann/`)
+- **`src/`** - Core RL library (mirrors Python):
+  - `trainer.rs` - Q-learning trainer
+  - `env.rs` - Synthetic market environment
+  - `crypto_sim.rs` - Crypto market simulator
+  - `policy.rs` - Lookup policy
+  - `traits.rs` - Environment, Policy, Observation traits
+  - `action.rs` - Action enum (Hold/Buy/Sell)
+  - `regime.rs` - Regime enum (Bull/Bear/Chop/Panic)
+  - `trace.rs` - Trace tick serialization
+  - `config.rs` - Configuration structs
+  - `error.rs` - Error types
+  - `emote.rs` - Emotion engine
+  - `bin/train.rs` - CLI binary
+- **`tests/`** - Unit and integration tests
+
+#### Devkit (`idi/devkit/`)
+- **`builder.py`** - Main CLI for building artifacts
+- **`build_layers.py`** - Batch training for multiple configs
+- **`manifest.py`** - Manifest generation and validation
+- **`configs/`** - Sample training configurations
+- **`tests/`** - Devkit tests
+
+#### zkVM Integration (`idi/zk/`)
+- **`proof_manager.py`** - Proof generation and verification manager
+- **`run_risc0_proofs.py`** - Risc0 proof runner
+- **`run_stub_proofs.py`** - Stub proof generator for testing
+- **`risc0/`** - Risc0 zkVM integration:
+  - `host/src/main.rs` - Host program for proof generation
+  - `methods/idi-manifest/src/main.rs` - Guest program (zkVM code)
+
+#### Tau Specs (`idi/specs/`)
+- **`libraries/idi_core/`** - Core library with standard stream contracts
+- **`V38_Minimal_Core/`** - Minimal IDI-ready agent spec
+- **`Q_Layered_Strategy/`** - Layered strategy agent spec
+
+#### Demos (`idi/demos/`)
+- **`idi_demo/`** - End-to-end demo with verification
+
+### 9.2 Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TRAINING PHASE (Offline)                      │
+└─────────────────────────────────────────────────────────────────┘
+
+[Config JSON] ──┐
+                ├──> [Python/Rust Trainer] ──> [Q-Tables] ──> [Traces]
+[Market Data] ──┘                                    │
+                                                      │
+                                                      ▼
+                                            [Manifest + Streams]
+                                                      │
+                                                      ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PROOF GENERATION PHASE                        │
+└─────────────────────────────────────────────────────────────────┘
+
+[Manifest + Streams] ──> [zkVM Guest] ──> [Proof + Receipt]
+                              │
+                              ▼
+                    [Host Verification] ──> [Verified Receipt]
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    TAU EXECUTION PHASE                          │
+└─────────────────────────────────────────────────────────────────┘
+
+[Verified Receipt] ──> [IDI Bus] ──> [Tau Spec Inputs]
+                              │
+                              ▼
+                    [Tau Kernel Execution]
+                              │
+                              ▼
+                    [Tau Spec Outputs] ──> [Mirror Streams]
+```
+
+### 9.3 Detailed Data Flows
+
+#### Training → Artifact Flow
+1. **Config Input**: JSON config (`idi/devkit/configs/*.json`) defines:
+   - Training hyperparameters (episodes, learning rate, discount)
+   - Environment parameters (market regimes, volatility, fees)
+   - Reward weights (PnL, scarcity, ethics, communication)
+   - Tile coding parameters (if used)
+   - Communication policy parameters
+
+2. **Training Execution**:
+   - Python: `run_idi_trainer.py` or `idi.devkit.builder` loads config, creates trainer/env, runs episodes
+   - Rust: `cargo run --bin train train` loads config, runs training
+   - Both produce: Q-tables (in-memory), episode statistics, trace batches
+
+3. **Trace Export**:
+   - Trainer exports `TraceBatch` containing per-tick observations
+   - Each tick includes: state, action, reward, next_state, communication actions
+   - Traces serialized to JSON or binary format
+
+4. **Stream Generation**:
+   - Devkit converts traces to Tau-ready `.in` files:
+     - `q_buy.in`, `q_sell.in` - Trading actions
+     - `q_regime.in` - Regime identifier (bv[5])
+     - `q_emote_positive.in`, `q_emote_alert.in` - Communication cues
+     - `risk_budget_ok.in` - Risk budget flag
+   - Streams written to `streams/` directory
+
+5. **Manifest Creation**:
+   - `manifest.py` computes SHA-256 hashes for all streams
+   - Creates `artifact_manifest.json` with:
+     - Stream hashes
+     - Config hash
+     - Schema version
+     - Training metadata (seed, episodes, etc.)
+
+#### Proof Generation Flow
+1. **Input Preparation**:
+   - `proof_manager.py` gathers manifest + streams directory
+   - Validates manifest structure and stream existence
+
+2. **zkVM Execution** (Risc0):
+   - Host (`risc0/host/src/main.rs`):
+     - Reads manifest and streams
+     - Builds `ExecutorEnv` with file blobs
+     - Calls prover with guest ELF
+   - Guest (`risc0/methods/idi-manifest/src/main.rs`):
+     - Reads file blobs from host
+     - Computes deterministic SHA-256 hash
+     - Commits hash to journal
+
+3. **Proof Verification**:
+   - Host verifies receipt against method ID
+   - Compares guest digest with host-computed hash
+   - Writes `proof.bin` and `receipt.json`
+
+4. **Output**:
+   - Proof bundle: `proof.bin`, `receipt.json`, `manifest.json`
+   - Stored in artifact directory (e.g., `artifacts/*/proof_risc0/`)
+
+#### Tau Execution Flow
+1. **Input Installation**:
+   - Devkit copies streams to Tau spec `inputs/` directory
+   - Proof receipt optionally stored alongside
+
+2. **Tau Spec Execution**:
+   - Tau binary reads spec file (e.g., `agent4_testnet_v38.tau`)
+   - Reads inputs from `inputs/*.in`
+   - Executes FSM logic with Q-table actions as inputs
+   - Writes outputs to `outputs/*.out`
+
+3. **Mirror Streams**:
+   - Spec mirrors all inputs to outputs (e.g., `o19` = `i5` for `q_buy`)
+   - Enables traceability and satisfies Tau's symmetric I/O requirement
+
+4. **Verification**:
+   - Demo scripts validate outputs against expected behavior
+   - AoT verification checks logical consistency
+
+### 9.4 Cross-Language Consistency Points
+
+1. **Domain Types**:
+   - `Action`: Python enum/string → Rust `Action` enum → Tau `sbf` streams
+   - `Regime`: Python string → Rust `Regime` enum → Tau `bv[5]` stream
+   - `StateKey`: Python tuple → Rust tuple → Serialized in traces
+
+2. **Config Schema**:
+   - Shared JSON schema (`idi/training/config_schema.json`)
+   - Python uses dataclasses, Rust uses `serde` structs
+   - Both validate against schema
+
+3. **Trace Format**:
+   - JSON serialization for cross-language compatibility
+   - `TraceTick` structure matches between Python and Rust
+
+4. **Manifest Format**:
+   - JSON manifest with SHA-256 hashes
+   - Consistent structure for Python devkit and Rust zkVM host
+
+### 9.5 Directory map (worktree)
 | Path | Purpose |
 |------|---------|
 | `idi/training/python/idi_iann/` | Python training toolkit + CLI + tests. |
 | `idi/training/rust/idi_iann/` | Rust mirror crate for deterministic cross-checks + Clippy gate. |
 | `idi/specs/libraries/idi_core/` | Stream contract + helper predicates for specs. |
+| `idi/specs/Q_Layered_Strategy/` | Layered agent port with file-based IO + weight echoes fed by the devkit. |
 | `idi/devkit/` | Builder CLI, manifest utilities, sample configs, and dev-focused tests. |
 | `idi/zk/` | Proof manager + integration stubs for zkVMs. |
 | `idi/docs/ARCHITECTURE.md` | This blueprint (kept in sync as architecture evolves). |

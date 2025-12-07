@@ -1,0 +1,8 @@
+set charvar off.
+
+o0 : sbf = in file("inputs/demo.in").
+o1 : sbf = out file("outputs/demo.out").
+
+r (
+  o1[t] = o0[t]
+).

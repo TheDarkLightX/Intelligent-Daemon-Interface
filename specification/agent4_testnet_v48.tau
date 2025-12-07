@@ -1,0 +1,217 @@
+# Deflationary Agent V48 - Adaptive Position Sizing
+# Kelly Criterion-inspired sizing based on win rate and edge
+# Copyright DarkLightX/Dana Edwards
+#
+# POSITION SIZING CONCEPT:
+# Instead of fixed position sizes, adjust based on:
+# 1. Historical win rate
+# 2. Signal confidence
+# 3. Current volatility
+# 4. Consecutive win/loss streaks
+#
+# KELLY CRITERION (simplified):
+# Optimal fraction = (bp - q) / b
+# where b = odds, p = win probability, q = lose probability
+#
+# For trading: size = win_rate - (1 - win_rate) / reward_ratio
+# If win_rate = 60% and reward/risk = 2:1
+# size = 0.6 - 0.4/2 = 0.4 = 40% of capital
+#
+# We use half-Kelly for safety: size / 2
+
+# === BITVECTOR INPUTS ===
+bv[16] i0 = ifile("inputs/price.in").
+bv[16] i5 = ifile("inputs/stop_loss_pct.in").      # Stop-loss (for risk calculation)
+bv[16] i6 = ifile("inputs/take_profit_pct.in").    # Take-profit (for reward calculation)
+bv[16] i7 = ifile("inputs/base_position_size.in"). # Base position size (100 = 100%)
+
+# === BOOLEAN INPUTS ===
+sbf i1 = ifile("inputs/volume.in").
+sbf i2 = ifile("inputs/trend.in").
+sbf i3 = ifile("inputs/profit_guard.in").
+sbf i4 = ifile("inputs/failure_echo.in").
+
+# === HELPER PREDICATES ===
+timed_out(b1, b0) := b1 & b0.
+
+# === OUTPUT STREAMS ===
+sbf o0 = ofile("outputs/state.out").
+sbf o1 = ofile("outputs/holding.out").
+sbf o2 = ofile("outputs/buy_signal.out").
+sbf o3 = ofile("outputs/sell_signal.out").
+sbf o6 = ofile("outputs/timer_b0.out").
+sbf o7 = ofile("outputs/timer_b1.out").
+sbf o9 = ofile("outputs/nonce.out").
+sbf o11 = ofile("outputs/profit.out").
+sbf o13 = ofile("outputs/has_burned.out").
+
+# Bitvector tracking
+bv[16] o14 = ofile("outputs/entry_price.out").
+bv[16] o15 = ofile("outputs/prev_price.out").
+
+# Performance tracking
+bv[8] o16 = ofile("outputs/total_wins.out").       # Win counter
+bv[8] o17 = ofile("outputs/total_losses.out").     # Loss counter
+bv[8] o18 = ofile("outputs/consecutive_wins.out"). # Current win streak
+bv[8] o19 = ofile("outputs/consecutive_losses.out"). # Current loss streak
+
+# Adaptive sizing outputs
+bv[16] o20 = ofile("outputs/win_rate_pct.out").    # Win rate * 100
+bv[16] o21 = ofile("outputs/kelly_size.out").      # Kelly-optimal size
+bv[16] o22 = ofile("outputs/position_size.out").   # Actual position size
+bv[2] o23 = ofile("outputs/size_tier.out").        # 0=min, 1=small, 2=medium, 3=max
+
+# EMA for trend (reused from V43)
+bv[16] o24 = ofile("outputs/ema_fast.out").
+bv[16] o25 = ofile("outputs/ema_slow.out").
+sbf o26 = ofile("outputs/uptrend.out").
+
+# === V48 ADAPTIVE POSITION SIZING SPECIFICATION ===
+r (
+    # === TREND DETECTION (from V43) ===
+    (o24[t] = ({51}:bv[16] * i0[t] + {205}:bv[16] * o24[t-1]) / {256}:bv[16]) &&
+    (o25[t] = ({26}:bv[16] * i0[t] + {230}:bv[16] * o25[t-1]) / {256}:bv[16]) &&
+    (o26[t] = o24[t] > o25[t]) &&
+    
+    # === PRICE TRACKING ===
+    (o15[t] = i0[t-1]) &&
+    
+    # === WIN RATE CALCULATION ===
+    # win_rate = wins / (wins + losses) * 100
+    # Avoid division by zero: if total = 0, assume 50%
+    (o20[t] = ((o16[t-1] + o17[t-1]) = {0}:bv[8]) ? {50}:bv[16] :
+              (o16[t-1] * {100}:bv[16]) / (o16[t-1] + o17[t-1])) &&
+    
+    # === KELLY CRITERION SIZE ===
+    # kelly = win_rate - (100 - win_rate) * stop_loss / take_profit
+    # Simplified: kelly = win_rate - loss_rate / reward_ratio
+    # Half-Kelly for safety: kelly / 2
+    (o21[t] = (o20[t] > {50}:bv[16]) ?
+              (o20[t] - ({100}:bv[16] - o20[t]) * i5[t] / i6[t]) / {2}:bv[16] :
+              {10}:bv[16]) &&  # Minimum 10% if not positive expectancy
+    
+    # === STREAK ADJUSTMENT ===
+    # Hot hand: increase size on win streak
+    # Cold hand: decrease size on loss streak
+    # Adjustment = base * (1 + streak_bonus - streak_penalty)
+    
+    # === POSITION SIZE TIERS ===
+    # Based on confidence, win rate, and streaks
+    # 0 = 25% of base (minimum)
+    # 1 = 50% of base (small)
+    # 2 = 100% of base (medium)
+    # 3 = 150% of base (maximum)
+    (o23[t] = 
+        # Max size: high win rate + win streak + uptrend
+        ((o20[t] > {65}:bv[16]) & (o18[t-1] >= {2}:bv[8]) & o26[t]) ? {3}:bv[2] :
+        # Medium: decent win rate + uptrend
+        ((o20[t] > {55}:bv[16]) & o26[t]) ? {2}:bv[2] :
+        # Small: marginal or loss streak
+        ((o20[t] > {45}:bv[16]) & (o19[t-1] < {3}:bv[8])) ? {1}:bv[2] :
+        # Minimum: poor performance or loss streak
+        {0}:bv[2]) &&
+    
+    # === ACTUAL POSITION SIZE ===
+    # tier 0: 25%, tier 1: 50%, tier 2: 100%, tier 3: 150%
+    (o22[t] = (o23[t] = {3}:bv[2]) ? (i7[t] * {150}:bv[16] / {100}:bv[16]) :
+              (o23[t] = {2}:bv[2]) ? i7[t] :
+              (o23[t] = {1}:bv[2]) ? (i7[t] * {50}:bv[16] / {100}:bv[16]) :
+              (i7[t] * {25}:bv[16] / {100}:bv[16])) &&
+    
+    # === STATE MACHINE (with sizing awareness) ===
+    # Entry requires minimum position size (tier >= 1)
+    (o0[t] = (o0[t-1]' & 
+              o26[t] &                  # Uptrend
+              (o23[t] >= {1}:bv[2]) &   # Position size tier >= small
+              i1[t] &
+              o1[t-1]' &
+              timed_out(o7[t-1], o6[t-1])' &
+              o9[t-1]' & i4[t]') |
+             # Continue
+             (o0[t-1] & 
+              o26[t] &                  # Still in uptrend
+              timed_out(o7[t-1], o6[t-1])' &
+              i1[t] & i4[t]')) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === PROFIT (determines win/loss) ===
+    (o11[t] = o3[t] & (i0[t] > o14[t-1]) & i3[t]) &&
+    
+    # === BURNS ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === ENTRY PRICE ===
+    (o14[t] = (o2[t] ? i0[t] : o14[t-1])) &&
+    
+    # === WIN/LOSS TRACKING ===
+    # Win: sell with profit
+    (o16[t] = (o11[t] ? o16[t-1] + {1}:bv[8] : o16[t-1])) &&
+    
+    # Loss: sell without profit
+    (o17[t] = (o3[t] & o11[t]' ? o17[t-1] + {1}:bv[8] : o17[t-1])) &&
+    
+    # === STREAK TRACKING ===
+    # Consecutive wins (reset on loss)
+    (o18[t] = (o11[t] ? o18[t-1] + {1}:bv[8] : 
+               (o3[t] & o11[t]' ? {0}:bv[8] : o18[t-1]))) &&
+    
+    # Consecutive losses (reset on win)
+    (o19[t] = (o3[t] & o11[t]' ? o19[t-1] + {1}:bv[8] :
+               (o11[t] ? {0}:bv[8] : o19[t-1])))
+)
+
+# === POSITION SIZING STRATEGY ===
+#
+# 1. KELLY CRITERION
+#    - Mathematically optimal bet sizing
+#    - Maximizes long-term growth rate
+#    - We use half-Kelly for safety margin
+#
+# 2. STREAK ADJUSTMENT
+#    - Win streak: confidence boost, increase size
+#    - Loss streak: caution mode, decrease size
+#    - Prevents "revenge trading" and "overconfidence"
+#
+# 3. TIER SYSTEM
+#    - 4 discrete tiers prevent over-optimization
+#    - Clear rules daemon can follow
+#    - Smooth transitions between levels
+#
+# SIZE TIERS:
+#   Tier 0 (25%): Poor win rate (<45%) or loss streak (3+)
+#   Tier 1 (50%): Marginal win rate (45-55%)
+#   Tier 2 (100%): Good win rate (55-65%)
+#   Tier 3 (150%): Excellent win rate (>65%) + win streak + uptrend
+
+# === DAEMON REQUIREMENTS ===
+# i5: Stop-loss percentage (e.g., 5 = 5%)
+# i6: Take-profit percentage (e.g., 10 = 10%)
+# i7: Base position size (e.g., 1000 = 10% of capital)
+#
+# Daemon should track actual P&L and may override sizing
+# if total drawdown exceeds threshold
+
+# === PERFORMANCE NOTES ===
+# - Win rate calculation: 1 division operation
+# - Kelly calculation: 2 divisions
+# - Position sizing: 3 conditional bitvector ops
+# - Total clauses: ~28
+# - Most complex spec so far
+
+# === SAFETY GUARANTEES ===
+# 1. Minimum size: Even at tier 0, position is 25% of base
+# 2. Maximum size: Capped at 150% of base (tier 3)
+# 3. Anti-tilt: Loss streaks automatically reduce size
+# 4. Performance tracking: Win/loss history preserved
+

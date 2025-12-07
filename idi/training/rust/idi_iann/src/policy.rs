@@ -2,22 +2,24 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::action::Action;
 use crate::trace::TraceTick;
+use crate::traits::Policy;
 
 pub type StateKey = (u8, u8, u8, u8, u8);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PolicyEntry {
-    pub q_values: HashMap<String, f32>,
+    pub q_values: HashMap<Action, f32>,
 }
 
 impl PolicyEntry {
-    pub fn best_action(&self) -> String {
+    pub fn best_action(&self) -> Action {
         self.q_values
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(action, _)| action.clone())
-            .unwrap_or_else(|| "hold".to_string())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(action, _)| *action)
+            .unwrap_or_default()
     }
 }
 
@@ -26,41 +28,37 @@ pub struct LookupPolicy {
     table: HashMap<StateKey, PolicyEntry>,
 }
 
-impl LookupPolicy {
-    pub fn q_value(&mut self, state: StateKey, action: &'static str) -> f32 {
+impl Policy for LookupPolicy {
+    fn q_value(&mut self, state: StateKey, action: Action) -> f32 {
         self.table
             .entry(state)
             .or_insert_with(Self::default_entry)
             .q_values
-            .get(action)
+            .get(&action)
             .copied()
             .unwrap_or(0.0)
     }
 
-    pub fn update(&mut self, state: StateKey, action: &'static str, delta: f32) {
+    fn update(&mut self, state: StateKey, action: Action, delta: f32) {
         let entry = self.table.entry(state).or_insert_with(Self::default_entry);
-        let value = entry.q_values.entry(action.to_string()).or_insert(0.0);
+        let value = entry.q_values.entry(action).or_insert(0.0);
         *value += delta;
     }
 
-    pub fn best_action(&mut self, state: StateKey) -> &'static str {
-        let action = self
-            .table
+    fn best_action(&mut self, state: StateKey) -> Action {
+        self.table
             .entry(state)
             .or_insert_with(Self::default_entry)
-            .best_action();
-        match action.as_str() {
-            "buy" => "buy",
-            "sell" => "sell",
-            _ => "hold",
-        }
+            .best_action()
     }
+}
 
+impl LookupPolicy {
     fn default_entry() -> PolicyEntry {
         let mut map = HashMap::new();
-        for action in ["hold", "buy", "sell"] {
-            map.insert(action.to_string(), 0.0);
-        }
+        map.insert(Action::Hold, 0.0);
+        map.insert(Action::Buy, 0.0);
+        map.insert(Action::Sell, 0.0);
         PolicyEntry { q_values: map }
     }
 

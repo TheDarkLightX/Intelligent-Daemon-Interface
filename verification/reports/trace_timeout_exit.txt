@@ -1,0 +1,60 @@
+================================================================================
+EXECUTION TRACE: timeout_exit
+Description: Timer reaches 3 and forces exit
+================================================================================
+
+TICK 0: IDLE(-,T0,-,E0,-) ▶ EXEC(H,T1,N,E0,-) [EXECUTING]
+  Inputs:  i0=0(L) i1=1(V) i2=1(↑) i3=1(G) i4=0(-)
+  State:   o0=1 o1=1 timer=1 nonce=1 entry_price=0 burned=0
+  Signals: buy=BUY! sell=- profit=-
+  Derived: lock=1 fresh=1 burn_event=0
+  Invariants: action_exclusivity=✓ fresh_oracle=✓ burn_profit=✓ nonce_effect=✓ monotonic_burns=✓ lock_state=✓ burn_event_profit=✓ holding_consistency=✓
+  CHECK [✓] Buy triggers nonce: o2=1 should set o9=1, got o9=1
+  CHECK [✓] Buy triggers holding: o2=1 should set o1=1, got o1=1
+
+TICK 1: EXEC(H,T1,N,E0,-) → EXEC(H,T2,N,E0,-) [EXECUTING]
+  Inputs:  i0=0(L) i1=1(V) i2=1(↑) i3=1(G) i4=0(-)
+  State:   o0=1 o1=1 timer=2 nonce=1 entry_price=0 burned=0
+  Signals: buy=- sell=- profit=-
+  Derived: lock=1 fresh=1 burn_event=0
+  Invariants: action_exclusivity=✓ fresh_oracle=✓ burn_profit=✓ nonce_effect=✓ monotonic_burns=✓ lock_state=✓ burn_event_profit=✓ holding_consistency=✓
+  CHECK [✓] Timer increments: Timer: 1 -> 2
+
+TICK 2: EXEC(H,T2,N,E0,-) → EXEC(H,T3,N,E0,-) [EXECUTING]
+  Inputs:  i0=0(L) i1=1(V) i2=1(↑) i3=1(G) i4=0(-)
+  State:   o0=1 o1=1 timer=3 nonce=1 entry_price=0 burned=0
+  Signals: buy=- sell=- profit=-
+  Derived: lock=1 fresh=1 burn_event=0
+  Invariants: action_exclusivity=✓ fresh_oracle=✓ burn_profit=✓ nonce_effect=✓ monotonic_burns=✓ lock_state=✓ burn_event_profit=✓ holding_consistency=✓
+  CHECK [✓] Timer increments: Timer: 2 -> 3
+
+TICK 3: EXEC(H,T3,N,E0,-) ◀⏱ IDLE(-,T0,-,E0,-) [IDLE]
+  Inputs:  i0=0(L) i1=1(V) i2=1(↑) i3=1(G) i4=0(-)
+  State:   o0=0 o1=0 timer=0 nonce=0 entry_price=0 burned=0
+  Signals: buy=- sell=SELL! profit=-
+  Derived: lock=0 fresh=1 burn_event=0
+  Invariants: action_exclusivity=✓ fresh_oracle=✓ burn_profit=✓ nonce_effect=✓ monotonic_burns=✓ lock_state=✓ burn_event_profit=✓ holding_consistency=✓
+  CHECK [✓] Sell clears holding: o3=1 should clear o1=0, got o1=0
+  CHECK [✓] Timeout forces exit: Timer=3 should force exit, o0=0
+
+TICK 4: IDLE(-,T0,-,E0,-) ▶ EXEC(H,T1,N,E0,-) [EXECUTING]
+  Inputs:  i0=0(L) i1=1(V) i2=1(↑) i3=1(G) i4=0(-)
+  State:   o0=1 o1=1 timer=1 nonce=1 entry_price=0 burned=0
+  Signals: buy=BUY! sell=- profit=-
+  Derived: lock=1 fresh=1 burn_event=0
+  Invariants: action_exclusivity=✓ fresh_oracle=✓ burn_profit=✓ nonce_effect=✓ monotonic_burns=✓ lock_state=✓ burn_event_profit=✓ holding_consistency=✓
+  CHECK [✓] Buy triggers nonce: o2=1 should set o9=1, got o9=1
+  CHECK [✓] Buy triggers holding: o2=1 should set o1=1, got o1=1
+
+================================================================================
+TRACE SUMMARY
+================================================================================
+Total ticks: 5
+State transitions: 3
+Trades executed: 2
+Profitable trades: 0
+Invariant checks: 40
+Failed invariants: 0
+
+✓ All invariants passed
+================================================================================

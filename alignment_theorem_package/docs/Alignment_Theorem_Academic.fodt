@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+                 xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+                 xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+                 xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"
+                 xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+                 xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+                 xmlns:xlink="http://www.w3.org/1999/xlink"
+                 xmlns:dc="http://purl.org/dc/elements/1.1/"
+                 xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"
+                 xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0"
+                 xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
+                 office:version="1.2">
+  <office:meta>
+    <dc:title>Ethics-Constrained Economic Mechanisms on Tau Net</dc:title>
+    <dc:creator>Tau Alignment Research Group</dc:creator>
+    <meta:creation-date>2025-12-04T00:00:00</meta:creation-date>
+  </office:meta>
+  <office:body>
+    <office:text>
+      <text:h text:outline-level="1">Ethics-Constrained Economic Mechanisms on Tau Net</text:h>
+      <text:p>The Alignment Theorem formalizes how Tau Net’s community-defined ethics, aggregated through Tau Language knowledge representation, generate an Ethical-Eco Transaction Factor (EETF) that governs economic incentives. Scarcity-driven pressure, coupled with infinite token divisibility, forces any rational agent to adopt ethical behavior.</text:p>
+
+      <text:h text:outline-level="2">Ethics Aggregation Pipeline</text:h>
+      <text:list>
+        <text:list-item><text:p>Users publish ethical worldviews as logical theories.</text:p></text:list-item>
+        <text:list-item><text:p>Tau’s preference aggregation $\mathcal{A}$ fuses these models into the bounded EETF signal.</text:p></text:list-item>
+        <text:list-item><text:p>Alignment-aware agents consume the signal and expose observable invariants (fresh oracles, nonce discipline, burn-profit coupling).</text:p></text:list-item>
+      </text:list>
+
+      <text:h text:outline-level="2">Mathematical Model</text:h>
+      <text:p>The normalized supply $S(t+1)=S(t)\cdot (1-r(t))$ captures geometric deflation, while infinite divisibility guarantees usable balances. Scarcity $M(t)=S(0)/S(t)$ diverges, producing pressure $P(t)=M(t)\cdot E(t)$ whenever network EETF $E(t)&gt;0$. Ethical agents ($e\ge 1$) obtain positive rewards $R_e = B\cdot M(t)\cdot \text{tier}(e)/1000$, whereas unethical agents face penalties $-X\cdot (1-e)\cdot P(t)/100$.</text:p>
+
+      <text:h text:outline-level="2">Lean Proof Obligations</text:h>
+      <text:list>
+        <text:list-item><text:p>expectedValue_baseline_pos: proves the positivity of ethical EV.</text:p></text:list-item>
+        <text:list-item><text:p>expectedValue_unethical_neg: shows any $e&lt;1$ choice is strictly loss-making.</text:p></text:list-item>
+        <text:list-item><text:p>alignment_theorem: under rational choice, agents eventually adopt $e\ge 1$.</text:p></text:list-item>
+      </text:list>
+
+      <text:h text:outline-level="2">Executable Specifications</text:h>
+      <text:p>The Tau repository includes agents v35–v54 plus shared libraries (ethical alignment, infinite deflation, VCC modules). Each spec is trace-verified through native Tau runs and an exact Python simulator covering all reachable FSM states.</text:p>
+
+      <text:h text:outline-level="2">Virtuous Cycle Compounder (VCC)</text:h>
+      <text:p>The VCC concept visualizer (<text:a xlink:href="https://github.com/TheDarkLightX/VCC-concept-visualizer">GitHub repo</text:a>) demonstrates how Dynamic Base Reward, Hyper-Compounding Rewards, and Aggressive Ethical Burns respond to EETF changes. AEB is explicitly a <text:span>reward</text:span> mechanism: when collective ethics stay high, the protocol thanks the participants by permanently removing more supply, increasing scarcity for aligned holders. This narrative makes the Alignment Theorem intuitive for non-experts.</text:p>
+      <text:h text:outline-level="2">Verification and visualization stack</text:h>
+      <text:p>Three layers keep the theory honest: (1) a Lean 4 development discharges the Alignment Theorem without unproven axioms, (2) Tau agents execute in both the native interpreter and the exact Python simulator for trace parity, and (3) the Alignment Theorem dashboard plus VCC explorer show how $E(t)$ moves DBR/HCR/AEB in real time.</text:p>
+      <text:h text:outline-level="2">Tau testnet substrate and extralogical primitives</text:h>
+      <text:p>The tau-testnet reference implementation treats Tau specifications as first-class chain data. Every revision transaction is replayed pointwise so only the targeted formulas change, and the runtime exposes extralogical hooks (BLS verification, commit-reveal, networking, storage) for DBR/HCR/AEB contracts.</text:p>
+
+      <text:h text:outline-level="2">Game-theoretic simulations</text:h>
+      <text:p>Beyond the closed-form proof we run best-response and replicator dynamics simulations sweeping scarcity paths, stochastic $E(t)$ signals, and bounded adversarial gains. Results confirm the Lean-derived threshold: once scarcity crosses the bound, the ethical strategy dominates even if agents inject temporary misaligned rewards.</text:p>
+
+      <text:h text:outline-level="2">Future Work</text:h>
+      <text:list>
+        <text:list-item><text:p>Integrate richer knowledge-representation so each user’s ethical model is queryable on-chain.</text:p></text:list-item>
+        <text:list-item><text:p>Generalize the Lean proof to heterogeneous agent populations and weighted ethics.</text:p></text:list-item>
+        <text:list-item><text:p>Deploy TikZ-based figures and interactive HTML visualizations directly inside the paper narrative to aid comprehension.</text:p></text:list-item>
+      </text:list>
+    </office:text>
+  </office:body>
+</office:document>
+

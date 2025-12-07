@@ -1,0 +1,203 @@
+# True RNG via Commit-Reveal Multi-Party Protocol
+# Achieves cryptographic fairness through distributed entropy
+# Copyright DarkLightX/Dana Edwards
+#
+# WHY COMMIT-REVEAL?
+# - Single-party RNG is biased (party can choose favorable outcomes)
+# - PRNG/LFSR is deterministic (predictable if seed known)
+# - Commit-reveal ensures NO party can predict or manipulate result
+#
+# PROTOCOL:
+# Phase 1 (COMMIT): Each party submits hash(secret || nonce)
+# Phase 2 (REVEAL): Each party reveals secret + nonce
+# Phase 3 (VERIFY): Verify hash matches, compute final_random = XOR(all secrets)
+#
+# SECURITY:
+# - Single honest party guarantees randomness
+# - Abort = protocol fail (party loses deposit)
+# - Last-revealer advantage mitigated by timeout + deposit slashing
+
+# === PHASE STATES ===
+# 3-party commit-reveal (extensible to N parties)
+# State encoding: 2 bits (0=IDLE, 1=COMMIT, 2=REVEAL, 3=COMPLETE)
+
+# === BITVECTOR INPUTS ===
+# Party commitments (hash truncated to 16 bits for demo)
+bv[16] i_commit1 = ifile("inputs/rng_commit1.in").
+bv[16] i_commit2 = ifile("inputs/rng_commit2.in").
+bv[16] i_commit3 = ifile("inputs/rng_commit3.in").
+
+# Party reveals (actual secrets)
+bv[16] i_reveal1 = ifile("inputs/rng_reveal1.in").
+bv[16] i_reveal2 = ifile("inputs/rng_reveal2.in").
+bv[16] i_reveal3 = ifile("inputs/rng_reveal3.in").
+
+# Nonces (for hash verification)
+bv[16] i_nonce1 = ifile("inputs/rng_nonce1.in").
+bv[16] i_nonce2 = ifile("inputs/rng_nonce2.in").
+bv[16] i_nonce3 = ifile("inputs/rng_nonce3.in").
+
+# Control signals
+sbf i_start_commit = ifile("inputs/rng_start_commit.in").
+sbf i_start_reveal = ifile("inputs/rng_start_reveal.in").
+
+# === BOOLEAN INPUTS ===
+sbf i_timeout = ifile("inputs/rng_timeout.in").     # Timeout signal
+
+# === HELPER: Simple hash (for demo - real impl uses keccak256) ===
+# hash(secret, nonce) = (secret * 31337 + nonce) mod 65536
+# In practice, daemon computes real hash off-chain
+simple_hash(secret, nonce) := (secret * {31337}:bv[16] + nonce) % {65536}:bv[16].
+
+# === OUTPUT STREAMS ===
+# Phase state
+sbf o_phase_b0 = ofile("outputs/rng_phase_b0.out").
+sbf o_phase_b1 = ofile("outputs/rng_phase_b1.out").
+
+# Commitment storage
+bv[16] o_stored_commit1 = ofile("outputs/rng_stored_c1.out").
+bv[16] o_stored_commit2 = ofile("outputs/rng_stored_c2.out").
+bv[16] o_stored_commit3 = ofile("outputs/rng_stored_c3.out").
+
+# Verification status
+sbf o_verify1 = ofile("outputs/rng_verify1.out").
+sbf o_verify2 = ofile("outputs/rng_verify2.out").
+sbf o_verify3 = ofile("outputs/rng_verify3.out").
+sbf o_all_verified = ofile("outputs/rng_all_verified.out").
+
+# Final random output
+bv[16] o_random = ofile("outputs/rng_final_random.out").
+sbf o_random_valid = ofile("outputs/rng_random_valid.out").
+
+# Error/abort signals
+sbf o_abort = ofile("outputs/rng_abort.out").
+sbf o_timeout_abort = ofile("outputs/rng_timeout_abort.out").
+
+# === STATE ENCODING ===
+is_idle(b1, b0) := b1' & b0'.
+is_commit(b1, b0) := b1' & b0.
+is_reveal(b1, b0) := b1 & b0'.
+is_complete(b1, b0) := b1 & b0.
+
+# === TRUE RNG SPECIFICATION ===
+r (
+    # === PHASE STATE MACHINE ===
+    # IDLE -> COMMIT (on start signal)
+    # COMMIT -> REVEAL (when all commitments received)
+    # REVEAL -> COMPLETE (when all reveals verified)
+    # Any -> IDLE (on timeout/abort)
+    
+    (o_phase_b0[t] = 
+        # Enter COMMIT phase
+        (is_idle(o_phase_b1[t-1], o_phase_b0[t-1]) & i_start_commit[t]) |
+        # Enter COMPLETE phase
+        (is_reveal(o_phase_b1[t-1], o_phase_b0[t-1]) & o_all_verified[t]) |
+        # Stay in COMMIT
+        (is_commit(o_phase_b1[t-1], o_phase_b0[t-1]) & 
+         (i_commit1[t] = {0}:bv[16] | i_commit2[t] = {0}:bv[16] | i_commit3[t] = {0}:bv[16]) &
+         i_timeout[t]')) &&
+    
+    (o_phase_b1[t] =
+        # Enter REVEAL phase (all commits received)
+        (is_commit(o_phase_b1[t-1], o_phase_b0[t-1]) &
+         (i_commit1[t] != {0}:bv[16]) & (i_commit2[t] != {0}:bv[16]) & (i_commit3[t] != {0}:bv[16]) &
+         i_start_reveal[t]) |
+        # Enter COMPLETE phase
+        (is_reveal(o_phase_b1[t-1], o_phase_b0[t-1]) & o_all_verified[t]) |
+        # Stay in REVEAL
+        (is_reveal(o_phase_b1[t-1], o_phase_b0[t-1]) & o_all_verified[t]' & i_timeout[t]')) &&
+    
+    # === COMMITMENT STORAGE ===
+    # Store commitments when in COMMIT phase
+    (o_stored_commit1[t] = is_commit(o_phase_b1[t], o_phase_b0[t]) ? 
+                           (i_commit1[t] != {0}:bv[16] ? i_commit1[t] : o_stored_commit1[t-1]) :
+                           o_stored_commit1[t-1]) &&
+    (o_stored_commit2[t] = is_commit(o_phase_b1[t], o_phase_b0[t]) ? 
+                           (i_commit2[t] != {0}:bv[16] ? i_commit2[t] : o_stored_commit2[t-1]) :
+                           o_stored_commit2[t-1]) &&
+    (o_stored_commit3[t] = is_commit(o_phase_b1[t], o_phase_b0[t]) ? 
+                           (i_commit3[t] != {0}:bv[16] ? i_commit3[t] : o_stored_commit3[t-1]) :
+                           o_stored_commit3[t-1]) &&
+    
+    # === REVEAL VERIFICATION ===
+    # Verify: hash(reveal, nonce) == stored_commit
+    (o_verify1[t] = is_reveal(o_phase_b1[t], o_phase_b0[t]) &
+                    (simple_hash(i_reveal1[t], i_nonce1[t]) = o_stored_commit1[t-1])) &&
+    (o_verify2[t] = is_reveal(o_phase_b1[t], o_phase_b0[t]) &
+                    (simple_hash(i_reveal2[t], i_nonce2[t]) = o_stored_commit2[t-1])) &&
+    (o_verify3[t] = is_reveal(o_phase_b1[t], o_phase_b0[t]) &
+                    (simple_hash(i_reveal3[t], i_nonce3[t]) = o_stored_commit3[t-1])) &&
+    
+    # All verified
+    (o_all_verified[t] = o_verify1[t] & o_verify2[t] & o_verify3[t]) &&
+    
+    # === FINAL RANDOM COMPUTATION ===
+    # random = XOR of all revealed secrets
+    (o_random[t] = is_complete(o_phase_b1[t], o_phase_b0[t]) ?
+                   (i_reveal1[t] ^ i_reveal2[t] ^ i_reveal3[t]) :
+                   o_random[t-1]) &&
+    
+    # Random is valid when in COMPLETE state
+    (o_random_valid[t] = is_complete(o_phase_b1[t], o_phase_b0[t])) &&
+    
+    # === ABORT CONDITIONS ===
+    # Timeout during commit or reveal
+    (o_timeout_abort[t] = (is_commit(o_phase_b1[t-1], o_phase_b0[t-1]) | 
+                           is_reveal(o_phase_b1[t-1], o_phase_b0[t-1])) &
+                          i_timeout[t]) &&
+    
+    # Verification failure
+    (o_abort[t] = is_reveal(o_phase_b1[t-1], o_phase_b0[t-1]) &
+                  (o_verify1[t]' | o_verify2[t]' | o_verify3[t]') &
+                  i_timeout[t])
+)
+
+# === PROTOCOL GUARANTEES ===
+#
+# 1. UNPREDICTABILITY
+#    - No party can predict final random before all reveals
+#    - XOR of independent secrets is uniformly random
+#    - Single honest party guarantees randomness
+#
+# 2. UNBIASABILITY  
+#    - Parties commit before seeing others' secrets
+#    - Cannot change commitment after seeing reveals
+#    - Hash binding prevents manipulation
+#
+# 3. VERIFIABILITY
+#    - Anyone can verify hash(reveal, nonce) == commit
+#    - On-chain verification possible
+#    - Invalid reveals trigger abort
+#
+# 4. LIVENESS
+#    - Timeout prevents indefinite waiting
+#    - Non-revealing party loses deposit
+#    - Protocol completes or aborts cleanly
+
+# === INTEGRATION EXAMPLE ===
+#
+# To use true RNG in an agent:
+# 1. Wait for o_random_valid = 1
+# 2. Use o_random as seed for LFSR or directly
+# 3. o_random is cryptographically fair
+#
+# Example: Fair lottery
+#   winner = o_random % num_participants
+
+# === DAEMON REQUIREMENTS ===
+#
+# Daemon must:
+# 1. Collect commitments from parties (off-chain)
+# 2. Wait for all commits before starting reveal
+# 3. Verify hashes using real keccak256
+# 4. Slash deposits on timeout/invalid reveal
+# 5. Provide timeout signal after deadline
+
+# === EXTENSION TO N PARTIES ===
+#
+# For N parties:
+# - Add i_commit[N], i_reveal[N], i_nonce[N] inputs
+# - o_random = XOR(reveal[1], reveal[2], ..., reveal[N])
+# - All must verify for completion
+# - Any single honest party guarantees fairness
+

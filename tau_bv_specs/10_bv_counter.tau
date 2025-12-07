@@ -1,0 +1,11 @@
+# Tau Language Experiment 10: BitVector Counter
+# 8-bit counter that increments by 1 each step
+# Tests: BitVector type, addition operator
+
+# Define streams with bitvector type (8-bit)
+o1 : bv[8] = out console.
+
+# Spec: counter increments by 1 each step
+# Using bitvector constant syntax
+o1[t] = o1[t-1] + {1}:bv[8].
+

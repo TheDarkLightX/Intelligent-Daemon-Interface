@@ -1,0 +1,17 @@
+# AND gate - two inputs
+# Expected: output = i1 AND i2
+# Test: (0,0)->0, (0,1)->0, (1,0)->0, (1,1)->1
+
+sbf i1 = console
+sbf i2 = console
+sbf o1 = console
+r o1[t] = i1[t] & i2[t]
+0
+0
+0
+1
+1
+0
+1
+1
+q

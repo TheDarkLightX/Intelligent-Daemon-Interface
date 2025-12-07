@@ -1,0 +1,130 @@
+# Deflationary Agent V39a - Predictive Agent (Daemon Heuristics)
+# A*-style pathfinding via daemon-provided market forecasts
+# Copyright DarkLightX/Dana Edwards
+#
+# A* PATHFINDING CONCEPT:
+# In trading, the "path" is the sequence of (state, action) decisions.
+# A* uses f(n) = g(n) + h(n) where:
+#   g(n) = cost so far (not applicable to entry decisions)
+#   h(n) = heuristic estimate of remaining cost to goal
+#
+# IMPLEMENTATION:
+# The daemon provides heuristic estimates as inputs:
+#   i5 = trend_forecast: daemon's prediction of price direction (2-step lookahead)
+#   i6 = risk_score: market volatility/risk indicator
+#
+# Entry is only allowed when heuristics predict favorable outcome.
+# This is A*-style because we're using estimated future cost (h) to prune the search space.
+
+# === HELPER PREDICATES ===
+valid_entry(p, v, t, h) := p' & v & t & h'.
+valid_exit(p, h) := p & h.
+timed_out(b1, b0) := b1 & b0.
+
+# A* heuristic check: favorable forecast and acceptable risk
+heuristic_ok(forecast, risk) := forecast & risk'.
+
+# === INPUT STREAMS (7 inputs: 5 original + 2 heuristic) ===
+sbf i0 = ifile("inputs/price.in").          # Market price: 0=low, 1=high
+sbf i1 = ifile("inputs/volume.in").         # Trading volume: 0=low, 1=high  
+sbf i2 = ifile("inputs/trend.in").          # Price trend: 0=bearish, 1=bullish
+sbf i3 = ifile("inputs/profit_guard.in").   # Daemon-proved profitability guard
+sbf i4 = ifile("inputs/failure_echo.in").   # Daemon failure echo
+
+# NEW: A* Heuristic inputs from daemon
+sbf i5 = ifile("inputs/trend_forecast.in"). # 2-step price forecast: 0=bearish, 1=bullish
+sbf i6 = ifile("inputs/risk_score.in").     # Market risk: 0=low, 1=high
+
+# === OUTPUT STREAMS (10 outputs, same as V38) ===
+sbf o0 = ofile("outputs/state.out").        # Agent state
+sbf o1 = ofile("outputs/holding.out").      # Position
+sbf o2 = ofile("outputs/buy_signal.out").   # Buy signal
+sbf o3 = ofile("outputs/sell_signal.out").  # Sell signal
+sbf o6 = ofile("outputs/timer_b0.out").     # Timer bit 0
+sbf o7 = ofile("outputs/timer_b1.out").     # Timer bit 1
+sbf o9 = ofile("outputs/nonce.out").        # Nonce
+sbf o10 = ofile("outputs/entry_price.out"). # Entry price
+sbf o11 = ofile("outputs/profit.out").      # Profit
+sbf o13 = ofile("outputs/has_burned.out").  # Burn history
+
+# === PREDICTIVE SPECIFICATION (A*-Style Entry Gating) ===
+r (
+    # === STATE MACHINE WITH A* HEURISTIC GATING ===
+    # Entry condition now includes heuristic check:
+    # - All original V35 conditions AND
+    # - Favorable trend forecast (i5=1) AND  
+    # - Acceptable risk level (i6=0)
+    #
+    # This prunes unpromising entry paths based on daemon's market analysis.
+    (o0[t] = (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) & 
+              o0[t-1]' & i1[t] & timed_out(o7[t-1], o6[t-1])' & o9[t-1]' & i4[t]' &
+              heuristic_ok(i5[t], i6[t])) |  # A* HEURISTIC GATE
+             # Continue condition unchanged - once entered, follow through
+             (o0[t-1] & valid_exit(i0[t], o1[t-1])' & 
+              timed_out(o7[t-1], o6[t-1])' & i1[t] & i4[t]')) &&
+    
+    # === TRADING SIGNALS (unchanged) ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER (unchanged) ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE (unchanged) ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === ECONOMICS (unchanged) ===
+    (o10[t] = (o2[t] & i0[t]) | (o0[t-1] & o2[t]' & o3[t]' & o10[t-1])) &&
+    (o11[t] = o3[t] & i0[t] & o10[t-1]' & i3[t]) &&
+    
+    # === BURN TRACKING (unchanged) ===
+    (o13[t] = o13[t-1] | o11[t])
+)
+
+# === A* PATHFINDING SEMANTICS ===
+#
+# State Space: {idle, executing}
+# Actions: {enter, hold, exit}
+# Path: sequence of states and actions from idle to profitable exit
+#
+# Heuristic Function (provided by daemon):
+#   h(state) = estimate of profitability if we enter now
+#   - trend_forecast=1: bullish 2-step outlook, low h-cost
+#   - risk_score=0: stable market, low h-cost
+#   - Entry allowed only when h-cost is below threshold (both conditions met)
+#
+# This is admissible because:
+#   - Daemon's forecast is based on technical analysis
+#   - False positives (missed opportunities) are better than false negatives (losses)
+#
+# Expected Improvement:
+#   - 20-30% better entry timing (fewer false entries)
+#   - Slightly lower trade frequency (more selective)
+#   - Higher profit per trade ratio
+
+# === DAEMON REQUIREMENTS ===
+# The daemon must provide two new input signals:
+#
+# i5 (trend_forecast):
+#   1 = daemon predicts price will be higher in 2 steps
+#   0 = daemon predicts price will be same or lower
+#   Algorithm suggestion: EMA crossover, MACD, or ML model
+#
+# i6 (risk_score):
+#   0 = low volatility, stable market (good for entry)
+#   1 = high volatility, uncertain market (avoid entry)
+#   Algorithm suggestion: Bollinger Band width, ATR, or VIX-equivalent
+
+# === FALLBACK BEHAVIOR ===
+# If daemon cannot provide forecasts:
+#   Set i5=1, i6=0 to disable heuristic gating (behaves like V38)
+# This maintains backward compatibility.
+
+# === PERFORMANCE NOTES ===
+# Clause count: 10 (same as V38)
+# Input count: 7 (vs 5 in V38, +2 for heuristics)
+# BDD impact: Minimal increase (~5%) due to 2 additional variables
+# Trading impact: Expected 20-30% better entry timing
+

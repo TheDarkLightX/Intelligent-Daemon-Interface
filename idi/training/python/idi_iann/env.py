@@ -69,15 +69,20 @@ class SyntheticMarketEnv:
         return self._observe()
 
     def step(self, action: str) -> Tuple[EnvObservation, float]:
+        """Execute action and return next observation and reward."""
         if action not in self.ACTIONS:
             raise ValueError(f"Unknown action {action}")
         self._apply_action(action)
-        reward = self._compute_reward()
+        base_reward = self._compute_reward()
         self._tick += 1
-        mood_bucket = self._emote.update(reward)
+        mood_bucket = self._emote.update(base_reward)
         obs = self._observe(overrides={"mood_bucket": mood_bucket})
-        reward += self.rewards.communication_clarity * mood_bucket
-        return obs, reward
+        total_reward = self._add_communication_reward(base_reward, mood_bucket)
+        return obs, total_reward
+
+    def _add_communication_reward(self, base_reward: float, mood_bucket: int) -> float:
+        """Add communication clarity component to reward."""
+        return base_reward + self.rewards.communication_clarity * mood_bucket
 
     def _observe(self, overrides: dict | None = None) -> EnvObservation:
         price = self._random.randint(0, self.quantizer.price_buckets - 1)

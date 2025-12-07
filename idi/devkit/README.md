@@ -24,7 +24,7 @@ Use the batch builder to run multiple configs in one go:
 ```
 python -m idi.devkit.build_layers --plan idi/devkit/configs/layer_plan.json
 ```
-The sample plan builds macro/micro/emotive layers (see `configs/regime_macro.json`, `regime_micro.json`, `emote_balanced.json`) and installs the macro layer directly into `idi/specs/V38_Minimal_Core/inputs/`.
+The sample plan builds macro/micro/emotive layers (see `configs/regime_macro.json`, `regime_micro.json`, `emote_balanced.json`) and installs the macro layer directly into `idi/specs/V38_Minimal_Core/inputs/`. A fourth entry (`layered-demo`) copies the generated weight streams into `idi/specs/Q_Layered_Strategy/inputs/`, and a fifth (`conversational-macro`) enables tile coding + communication rewards for the expressive agent track.
 
 ## Config schema
 

@@ -1,0 +1,231 @@
+# Deflationary Economy Library v1
+# Core primitives for deflationary tokenomics on Tau Net
+# Copyright DarkLightX/Dana Edwards
+#
+# DEFLATIONARY MECHANISMS:
+# 1. Transaction Fee Burns (EIP-1559 style)
+# 2. Buyback and Burn
+# 3. Activity-based Burns
+# 4. Protocol Owned Liquidity (POL)
+# 5. Vote-Escrow Locks (ve-locks)
+# 6. Staking Sinks
+# 7. Emission Caps
+#
+# All mechanisms use bf-only logic for BDD efficiency
+
+# === SUPPLY TRACKING ===
+bv[32] i_total_supply = ifile("inputs/total_supply.in").
+bv[32] i_circulating = ifile("inputs/circulating_supply.in").
+bv[32] i_locked_supply = ifile("inputs/locked_supply.in").
+bv[32] i_burned_total = ifile("inputs/burned_total.in").
+
+# === FEE INPUTS ===
+bv[16] i_tx_fee = ifile("inputs/tx_fee.in").           # Transaction fee
+bv[16] i_base_fee = ifile("inputs/base_fee.in").       # Base fee (burned)
+bv[16] i_tip = ifile("inputs/tip.in").                 # Tip (to validators)
+
+# === EMISSION INPUTS ===
+bv[16] i_block_reward = ifile("inputs/block_reward.in").
+bv[16] i_emission_cap = ifile("inputs/emission_cap.in"). # Max emission per epoch
+bv[32] i_epoch_emissions = ifile("inputs/epoch_emissions.in").
+
+# === BUYBACK INPUTS ===
+bv[16] i_buyback_amount = ifile("inputs/buyback_amount.in").
+sbf i_buyback_trigger = ifile("inputs/buyback_trigger.in").
+
+# === VE-LOCK INPUTS ===
+bv[16] i_lock_amount = ifile("inputs/lock_amount.in").
+bv[16] i_lock_duration = ifile("inputs/lock_duration.in"). # In epochs
+sbf i_lock_request = ifile("inputs/lock_request.in").
+sbf i_unlock_request = ifile("inputs/unlock_request.in").
+
+# === STAKING INPUTS ===
+bv[16] i_stake_amount = ifile("inputs/stake_amount.in").
+sbf i_stake_request = ifile("inputs/stake_request.in").
+sbf i_unstake_request = ifile("inputs/unstake_request.in").
+
+# === POL INPUTS ===
+bv[16] i_pol_deposit = ifile("inputs/pol_deposit.in").
+bv[16] i_pol_withdraw = ifile("inputs/pol_withdraw.in").
+bv[16] i_liquidity_depth = ifile("inputs/liquidity_depth.in").
+bv[16] i_min_liquidity = ifile("inputs/min_liquidity.in").
+
+# === HELPER PREDICATES ===
+# Monotonic burn check
+burn_monotonic(prev, curr) := curr >= prev.
+
+# Emission within cap
+emission_ok(emitted, cap) := emitted <= cap.
+
+# Supply balance check
+supply_balanced(total, circ, locked, burned) := 
+    total = circ + locked + burned.
+
+# === OUTPUT STREAMS ===
+# Burn tracking
+bv[32] o_total_burned = ofile("outputs/eco_total_burned.out").
+bv[16] o_epoch_burned = ofile("outputs/eco_epoch_burned.out").
+sbf o_burn_event = ofile("outputs/eco_burn_event.out").
+
+# Emission tracking
+bv[32] o_total_emitted = ofile("outputs/eco_total_emitted.out").
+bv[16] o_epoch_emitted = ofile("outputs/eco_epoch_emitted.out").
+sbf o_emission_ok = ofile("outputs/eco_emission_ok.out").
+
+# Ve-lock state
+bv[16] o_ve_locked = ofile("outputs/eco_ve_locked.out").
+bv[16] o_ve_voting_power = ofile("outputs/eco_ve_voting_power.out").
+bv[16] o_lock_expiry = ofile("outputs/eco_lock_expiry.out").
+sbf o_lock_active = ofile("outputs/eco_lock_active.out").
+
+# Staking state
+bv[16] o_staked = ofile("outputs/eco_staked.out").
+sbf o_stake_active = ofile("outputs/eco_stake_active.out").
+
+# POL state
+bv[16] o_pol_balance = ofile("outputs/eco_pol_balance.out").
+sbf o_liquidity_ok = ofile("outputs/eco_liquidity_ok.out").
+
+# Invariant monitors
+sbf o_supply_ok = ofile("outputs/eco_supply_ok.out").
+sbf o_burn_monotonic = ofile("outputs/eco_burn_monotonic.out").
+sbf o_deflationary = ofile("outputs/eco_deflationary.out").
+
+# === DEFLATIONARY ECONOMY SPECIFICATION ===
+r (
+    # === BURN MECHANISMS ===
+    
+    # 1. Base fee burn (EIP-1559 style)
+    # Base fee goes to burn, tip goes to validator
+    (o_burn_event[t] = (i_base_fee[t] > {0}:bv[16]) | 
+                       (i_buyback_trigger[t] & (i_buyback_amount[t] > {0}:bv[16]))) &&
+    
+    # 2. Epoch burn accumulator
+    (o_epoch_burned[t] = o_burn_event[t] ?
+                         (o_epoch_burned[t-1] + i_base_fee[t] + 
+                          (i_buyback_trigger[t] ? i_buyback_amount[t] : {0}:bv[16])) :
+                         o_epoch_burned[t-1]) &&
+    
+    # 3. Total burned (monotonic)
+    (o_total_burned[t] = o_burn_event[t] ?
+                         (o_total_burned[t-1] + i_base_fee[t] + 
+                          (i_buyback_trigger[t] ? i_buyback_amount[t] : {0}:bv[32])) :
+                         o_total_burned[t-1]) &&
+    
+    # === EMISSION CONTROLS ===
+    
+    # Epoch emissions accumulator
+    (o_epoch_emitted[t] = (i_block_reward[t] > {0}:bv[16]) ?
+                          (o_epoch_emitted[t-1] + i_block_reward[t]) :
+                          o_epoch_emitted[t-1]) &&
+    
+    # Emission cap check
+    (o_emission_ok[t] = (o_epoch_emitted[t] <= i_emission_cap[t])) &&
+    
+    # Total emitted
+    (o_total_emitted[t] = o_total_emitted[t-1] + i_block_reward[t]) &&
+    
+    # === VE-LOCK MECHANISM ===
+    # Vote-escrow: lock tokens for voting power
+    # Longer lock = more voting power (linear scaling)
+    
+    # Lock amount
+    (o_ve_locked[t] = i_lock_request[t] ?
+                      (o_ve_locked[t-1] + i_lock_amount[t]) :
+                      (i_unlock_request[t] & (o_lock_expiry[t-1] = {0}:bv[16]) ?
+                       {0}:bv[16] : o_ve_locked[t-1])) &&
+    
+    # Lock expiry countdown
+    (o_lock_expiry[t] = i_lock_request[t] ?
+                        i_lock_duration[t] :
+                        (o_lock_expiry[t-1] > {0}:bv[16] ?
+                         o_lock_expiry[t-1] - {1}:bv[16] : {0}:bv[16])) &&
+    
+    # Lock active
+    (o_lock_active[t] = o_lock_expiry[t] > {0}:bv[16]) &&
+    
+    # Voting power = locked * remaining_duration (simplified)
+    (o_ve_voting_power[t] = o_ve_locked[t] * o_lock_expiry[t] / {100}:bv[16]) &&
+    
+    # === STAKING SINK ===
+    # Staked tokens are non-circulating
+    
+    (o_staked[t] = i_stake_request[t] ?
+                   (o_staked[t-1] + i_stake_amount[t]) :
+                   (i_unstake_request[t] ?
+                    (o_staked[t-1] - i_stake_amount[t]) : o_staked[t-1])) &&
+    
+    (o_stake_active[t] = o_staked[t] > {0}:bv[16]) &&
+    
+    # === PROTOCOL OWNED LIQUIDITY (POL) ===
+    # Protocol owns its own liquidity - reduces mercenary LP risk
+    
+    (o_pol_balance[t] = (i_pol_deposit[t] > {0}:bv[16]) ?
+                        (o_pol_balance[t-1] + i_pol_deposit[t]) :
+                        ((i_pol_withdraw[t] > {0}:bv[16]) ?
+                         (o_pol_balance[t-1] - i_pol_withdraw[t]) : o_pol_balance[t-1])) &&
+    
+    # Liquidity depth check (POL + LP)
+    (o_liquidity_ok[t] = (i_liquidity_depth[t] >= i_min_liquidity[t])) &&
+    
+    # === INVARIANT MONITORS ===
+    
+    # Supply balance: total = circulating + locked + burned
+    (o_supply_ok[t] = (i_total_supply[t] = i_circulating[t] + i_locked_supply[t] + i_burned_total[t])) &&
+    
+    # Burns are monotonic (never decrease)
+    (o_burn_monotonic[t] = o_total_burned[t] >= o_total_burned[t-1]) &&
+    
+    # Net deflationary: burns > emissions
+    (o_deflationary[t] = o_epoch_burned[t] > o_epoch_emitted[t])
+)
+
+# === ECONOMIC INVARIANTS ===
+#
+# 1. BURN MONOTONICITY
+#    o_burn_monotonic[t] = T always
+#    Burns can never be undone
+#
+# 2. EMISSION CAP
+#    o_emission_ok[t] = T required
+#    Cannot exceed epoch emission cap
+#
+# 3. SUPPLY CONSERVATION
+#    total = circulating + locked + burned
+#    No tokens created/destroyed outside mechanisms
+#
+# 4. DEFLATION TARGET
+#    o_deflationary[t] should be T for net deflation
+#    Burns > Emissions per epoch
+
+# === DEMAND SINKS SUMMARY ===
+#
+# 1. VE-LOCKS
+#    - Removes from circulation
+#    - Grants voting power
+#    - Time-weighted: longer lock = more power
+#
+# 2. STAKING
+#    - Removes from circulation
+#    - Earns rewards
+#    - Slashable (adds burn risk)
+#
+# 3. POL
+#    - Protocol owns liquidity
+#    - Reduces LP mercenary risk
+#    - Stabilizes trading depth
+#
+# 4. FEE BURNS
+#    - Base fees burned (EIP-1559)
+#    - Reduces supply per transaction
+#    - Creates natural deflation
+
+# === INTEGRATION ===
+#
+# Import this library and connect inputs:
+# - i_tx_fee: from transaction monitor
+# - i_base_fee: from fee market
+# - i_buyback_trigger: from treasury module
+# - i_lock_request: from user actions
+# - i_pol_deposit: from protocol revenue
+

@@ -1,0 +1,14 @@
+# Tau Language Experiment 04: Toggle
+# Output toggles between 0 and 1 based on input signal
+# When input=1, output toggles; when input=0, output stays the same
+# Tests: conditional logic, state tracking
+
+# Define streams
+i1 : sbf = in console.
+o1 : sbf = out console.
+
+# Spec: Toggle behavior
+# If input is 1, output is complement of previous output
+# If input is 0, output stays the same as previous
+o1[t] = (i1[t] & o1[t-1]') | (i1[t]' & o1[t-1]).
+

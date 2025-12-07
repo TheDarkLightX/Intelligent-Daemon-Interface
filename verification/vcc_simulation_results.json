@@ -1,0 +1,521 @@
+{
+  "params": {
+    "initial_supply": 1000000000000000000,
+    "annual_deflation_rate": 0.2,
+    "base_comp_rate": 0.05,
+    "max_comp_rate": 0.5,
+    "max_lock_days": 1460
+  },
+  "snapshots": [
+    {
+      "year": 0,
+      "supply": 1000000000000000000,
+      "supply_pct": 100.0,
+      "cumulative_burns": 0,
+      "scarcity_multiplier": 1.0,
+      "effective_comp_rate": 0.25,
+      "cascade_level": 0,
+      "health_score": 50
+    },
+    {
+      "year": 1,
+      "supply": 800000000000000000,
+      "supply_pct": 80.0,
+      "cumulative_burns": 200000000000000000,
+      "scarcity_multiplier": 1.3975424859373686,
+      "effective_comp_rate": 0.27,
+      "cascade_level": 0,
+      "health_score": 54
+    },
+    {
+      "year": 2,
+      "supply": 640000000000000128,
+      "supply_pct": 64.00000000000001,
+      "cumulative_burns": 359999999999999872,
+      "scarcity_multiplier": 1.9531249999999996,
+      "effective_comp_rate": 0.29,
+      "cascade_level": 0,
+      "health_score": 57
+    },
+    {
+      "year": 3,
+      "supply": 512000000000000128,
+      "supply_pct": 51.20000000000001,
+      "cumulative_burns": 487999999999999872,
+      "scarcity_multiplier": 2.729575167846422,
+      "effective_comp_rate": 0.31,
+      "cascade_level": 1,
+      "health_score": 62
+    },
+    {
+      "year": 4,
+      "supply": 409600000000000064,
+      "supply_pct": 40.96000000000001,
+      "cumulative_burns": 590399999999999936,
+      "scarcity_multiplier": 3.814697265624999,
+      "effective_comp_rate": 0.33,
+      "cascade_level": 1,
+      "health_score": 66
+    },
+    {
+      "year": 5,
+      "supply": 327680000000000064,
+      "supply_pct": 32.76800000000001,
+      "cumulative_burns": 672319999999999936,
+      "scarcity_multiplier": 5.331201499700044,
+      "effective_comp_rate": 0.35,
+      "cascade_level": 1,
+      "health_score": 70
+    },
+    {
+      "year": 6,
+      "supply": 262144000000000096,
+      "supply_pct": 26.21440000000001,
+      "cumulative_burns": 737855999999999904,
+      "scarcity_multiplier": 7.450580596923825,
+      "effective_comp_rate": 0.37,
+      "cascade_level": 2,
+      "health_score": 74
+    },
+    {
+      "year": 7,
+      "supply": 209715200000000064,
+      "supply_pct": 20.97152000000001,
+      "cumulative_burns": 790284799999999936,
+      "scarcity_multiplier": 10.412502929101644,
+      "effective_comp_rate": 0.39000000000000007,
+      "cascade_level": 2,
+      "health_score": 78
+    },
+    {
+      "year": 8,
+      "supply": 167772160000000096,
+      "supply_pct": 16.77721600000001,
+      "cumulative_burns": 832227839999999904,
+      "scarcity_multiplier": 14.55191522836684,
+      "effective_comp_rate": 0.4100000000000001,
+      "cascade_level": 3,
+      "health_score": 82
+    },
+    {
+      "year": 9,
+      "supply": 134217728000000064,
+      "supply_pct": 13.421772800000006,
+      "cumulative_burns": 865782271999999936,
+      "scarcity_multiplier": 20.336919783401648,
+      "effective_comp_rate": 0.43000000000000005,
+      "cascade_level": 3,
+      "health_score": 86
+    },
+    {
+      "year": 10,
+      "supply": 107374182400000064,
+      "supply_pct": 10.737418240000006,
+      "cumulative_burns": 892625817599999936,
+      "scarcity_multiplier": 28.421709430403983,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 11,
+      "supply": 85899345920000048,
+      "supply_pct": 8.589934592000006,
+      "cumulative_burns": 914100654079999952,
+      "scarcity_multiplier": 39.72054645195633,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 12,
+      "supply": 68719476736000040,
+      "supply_pct": 6.871947673600004,
+      "cumulative_burns": 931280523263999960,
+      "scarcity_multiplier": 55.51115123125778,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 13,
+      "supply": 54975581388800040,
+      "supply_pct": 5.497558138880004,
+      "cumulative_burns": 945024418611199960,
+      "scarcity_multiplier": 77.5791922889772,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 14,
+      "supply": 43980465111040032,
+      "supply_pct": 4.3980465111040035,
+      "cumulative_burns": 956019534888959968,
+      "scarcity_multiplier": 108.42021724855032,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 15,
+      "supply": 35184372088832032,
+      "supply_pct": 3.518437208883203,
+      "cumulative_burns": 964815627911167968,
+      "scarcity_multiplier": 151.52185993940856,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 16,
+      "supply": 28147497671065624,
+      "supply_pct": 2.814749767106562,
+      "cumulative_burns": 971852502328934376,
+      "scarcity_multiplier": 211.75823681357483,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 17,
+      "supply": 22517998136852504,
+      "supply_pct": 2.2517998136852504,
+      "cumulative_burns": 977482001863147496,
+      "scarcity_multiplier": 295.9411326941572,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 18,
+      "supply": 18014398509482004,
+      "supply_pct": 1.8014398509482004,
+      "cumulative_burns": 981985601490517996,
+      "scarcity_multiplier": 413.5903062765131,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 19,
+      "supply": 14411518807585602,
+      "supply_pct": 1.4411518807585602,
+      "cumulative_burns": 985588481192414398,
+      "scarcity_multiplier": 578.0100247932759,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 20,
+      "supply": 11529215046068484,
+      "supply_pct": 1.1529215046068484,
+      "cumulative_burns": 988470784953931516,
+      "scarcity_multiplier": 807.7935669463145,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 21,
+      "supply": 9223372036854788,
+      "supply_pct": 0.9223372036854789,
+      "cumulative_burns": 990776627963145212,
+      "scarcity_multiplier": 1128.9258296743665,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 22,
+      "supply": 7378697629483830,
+      "supply_pct": 0.737869762948383,
+      "cumulative_burns": 992621302370516170,
+      "scarcity_multiplier": 1577.7218104420206,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 23,
+      "supply": 5902958103587064,
+      "supply_pct": 0.5902958103587064,
+      "cumulative_burns": 994097041896412936,
+      "scarcity_multiplier": 2204.9332610827473,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 24,
+      "supply": 4722366482869652,
+      "supply_pct": 0.47223664828696515,
+      "cumulative_burns": 995277633517130348,
+      "scarcity_multiplier": 3081.4879110195707,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 25,
+      "supply": 3777893186295721,
+      "supply_pct": 0.3777893186295721,
+      "cumulative_burns": 996222106813704279,
+      "scarcity_multiplier": 4306.510275552241,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 26,
+      "supply": 3022314549036577,
+      "supply_pct": 0.3022314549036577,
+      "cumulative_burns": 996977685450963423,
+      "scarcity_multiplier": 6018.5310762101,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 27,
+      "supply": 2417851639229262,
+      "supply_pct": 0.2417851639229262,
+      "cumulative_burns": 997582148360770738,
+      "scarcity_multiplier": 8411.152881937967,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 28,
+      "supply": 1934281311383409,
+      "supply_pct": 0.1934281311383409,
+      "cumulative_burns": 998065718688616591,
+      "scarcity_multiplier": 11754.943508222856,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 29,
+      "supply": 1547425049106727,
+      "supply_pct": 0.1547425049106727,
+      "cumulative_burns": 998452574950893273,
+      "scarcity_multiplier": 16428.0329725351,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 30,
+      "supply": 1237940039285382,
+      "supply_pct": 0.12379400392853819,
+      "cumulative_burns": 998762059960714618,
+      "scarcity_multiplier": 22958.874039497754,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 31,
+      "supply": 990352031428305,
+      "supply_pct": 0.0990352031428305,
+      "cumulative_burns": 999009647968571695,
+      "scarcity_multiplier": 32086.001899482635,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 32,
+      "supply": 792281625142644,
+      "supply_pct": 0.0792281625142644,
+      "cumulative_burns": 999207718374857356,
+      "scarcity_multiplier": 44841.55085839409,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 33,
+      "supply": 633825300114115,
+      "supply_pct": 0.06338253001141149,
+      "cumulative_burns": 999366174699885885,
+      "scarcity_multiplier": 62667.972459927056,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 34,
+      "supply": 507060240091292,
+      "supply_pct": 0.05070602400912921,
+      "cumulative_burns": 999492939759908708,
+      "scarcity_multiplier": 87581.154020301,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 35,
+      "supply": 405648192073034,
+      "supply_pct": 0.0405648192073034,
+      "cumulative_burns": 999594351807926966,
+      "scarcity_multiplier": 122398.38371079483,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 36,
+      "supply": 324518553658427,
+      "supply_pct": 0.0324518553658427,
+      "cumulative_burns": 999675481446341573,
+      "scarcity_multiplier": 171056.9414459003,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 37,
+      "supply": 259614842926741,
+      "supply_pct": 0.0259614842926741,
+      "cumulative_burns": 999740385157073259,
+      "scarcity_multiplier": 239059.34318514724,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 38,
+      "supply": 207691874341393,
+      "supply_pct": 0.0207691874341393,
+      "cumulative_burns": 999792308125658607,
+      "scarcity_multiplier": 334095.5887615247,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 39,
+      "supply": 166153499473114,
+      "supply_pct": 0.0166153499473114,
+      "cumulative_burns": 999833846500526886,
+      "scarcity_multiplier": 466912.7796584917,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 40,
+      "supply": 132922799578491,
+      "supply_pct": 0.013292279957849101,
+      "cumulative_burns": 999867077200421509,
+      "scarcity_multiplier": 652530.4467998567,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 41,
+      "supply": 106338239662793,
+      "supply_pct": 0.0106338239662793,
+      "cumulative_burns": 999893661760337207,
+      "scarcity_multiplier": 911939.0227704911,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 42,
+      "supply": 85070591730234,
+      "supply_pct": 0.0085070591730234,
+      "cumulative_burns": 999914929408269766,
+      "scarcity_multiplier": 1274473.5289059754,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 43,
+      "supply": 68056473384187,
+      "supply_pct": 0.006805647338418699,
+      "cumulative_burns": 999931943526615813,
+      "scarcity_multiplier": 1781130.9038486357,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 44,
+      "supply": 54445178707350,
+      "supply_pct": 0.005444517870735,
+      "cumulative_burns": 999945554821292650,
+      "scarcity_multiplier": 2489206.1111444673,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 45,
+      "supply": 43556142965880,
+      "supply_pct": 0.004355614296588,
+      "cumulative_burns": 999956443857034120,
+      "scarcity_multiplier": 3478771.2965793284,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 46,
+      "supply": 34844914372704,
+      "supply_pct": 0.0034844914372703997,
+      "cumulative_burns": 999965155085627296,
+      "scarcity_multiplier": 4861730.685829037,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 47,
+      "supply": 27875931498163,
+      "supply_pct": 0.0027875931498163,
+      "cumulative_burns": 999972124068501837,
+      "scarcity_multiplier": 6794475.188631574,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 48,
+      "supply": 22300745198530,
+      "supply_pct": 0.002230074519853,
+      "cumulative_burns": 999977699254801470,
+      "scarcity_multiplier": 9495567.745760197,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 49,
+      "supply": 17840596158824,
+      "supply_pct": 0.0017840596158824,
+      "cumulative_burns": 999982159403841176,
+      "scarcity_multiplier": 13270459.352796402,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    },
+    {
+      "year": 50,
+      "supply": 14272476927059,
+      "supply_pct": 0.0014272476927059,
+      "cumulative_burns": 999985727523072941,
+      "scarcity_multiplier": 18546030.753438275,
+      "effective_comp_rate": 0.45000000000000007,
+      "cascade_level": 3,
+      "health_score": 90
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -56,6 +56,50 @@ class EmoteConfig:
 
 
 @dataclass(frozen=True)
+class TileCoderConfig:
+    """Tile-coding abstraction parameters for compact Q-tables."""
+
+    num_tilings: int = 3
+    tile_sizes: Tuple[int, ...] = (4, 4, 4, 4, 4)
+    offsets: Tuple[int, ...] = (0, 1, 2, 3, 4)
+
+    def validate(self) -> None:
+        if len(self.tile_sizes) != len(self.offsets):
+            raise ValueError("tile_sizes and offsets must have the same length")
+        if self.num_tilings <= 0:
+            raise ValueError("num_tilings must be > 0")
+
+
+@dataclass(frozen=True)
+class CommunicationConfig:
+    """Controls the auxiliary Q-table for expressive communication."""
+
+    actions: Sequence[str] = ("silent", "positive", "alert", "persist")
+
+    def validate(self) -> None:
+        if not self.actions:
+            raise ValueError("communication actions cannot be empty")
+
+
+@dataclass(frozen=True)
+class LayerConfig:
+    """Controls layer-weight stream generation for layered Tau specs."""
+
+    emit_weight_streams: bool = True
+    momentum_threshold: float = 0.6  # threshold on normalized trend bucket
+    contrarian_threshold: float = 0.3
+    trend_favors_even: bool = True
+
+    def validate(self) -> None:
+        if not (0.0 <= self.contrarian_threshold <= 1.0):
+            raise ValueError("contrarian_threshold must be in [0, 1]")
+        if not (0.0 <= self.momentum_threshold <= 1.0):
+            raise ValueError("momentum_threshold must be in [0, 1]")
+        if self.contrarian_threshold > self.momentum_threshold:
+            raise ValueError("contrarian_threshold cannot exceed momentum_threshold")
+
+
+@dataclass(frozen=True)
 class TrainingConfig:
     """High-level training knobs."""
 
@@ -67,6 +111,9 @@ class TrainingConfig:
     quantizer: QuantizerConfig = field(default_factory=QuantizerConfig)
     rewards: RewardWeights = field(default_factory=RewardWeights)
     emote: EmoteConfig = field(default_factory=EmoteConfig)
+    layers: LayerConfig = field(default_factory=LayerConfig)
+    tile_coder: Optional[TileCoderConfig] = None
+    communication: CommunicationConfig = field(default_factory=CommunicationConfig)
 
     def validate(self) -> None:
         if not (0.0 < self.discount <= 1.0):
@@ -76,4 +123,8 @@ class TrainingConfig:
         if not (0.0 < self.exploration_decay <= 1.0):
             raise ValueError("exploration_decay must be in (0, 1]")
         self.quantizer.validate()
+        self.layers.validate()
+        self.communication.validate()
+        if self.tile_coder:
+            self.tile_coder.validate()
 

@@ -1,0 +1,5 @@
+scenario,growth,epsilon,g_max,convergence_step,final_share
+baseline_fast,0.08,0.8,5.0,27,1.0000
+baseline_slow,0.04,0.8,5.0,42,1.0000
+stochastic_eetf,0.06,0.6,5.0,33,1.0000
+adversarial_injection,0.06,0.8,8.0,35,1.0000

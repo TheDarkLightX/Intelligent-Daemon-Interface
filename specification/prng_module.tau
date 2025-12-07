@@ -1,0 +1,77 @@
+# PRNG Module - Linear Feedback Shift Register Implementation
+# Provides pseudo-random numbers for agent decision making
+# Copyright DarkLightX/Dana Edwards
+#
+# DESIGN: 16-bit Galois LFSR with maximal period (65535)
+# Polynomial: x^16 + x^14 + x^13 + x^11 + 1 (taps at bits 16,14,13,11)
+#
+# USE CASES:
+# 1. Anti-frontrunning: Randomized entry delay
+# 2. Position sizing jitter: Slight randomization to hide patterns
+# 3. Threshold perturbation: Random noise on signals
+# 4. Lottery burns: Random selection for burn events
+
+# === BITVECTOR STREAMS ===
+bv[16] i_seed = ifile("inputs/prng_seed.in").      # Initial seed (from multi-party commit-reveal)
+bv[16] o_rand = ofile("outputs/random.out").       # Current random value
+bv[16] o_lfsr = ofile("outputs/lfsr_state.out").   # Internal LFSR state
+
+# === LFSR CONSTANTS ===
+# Galois LFSR feedback polynomial: x^16 + x^14 + x^13 + x^11 + 1
+# When LSB is 1, XOR state with 0xB400 (taps at positions 15,13,12,10)
+# This gives maximal period of 2^16 - 1 = 65535
+
+# === HELPER: Bit extraction ===
+# Extract LSB for feedback decision
+lsb_is_one(state) := (state & {1}:bv[16]) = {1}:bv[16].
+
+# === LFSR UPDATE SPECIFICATION ===
+# Galois LFSR: shift right, conditionally XOR with polynomial
+r (
+    # Initialize from seed on first tick, or advance LFSR
+    (o_lfsr[t] = (o_lfsr[t-1] = {0}:bv[16]) ? 
+                 (i_seed[t] = {0}:bv[16] ? {1}:bv[16] : i_seed[t]) :  # Seed (avoid 0)
+                 (lsb_is_one(o_lfsr[t-1]) ?
+                     ((o_lfsr[t-1] >> {1}:bv[16]) ^ {#xB400}:bv[16]) :  # XOR with polynomial
+                     (o_lfsr[t-1] >> {1}:bv[16]))) &&                   # Just shift
+    
+    # Output is LFSR state XORed with seed for additional entropy
+    (o_rand[t] = o_lfsr[t] ^ i_seed[t])
+)
+
+# === PRNG PROPERTIES ===
+#
+# 1. PERIOD: 65535 (maximal for 16-bit LFSR)
+# 2. SEED REQUIREMENT: Non-zero (0 is fixed point)
+# 3. DISTRIBUTION: Uniform over [1, 65535]
+#
+# SECURITY NOTE:
+# - LFSR is NOT cryptographically secure
+# - Suitable for anti-pattern-detection, not true randomness
+# - For critical randomness, use commit-reveal from multiple parties
+
+# === USAGE EXAMPLES ===
+#
+# 1. Random delay (0-7 ticks):
+#    delay = o_rand % 8
+#
+# 2. Random threshold perturbation (±5%):
+#    perturbed_threshold = threshold + (o_rand % 10) - 5
+#
+# 3. Random position sizing (90-110% of base):
+#    size = base_size * (90 + o_rand % 21) / 100
+#
+# 4. Random entry skip (10% chance):
+#    skip_entry = (o_rand % 10) = 0
+
+# === MULTI-PARTY SEED GENERATION ===
+#
+# For provably fair randomness, use commit-reveal:
+# 1. Each party commits hash(secret)
+# 2. All parties reveal secrets
+# 3. seed = secret1 ^ secret2 ^ ... ^ secretN
+#
+# This ensures:
+# - No single party controls the seed
+# - Manipulation requires all parties to collude
+

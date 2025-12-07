@@ -1,0 +1,352 @@
+# ==============================================================================
+# AGENT REFLEXIVITY GUARD - Circuit Breaker & Safety Agent
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - Safety Agent
+#
+# Purpose: Prevent death spirals and runaway deflation through
+# circuit breakers and gradual parameter transitions
+#
+# NOTE: Per user clarification, "death spiral" with infinite divisibility
+# is not about supply reaching zero (impossible), but about VELOCITY COLLAPSE.
+# VCC already solves this via transaction-based EETF rewarding ACTION not just holding.
+#
+# This agent monitors:
+# - Price stability (not collapse)
+# - Liquidity depth (market health)
+# - Consecutive burn patterns (prevent manipulation)
+# - Parameter change velocity (gradual transitions)
+# - Network health metrics
+#
+# FSM States:
+# 0: NORMAL - All systems green
+# 1: CAUTION - One metric below threshold
+# 2: WARNING - Multiple metrics concerning
+# 3: HALT - Circuit breaker triggered
+# 4: RECOVERY - Gradually resuming operations
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Market Metrics
+# ------------------------------------------------------------------------------
+
+bv[64] i_current_price = ifile("inputs/current_price.in").
+bv[64] i_price_1h_ago = ifile("inputs/price_1h_ago.in").
+bv[64] i_price_24h_ago = ifile("inputs/price_24h_ago.in").
+bv[64] i_price_7d_ago = ifile("inputs/price_7d_ago.in").
+
+bv[64] i_liquidity_depth = ifile("inputs/liquidity_depth.in").
+bv[64] i_min_liquidity = ifile("inputs/min_liquidity.in").
+bv[64] i_liquidity_24h_ago = ifile("inputs/liquidity_24h_ago.in").
+
+bv[256] i_total_supply = ifile("inputs/total_supply.in").
+bv[256] i_circulating_supply = ifile("inputs/circulating_supply.in").
+bv[256] i_locked_supply = ifile("inputs/locked_supply.in").
+
+# ------------------------------------------------------------------------------
+# INPUTS - Deflation Metrics
+# ------------------------------------------------------------------------------
+
+bv[16] i_burn_rate_current = ifile("inputs/burn_rate_current.in").
+bv[16] i_burn_rate_7d_avg = ifile("inputs/burn_rate_7d_avg.in").
+bv[8] i_consecutive_burn_days = ifile("inputs/consecutive_burn_days.in").
+
+bv[8] i_eetf_network_avg = ifile("inputs/eetf_network_avg.in").
+bv[8] i_eetf_trend = ifile("inputs/eetf_trend.in").
+
+# Parameter change requests
+bv[16] i_proposed_burn_rate = ifile("inputs/proposed_burn_rate.in").
+bv[16] i_proposed_comp_rate = ifile("inputs/proposed_comp_rate.in").
+
+# Manual overrides
+sbf i_manual_halt = ifile("inputs/manual_halt.in").
+sbf i_manual_resume = ifile("inputs/manual_resume.in").
+sbf i_governance_override = ifile("inputs/governance_override.in").
+
+# Thresholds (configurable)
+bv[8] i_max_hourly_drop_pct = ifile("inputs/max_hourly_drop_pct.in").    # Default: 10%
+bv[8] i_max_daily_drop_pct = ifile("inputs/max_daily_drop_pct.in").      # Default: 25%
+bv[8] i_max_weekly_drop_pct = ifile("inputs/max_weekly_drop_pct.in").    # Default: 40%
+bv[8] i_max_consecutive_burns = ifile("inputs/max_consecutive_burns.in"). # Default: 30
+bv[8] i_max_param_change_pct = ifile("inputs/max_param_change_pct.in").  # Default: 10%
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Guard State
+# ------------------------------------------------------------------------------
+
+bv[8] o_current_state = ofile("outputs/current_state.out").
+
+# Circuit breaker signals
+sbf o_halt_burns = ofile("outputs/halt_burns.out").
+sbf o_halt_trades = ofile("outputs/halt_trades.out").
+sbf o_halt_exits = ofile("outputs/halt_exits.out").
+sbf o_slow_mode = ofile("outputs/slow_mode.out").
+
+# Health indicators (0-100 each)
+bv[8] o_price_health = ofile("outputs/price_health.out").
+bv[8] o_liquidity_health = ofile("outputs/liquidity_health.out").
+bv[8] o_deflation_health = ofile("outputs/deflation_health.out").
+bv[8] o_velocity_health = ofile("outputs/velocity_health.out").  # Token usage
+bv[8] o_overall_health = ofile("outputs/overall_health.out").
+
+# Approved parameters (after gradual transition)
+bv[16] o_approved_burn_rate = ofile("outputs/approved_burn_rate.out").
+bv[16] o_approved_comp_rate = ofile("outputs/approved_comp_rate.out").
+
+# Transition state
+bv[8] o_transition_progress = ofile("outputs/transition_progress.out").  # 0-100%
+sbf o_transition_active = ofile("outputs/transition_active.out").
+
+# Recovery countdown
+bv[8] o_recovery_blocks = ofile("outputs/recovery_blocks.out").
+
+# Alert level (0=none, 1=low, 2=medium, 3=high, 4=critical)
+bv[8] o_alert_level = ofile("outputs/alert_level.out").
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Health Calculations
+# ------------------------------------------------------------------------------
+
+# Price change percentage (returns 0-200, where 100 = no change)
+price_change_pct(current, past) :=
+    (past = { #x00 }:bv[64]) ? { #x64 }:bv[8] :
+    ((current * { #x64 }:bv[64]) / past).
+
+# Check if price drop exceeds threshold
+price_drop_exceeded(current, past, max_drop) :=
+    (past = { #x00 }:bv[64]) ? 0 :
+    (current < ((past * ({ #x64 }:bv[8] - max_drop)) / { #x64 }:bv[64])).
+
+# Liquidity health (0-100)
+calc_liquidity_health(current, minimum, past) :=
+    (current < minimum) ? { #x00 }:bv[8] :
+    (current >= past) ? { #x64 }:bv[8] :
+    (((current - minimum) * { #x64 }:bv[8]) / (past - minimum)).
+
+# Deflation health (healthy = sustainable, not runaway)
+# Too fast burns = unhealthy
+calc_deflation_health(burn_rate, avg_rate, consecutive) :=
+    (burn_rate > (avg_rate * { #x02 }:bv[16])) ? { #x19 }:bv[8] :  # 25% - too fast
+    (consecutive > { #x1E }:bv[8]) ? { #x32 }:bv[8] :                # 50% - too many consecutive
+    (burn_rate > avg_rate) ? { #x4B }:bv[8] :                        # 75% - elevated
+    { #x64 }:bv[8].                                                   # 100% - normal
+
+# Velocity health (based on EETF - high EETF means tokens are being used ethically)
+# VCC insight: EETF rewards transactions, so high EETF = healthy velocity
+calc_velocity_health(eetf_avg) :=
+    (eetf_avg < { #x50 }:bv[8]) ? { #x19 }:bv[8] :   # < 0.8: poor velocity
+    (eetf_avg < { #x64 }:bv[8]) ? { #x4B }:bv[8] :   # < 1.0: below target
+    (eetf_avg < { #xC8 }:bv[8]) ? { #x64 }:bv[8] :   # < 2.0: healthy
+    { #x64 }:bv[8].                                   # >= 2.0: excellent
+
+# Overall health (weighted average)
+calc_overall_health(price, liquidity, deflation, velocity) :=
+    ((price * { #x28 }:bv[16] +      # 40% weight
+      liquidity * { #x1E }:bv[16] +  # 30% weight
+      deflation * { #x0F }:bv[16] +  # 15% weight
+      velocity * { #x0F }:bv[16])    # 15% weight
+     / { #x64 }:bv[16]).
+
+# Alert level calculation
+calc_alert_level(overall_health) :=
+    (overall_health >= { #x5A }:bv[8]) ? { #x00 }:bv[8] :  # >= 90%: none
+    (overall_health >= { #x46 }:bv[8]) ? { #x01 }:bv[8] :  # >= 70%: low
+    (overall_health >= { #x32 }:bv[8]) ? { #x02 }:bv[8] :  # >= 50%: medium
+    (overall_health >= { #x19 }:bv[8]) ? { #x03 }:bv[8] :  # >= 25%: high
+    { #x04 }:bv[8].                                         # < 25%: critical
+
+# Check if circuit breaker should trigger
+should_halt(price_h, price_d, price_w, liq_ok, consecutive_ok, manual) :=
+    manual |
+    price_h |      # Hourly drop exceeded
+    price_d |      # Daily drop exceeded
+    price_w |      # Weekly drop exceeded
+    ~liq_ok |      # Liquidity below minimum
+    ~consecutive_ok.  # Too many consecutive burns
+
+# Parameter change validation (max 10% per period)
+param_change_valid(current, proposed, max_change) :=
+    (proposed >= current) ?
+        ((proposed - current) <= ((current * max_change) / { #x64 }:bv[16])) :
+        ((current - proposed) <= ((current * max_change) / { #x64 }:bv[16])).
+
+# Gradual transition calculation (7-day linear ramp)
+calc_transition_value(current, target, progress) :=
+    (progress >= { #x64 }:bv[8]) ? target :
+    (current + (((target - current) * progress) / { #x64 }:bv[16])).
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+
+state_normal := o_current_state = { #x00 }:bv[8].
+state_caution := o_current_state = { #x01 }:bv[8].
+state_warning := o_current_state = { #x02 }:bv[8].
+state_halt := o_current_state = { #x03 }:bv[8].
+state_recovery := o_current_state = { #x04 }:bv[8].
+
+# Condition checks
+hourly_drop_exceeded := price_drop_exceeded(i_current_price, i_price_1h_ago, i_max_hourly_drop_pct).
+daily_drop_exceeded := price_drop_exceeded(i_current_price, i_price_24h_ago, i_max_daily_drop_pct).
+weekly_drop_exceeded := price_drop_exceeded(i_current_price, i_price_7d_ago, i_max_weekly_drop_pct).
+liquidity_ok := i_liquidity_depth >= i_min_liquidity.
+consecutive_ok := i_consecutive_burn_days < i_max_consecutive_burns.
+
+# Halt condition
+halt_condition := should_halt(hourly_drop_exceeded, daily_drop_exceeded, weekly_drop_exceeded,
+                              liquidity_ok, consecutive_ok, i_manual_halt).
+
+# Resume condition
+resume_condition := i_manual_resume | 
+                    (i_governance_override & 
+                     ~hourly_drop_exceeded & 
+                     ~daily_drop_exceeded &
+                     liquidity_ok).
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS
+# ------------------------------------------------------------------------------
+
+# Health calculations
+o_price_health[0] := { #x64 }:bv[8].
+o_price_health[t] :=
+    (price_change_pct(i_current_price[t], i_price_7d_ago[t]) >= { #x46 }:bv[8]) ?
+        { #x64 }:bv[8] :  # >= 70% of 7d ago = healthy
+        ((price_change_pct(i_current_price[t], i_price_7d_ago[t]) * { #x64 }:bv[8]) / { #x46 }:bv[8]).
+
+o_liquidity_health[0] := { #x64 }:bv[8].
+o_liquidity_health[t] :=
+    calc_liquidity_health(i_liquidity_depth[t], i_min_liquidity[t], i_liquidity_24h_ago[t]).
+
+o_deflation_health[0] := { #x64 }:bv[8].
+o_deflation_health[t] :=
+    calc_deflation_health(i_burn_rate_current[t], i_burn_rate_7d_avg[t], i_consecutive_burn_days[t]).
+
+o_velocity_health[0] := { #x64 }:bv[8].
+o_velocity_health[t] :=
+    calc_velocity_health(i_eetf_network_avg[t]).
+
+o_overall_health[0] := { #x64 }:bv[8].
+o_overall_health[t] :=
+    calc_overall_health(o_price_health[t], o_liquidity_health[t], 
+                        o_deflation_health[t], o_velocity_health[t]).
+
+o_alert_level[0] := { #x00 }:bv[8].
+o_alert_level[t] := calc_alert_level(o_overall_health[t]).
+
+# FSM State
+o_current_state[0] := { #x00 }:bv[8].
+o_current_state[t] :=
+    # Halt takes priority
+    halt_condition[t] ? { #x03 }:bv[8] :
+    # Recovery from halt
+    (state_halt[t-1] & resume_condition[t]) ? { #x04 }:bv[8] :
+    # Recovery complete
+    (state_recovery[t-1] & (o_recovery_blocks[t] = { #x00 }:bv[8])) ? { #x00 }:bv[8] :
+    # Degraded states based on alert level
+    (o_alert_level[t] >= { #x03 }:bv[8]) ? { #x02 }:bv[8] :  # WARNING
+    (o_alert_level[t] >= { #x02 }:bv[8]) ? { #x01 }:bv[8] :  # CAUTION
+    # Maintain current state during recovery
+    state_recovery[t-1] ? { #x04 }:bv[8] :
+    { #x00 }:bv[8].  # NORMAL
+
+# Circuit breaker signals
+o_halt_burns[0] := 0.
+o_halt_burns[t] := state_halt[t] | state_recovery[t].
+
+o_halt_trades[0] := 0.
+o_halt_trades[t] := state_halt[t].  # Only halt trades in full halt
+
+o_halt_exits[0] := 0.
+o_halt_exits[t] := 0.  # Never halt exits (user must be able to exit)
+
+o_slow_mode[0] := 0.
+o_slow_mode[t] := state_caution[t] | state_warning[t] | state_recovery[t].
+
+# Recovery countdown
+o_recovery_blocks[0] := { #x00 }:bv[8].
+o_recovery_blocks[t] :=
+    (state_halt[t-1] & resume_condition[t]) ? { #x0A }:bv[8] :  # 10 block recovery
+    (o_recovery_blocks[t-1] > { #x00 }:bv[8]) ?
+        (o_recovery_blocks[t-1] - { #x01 }:bv[8]) :
+    { #x00 }:bv[8].
+
+# Parameter transitions
+o_transition_active[0] := 0.
+o_transition_active[t] :=
+    (i_proposed_burn_rate[t] != o_approved_burn_rate[t-1]) |
+    (i_proposed_comp_rate[t] != o_approved_comp_rate[t-1]).
+
+o_transition_progress[0] := { #x00 }:bv[8].
+o_transition_progress[t] :=
+    ~o_transition_active[t] ? { #x00 }:bv[8] :
+    (o_transition_progress[t-1] >= { #x64 }:bv[8]) ? { #x64 }:bv[8] :
+    (o_transition_progress[t-1] + { #x0E }:bv[8]).  # ~14% per period (7 periods = 98%)
+
+# Approved parameters (gradual transition)
+o_approved_burn_rate[0] := { #x01F4 }:bv[16].  # 500 bps = 5%
+o_approved_burn_rate[t] :=
+    state_halt[t] ? o_approved_burn_rate[t-1] :  # No changes during halt
+    ~param_change_valid(o_approved_burn_rate[t-1], i_proposed_burn_rate[t], i_max_param_change_pct[t]) ?
+        o_approved_burn_rate[t-1] :  # Reject invalid changes
+    calc_transition_value(o_approved_burn_rate[t-1], i_proposed_burn_rate[t], o_transition_progress[t]).
+
+o_approved_comp_rate[0] := { #x01F4 }:bv[16].  # 500 bps = 5%
+o_approved_comp_rate[t] :=
+    state_halt[t] ? o_approved_comp_rate[t-1] :
+    ~param_change_valid(o_approved_comp_rate[t-1], i_proposed_comp_rate[t], i_max_param_change_pct[t]) ?
+        o_approved_comp_rate[t-1] :
+    calc_transition_value(o_approved_comp_rate[t-1], i_proposed_comp_rate[t], o_transition_progress[t]).
+
+# ------------------------------------------------------------------------------
+# INVARIANTS
+# ------------------------------------------------------------------------------
+
+# Users can ALWAYS exit (no halt on exits)
+inv_exits_never_halted := always (~o_halt_exits).
+
+# Health values in range
+inv_health_bounded := always (
+    (o_price_health <= { #x64 }:bv[8]) &
+    (o_liquidity_health <= { #x64 }:bv[8]) &
+    (o_deflation_health <= { #x64 }:bv[8]) &
+    (o_velocity_health <= { #x64 }:bv[8]) &
+    (o_overall_health <= { #x64 }:bv[8])
+).
+
+# State valid
+inv_state_valid := always (o_current_state <= { #x04 }:bv[8]).
+
+# Alert level valid
+inv_alert_valid := always (o_alert_level <= { #x04 }:bv[8]).
+
+# Transitions are gradual
+inv_gradual_transition := always (o_transition_progress <= { #x64 }:bv[8]).
+
+o_all_invariants := inv_exits_never_halted & inv_health_bounded & 
+                    inv_state_valid & inv_alert_valid & inv_gradual_transition.
+
+# ==============================================================================
+# KEY INSIGHT: VCC + Infinite Divisibility = No Death Spiral Risk
+# ==============================================================================
+#
+# Traditional "death spiral" concern: deflation -> hoarding -> velocity collapse
+# 
+# VCC solves this because EETF rewards ethical TRANSACTIONS:
+# - You must USE tokens ethically to maximize EETF
+# - High EETF = high base rewards (DBR+)
+# - High EETF = hyper-compounding (HCR)
+# - High EETF = more burns (AEB)
+#
+# So the optimal strategy is: LOCK long-term AND transact ethically
+# This maintains velocity while deflating supply.
+#
+# The "decimal moving" phenomenon (like Bitcoin satoshis):
+# - 20% annual deflation can continue indefinitely
+# - After 200 years at 20%: still 416 smallest units
+# - Each unit becomes proportionally more valuable
+# - This is FEATURE, not bug
+#
+# ==============================================================================
+# END OF AGENT_REFLEXIVITY_GUARD.TAU
+# ==============================================================================
+

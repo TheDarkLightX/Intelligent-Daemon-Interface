@@ -1,0 +1,63 @@
+# Tau Language: Simple Deflationary Agent with BitVectors
+# Simplified version focusing on core mechanics
+#
+# Copyright DarkLightX/Dana Edwards
+
+# ============================================================
+# STREAMS
+# ============================================================
+price : bv[8] = in console.
+holding : sbf = out console.
+buy_price : bv[8] = out console.
+should_burn : sbf = out console.
+burn_count : bv[8] = out console.
+
+# ============================================================
+# SPECIFICATION
+# ============================================================
+
+# Low price threshold: 80, High price threshold: 176
+# Buy when: price < 80 AND not holding
+# Sell when: price > 176 AND holding
+
+# Compute buy and sell conditions as wff (well-formed formulas)
+# Then use them to update state
+
+# Position logic: 
+# holding becomes 1 when we buy (price<80 and not holding)
+# holding becomes 0 when we sell (price>176 and holding)
+# otherwise holding stays the same
+(
+    # Buy condition: low price, not holding -> enter position
+    (price[t] < {80}:bv[8] && holding[t-1] = 0 -> holding[t] = 1) &&
+    
+    # Sell condition: high price, holding -> exit position  
+    (price[t] > {176}:bv[8] && holding[t-1] = 1 -> holding[t] = 0) &&
+    
+    # No action: maintain position state
+    (price[t] >= {80}:bv[8] && price[t] <= {176}:bv[8] -> holding[t] = holding[t-1]) &&
+    (price[t] < {80}:bv[8] && holding[t-1] = 1 -> holding[t] = 1) &&
+    (price[t] > {176}:bv[8] && holding[t-1] = 0 -> holding[t] = 0)
+) &&
+
+# Store buy price when entering position
+(
+    # When buying, store current price
+    (price[t] < {80}:bv[8] && holding[t-1] = 0 -> buy_price[t] = price[t]) &&
+    # Otherwise maintain buy price
+    (!(price[t] < {80}:bv[8] && holding[t-1] = 0) -> buy_price[t] = buy_price[t-1])
+) &&
+
+# Burn on profitable sales
+(
+    # Profitable sale: selling (high price, was holding) and current price > buy price
+    (price[t] > {176}:bv[8] && holding[t-1] = 1 && price[t] > buy_price[t-1] -> should_burn[t] = 1) &&
+    (!(price[t] > {176}:bv[8] && holding[t-1] = 1 && price[t] > buy_price[t-1]) -> should_burn[t] = 0)
+) &&
+
+# Accumulate burn count
+(
+    (should_burn[t] = 1 -> burn_count[t] = burn_count[t-1] + {1}:bv[8]) &&
+    (should_burn[t] = 0 -> burn_count[t] = burn_count[t-1])
+).
+

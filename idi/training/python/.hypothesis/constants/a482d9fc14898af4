@@ -1,0 +1,4 @@
+# file: /home/trevormoc/.cursor/worktrees/DeflationaryAgent/zqr/idi/training/python/idi_iann/ope.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.95, 0.99, 1.0, 1.96, '1.0', 'DM', 'DR', 'IPS', 'LoggedDataset', 'LoggedEpisode', 'LoggedTransition', 'WIS', 'action', 'behavior_policy_id', 'behavior_prob', 'confidence_interval', 'config_hash', 'data_version', 'details', 'done', 'episode_id', 'episodes', 'estimator', 'metadata', 'n_episodes', 'next_state', 'reward', 'standard_error', 'state', 'total_weight', 'transitions', 'unknown', 'value', 'value_estimate', 'variance']

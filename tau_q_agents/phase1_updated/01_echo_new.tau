@@ -1,0 +1,13 @@
+# Echo - pass input directly to output
+# NEW SYNTAX for Tau v0.7.0-alpha
+#
+# Expected: input 0,1,0 -> output 0,1,0
+
+i1 : sbf = in file("inputs/signal.in")
+o1 : sbf = out file("outputs/echo.out")
+r o1[t] = i1[t]
+n
+n
+n
+q
+

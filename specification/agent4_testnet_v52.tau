@@ -1,0 +1,243 @@
+# ============================================================================
+# AGENT V52: INFINITE DEFLATION SPIRAL AGENT
+# ============================================================================
+# Integrates the infinite deflation engine with the trading agent.
+# This agent participates in the infinite deflation spiral, optimizing
+# its behavior to maximize returns as scarcity increases unboundedly.
+#
+# KEY FEATURES:
+# - Bitcoin-style halving eras
+# - EETF-powered burn acceleration
+# - Scarcity-aware trading decisions
+# - Era-adaptive strategies
+# ============================================================================
+
+# =============================================================================
+# IMPORTS (conceptual - actual imports in Tau)
+# =============================================================================
+# import "libraries/infinite_deflation_engine.tau"
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+# Market inputs
+bv[64] i_price = ifile("inputs/price.in").
+sbf i_profit_guard = ifile("inputs/profit_guard.in").
+sbf i_oracle_fresh = ifile("inputs/oracle_fresh.in").
+
+# Deflation engine inputs
+bv[256] i_current_supply = ifile("inputs/current_supply.in").
+bv[256] i_initial_supply = ifile("inputs/initial_supply.in").
+bv[16] i_network_eetf = ifile("inputs/network_eetf.in").
+bv[8] i_current_era = ifile("inputs/current_era.in").
+bv[256] i_scarcity_mult = ifile("inputs/scarcity_mult.in").
+
+# Agent's EETF
+bv[16] i_agent_eetf = ifile("inputs/agent_eetf.in").
+
+# Circuit breaker
+sbf i_circuit_ok = ifile("inputs/circuit_ok.in").
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# Trading thresholds adjusted by era
+bv[16] C_BASE_ENTRY_THRESHOLD = { #x0064 }:bv[16].  # 100 = 1.0 risk score
+bv[16] C_BASE_EXIT_THRESHOLD = { #x0032 }:bv[16].   # 50 = 0.5 risk score
+
+# Scarcity thresholds for strategy changes
+bv[256] C_SCARCITY_CONSERVATIVE = { #x05 }:bv[256].  # 5x scarcity = conservative
+bv[256] C_SCARCITY_AGGRESSIVE = { #x02 }:bv[256].    # 2x scarcity = can be aggressive
+
+# =============================================================================
+# INTERNAL STATE
+# =============================================================================
+
+# Position tracking
+sbf s_in_position[0] := 0.
+sbf s_in_position[n] := 
+    (s_in_position[n-1] & ~o_exit_signal[n]) | 
+    (~s_in_position[n-1] & o_entry_signal[n]).
+
+# Entry price tracking
+bv[64] s_entry_price[0] := { #x00 }:bv[64].
+bv[64] s_entry_price[n] := 
+    (o_entry_signal[n] & ~s_in_position[n-1]) ? i_price[n] : s_entry_price[n-1].
+
+# Era at entry (for era-adjusted exit)
+bv[8] s_entry_era[0] := { #x00 }:bv[8].
+bv[8] s_entry_era[n] := 
+    (o_entry_signal[n] & ~s_in_position[n-1]) ? i_current_era[n] : s_entry_era[n-1].
+
+# Trade counter per era
+bv[16] s_era_trades[0] := { #x00 }:bv[16].
+bv[16] s_era_trades[n] := 
+    (i_current_era[n] > i_current_era[n-1]) ? { #x00 }:bv[16] :
+    (o_trade_executed[n]) ? (s_era_trades[n-1] + { #x01 }:bv[16]) :
+    s_era_trades[n-1].
+
+# Cumulative profit (scarcity-adjusted)
+bv[256] s_cumulative_profit[0] := { #x00 }:bv[256].
+bv[256] s_cumulative_profit[n] := 
+    (o_exit_signal[n] & o_profitable_exit[n]) ?
+    (s_cumulative_profit[n-1] + o_scarcity_adjusted_profit[n]) :
+    s_cumulative_profit[n-1].
+
+# =============================================================================
+# STRATEGY CALCULATIONS
+# =============================================================================
+
+# Era-adjusted thresholds (more conservative in later eras due to scarcity)
+era_entry_threshold(era) :=
+    (era = { #x00 }:bv[8]) ? C_BASE_ENTRY_THRESHOLD :
+    (era = { #x01 }:bv[8]) ? (C_BASE_ENTRY_THRESHOLD + { #x0014 }:bv[16]) :  # +20%
+    (era = { #x02 }:bv[8]) ? (C_BASE_ENTRY_THRESHOLD + { #x0028 }:bv[16]) :  # +40%
+    (C_BASE_ENTRY_THRESHOLD + { #x003C }:bv[16]).  # +60% in era 3+
+
+# Scarcity-based strategy selection
+strategy_from_scarcity(scarcity) :=
+    (scarcity > C_SCARCITY_CONSERVATIVE) ? { #b10 }:bv[2] :  # Conservative (2)
+    (scarcity > C_SCARCITY_AGGRESSIVE) ? { #b01 }:bv[2] :    # Balanced (1)
+    { #b00 }:bv[2].  # Aggressive (0)
+
+# EETF bonus: higher EETF = better entry opportunities
+eetf_entry_bonus(eetf) :=
+    (eetf > { #x00C8 }:bv[16]) ? { #x0032 }:bv[16] :  # 2.0+ EETF: +50
+    (eetf > { #x0096 }:bv[16]) ? { #x001E }:bv[16] :  # 1.5+ EETF: +30
+    (eetf > { #x0064 }:bv[16]) ? { #x000A }:bv[16] :  # 1.0+ EETF: +10
+    { #x00 }:bv[16].  # No bonus below 1.0
+
+# Scarcity-adjusted profit calculation
+# As scarcity increases, same nominal profit is worth more
+scarcity_adjusted_profit(nominal_profit, scarcity) :=
+    nominal_profit * scarcity.
+
+# =============================================================================
+# ENTRY/EXIT LOGIC
+# =============================================================================
+
+# Entry conditions
+valid_market(oracle, circuit) := oracle & circuit.
+
+entry_score(price, scarcity, eetf, era) :=
+    era_entry_threshold(era) + eetf_entry_bonus(eetf) - 
+    (scarcity > C_SCARCITY_CONSERVATIVE ? { #x0028 }:bv[16] : { #x00 }:bv[16]).
+
+valid_entry(market_valid, profit_guard, in_position, entry_score_val, threshold) :=
+    market_valid & profit_guard & ~in_position & (entry_score_val > threshold).
+
+# Exit conditions
+profitable_exit(current_price, entry_price) := current_price > entry_price.
+
+era_changed_exit(current_era, entry_era) := current_era > entry_era.
+
+scarcity_exit(scarcity, position_age) :=
+    # Exit if scarcity jumps significantly (take profits on scarcity spike)
+    scarcity > (C_SCARCITY_CONSERVATIVE * { #x02 }:bv[256]).
+
+valid_exit(in_position, profitable, era_changed, scarcity_trigger) :=
+    in_position & (profitable | era_changed | scarcity_trigger).
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+sbf o_entry_signal = ofile("outputs/entry_signal.out").
+sbf o_exit_signal = ofile("outputs/exit_signal.out").
+sbf o_trade_executed = ofile("outputs/trade_executed.out").
+sbf o_profitable_exit = ofile("outputs/profitable_exit.out").
+bv[2] o_strategy = ofile("outputs/strategy.out").
+bv[256] o_scarcity_adjusted_profit = ofile("outputs/scarcity_adjusted_profit.out").
+bv[64] o_current_position_value = ofile("outputs/current_position_value.out").
+bv[8] o_current_era = ofile("outputs/current_era.out").
+sbf o_in_position = ofile("outputs/in_position.out").
+
+# =============================================================================
+# RECURRENCE RELATIONS
+# =============================================================================
+
+bv[16] entry_score_calc[t] := entry_score(i_price[t], i_scarcity_mult[t], i_agent_eetf[t], i_current_era[t]).
+
+o_entry_signal[t] := 
+    valid_entry(valid_market(i_oracle_fresh[t], i_circuit_ok[t]), 
+                i_profit_guard[t], 
+                s_in_position[t-1],
+                entry_score_calc[t],
+                era_entry_threshold(i_current_era[t])).
+
+o_profitable_exit[t] := profitable_exit(i_price[t], s_entry_price[t-1]).
+
+o_exit_signal[t] := 
+    valid_exit(s_in_position[t-1],
+               o_profitable_exit[t],
+               era_changed_exit(i_current_era[t], s_entry_era[t-1]),
+               scarcity_exit(i_scarcity_mult[t], { #x00 }:bv[16])).
+
+o_trade_executed[t] := o_entry_signal[t] | o_exit_signal[t].
+
+o_strategy[t] := strategy_from_scarcity(i_scarcity_mult[t]).
+
+bv[64] nominal_profit[t] := 
+    (o_exit_signal[t] & o_profitable_exit[t]) ?
+    (i_price[t] - s_entry_price[t-1]) : { #x00 }:bv[64].
+
+o_scarcity_adjusted_profit[t] := 
+    scarcity_adjusted_profit(nominal_profit[t], i_scarcity_mult[t]).
+
+o_current_position_value[t] := 
+    (s_in_position[t]) ? i_price[t] : { #x00 }:bv[64].
+
+o_current_era[t] := i_current_era[t].
+o_in_position[t] := s_in_position[t].
+
+# =============================================================================
+# FINITE STATE MACHINE
+# =============================================================================
+
+# States:
+# IDLE (0): No position, waiting
+# SEEKING_ENTRY (1): Looking for entry opportunity
+# IN_POSITION (2): Active position
+# SEEKING_EXIT (3): Looking for exit opportunity
+# ERA_TRANSITION (4): Handling era change
+# PROFIT_TAKING (5): Exiting with profit
+# STOP_OUT (6): Exiting at loss (not implemented - no stop loss)
+
+enum V52State { IDLE, SEEKING_ENTRY, IN_POSITION, SEEKING_EXIT, ERA_TRANSITION, PROFIT_TAKING }.
+
+bv[3] s_state[0] := { #b000 }:bv[3].  # IDLE
+
+bv[3] s_state[n] :=
+    # Era transition handling
+    (i_current_era[n] > i_current_era[n-1] & s_in_position[n-1]) ? V52State.ERA_TRANSITION :
+    # State transitions
+    (s_state[n-1] = V52State.IDLE & valid_market(i_oracle_fresh[n], i_circuit_ok[n])) ? V52State.SEEKING_ENTRY :
+    (s_state[n-1] = V52State.SEEKING_ENTRY & o_entry_signal[n]) ? V52State.IN_POSITION :
+    (s_state[n-1] = V52State.SEEKING_ENTRY & ~valid_market(i_oracle_fresh[n], i_circuit_ok[n])) ? V52State.IDLE :
+    (s_state[n-1] = V52State.IN_POSITION & o_profitable_exit[n]) ? V52State.SEEKING_EXIT :
+    (s_state[n-1] = V52State.SEEKING_EXIT & o_exit_signal[n]) ? V52State.PROFIT_TAKING :
+    (s_state[n-1] = V52State.PROFIT_TAKING) ? V52State.IDLE :
+    (s_state[n-1] = V52State.ERA_TRANSITION & o_exit_signal[n]) ? V52State.IDLE :
+    (s_state[n-1] = V52State.ERA_TRANSITION) ? V52State.IN_POSITION :
+    s_state[n-1].
+
+# =============================================================================
+# INVARIANTS
+# =============================================================================
+
+# Basic trading invariants
+always (o_entry_signal => ~s_in_position[n-1]).
+always (o_exit_signal => s_in_position[n-1]).
+always (o_trade_executed = (o_entry_signal | o_exit_signal)).
+
+# Strategy bounded
+always (o_strategy <= { #b10 }:bv[2]).
+
+# Era monotonically increases
+always (o_current_era >= i_current_era[n-1]).
+
+# Scarcity-adjusted profit only on profitable exits
+always (o_scarcity_adjusted_profit > { #x00 }:bv[256] => o_profitable_exit).
+

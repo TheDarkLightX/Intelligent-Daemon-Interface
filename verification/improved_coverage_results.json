@@ -1,0 +1,391 @@
+{
+  "infinite_deflation": {
+    "test_cases": [
+      {
+        "name": "genesis_to_active",
+        "from_state": 0,
+        "to_state": 1,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 100,
+          "time_period": 1
+        },
+        "expected_outputs": {
+          "burn_executed": true
+        }
+      },
+      {
+        "name": "genesis_to_accelerating",
+        "from_state": 0,
+        "to_state": 2,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 250,
+          "time_period": 1
+        },
+        "expected_outputs": {
+          "burn_executed": true
+        }
+      },
+      {
+        "name": "genesis_to_paused",
+        "from_state": 0,
+        "to_state": 4,
+        "inputs": {
+          "circuit_ok": false,
+          "time_period": 1
+        },
+        "expected_outputs": {
+          "burn_executed": false
+        }
+      },
+      {
+        "name": "active_self_loop",
+        "from_state": 1,
+        "to_state": 1,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 100,
+          "time_period": 100
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "active_to_accelerating",
+        "from_state": 1,
+        "to_state": 2,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 210,
+          "time_period": 100
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "active_to_halving",
+        "from_state": 1,
+        "to_state": 3,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 100,
+          "time_period": 216001
+        },
+        "expected_outputs": {
+          "current_era": 1
+        }
+      },
+      {
+        "name": "active_to_paused",
+        "from_state": 1,
+        "to_state": 4,
+        "inputs": {
+          "circuit_ok": false,
+          "time_period": 100
+        },
+        "expected_outputs": {
+          "burn_executed": false
+        }
+      },
+      {
+        "name": "active_to_terminal",
+        "from_state": 1,
+        "to_state": 5,
+        "inputs": {
+          "circuit_ok": true,
+          "current_supply": 0,
+          "time_period": 1000000000
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "accelerating_to_active",
+        "from_state": 2,
+        "to_state": 1,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 150,
+          "time_period": 100
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "accelerating_self_loop",
+        "from_state": 2,
+        "to_state": 2,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 220,
+          "time_period": 100
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "accelerating_to_halving",
+        "from_state": 2,
+        "to_state": 3,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 220,
+          "time_period": 216001
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "accelerating_to_paused",
+        "from_state": 2,
+        "to_state": 4,
+        "inputs": {
+          "circuit_ok": false,
+          "time_period": 100
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "halving_to_active",
+        "from_state": 3,
+        "to_state": 1,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 100,
+          "time_period": 216002
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "halving_to_accelerating",
+        "from_state": 3,
+        "to_state": 2,
+        "inputs": {
+          "circuit_ok": true,
+          "eetf_network": 220,
+          "time_period": 216002
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "paused_to_active",
+        "from_state": 4,
+        "to_state": 1,
+        "inputs": {
+          "circuit_ok": true,
+          "time_period": 200
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "paused_self_loop",
+        "from_state": 4,
+        "to_state": 4,
+        "inputs": {
+          "circuit_ok": false,
+          "time_period": 200
+        },
+        "expected_outputs": {}
+      },
+      {
+        "name": "terminal_self_loop",
+        "from_state": 5,
+        "to_state": 5,
+        "inputs": {
+          "current_supply": 0,
+          "time_period": 10000000000
+        },
+        "expected_outputs": {}
+      }
+    ],
+    "coverage": {
+      "states_covered": 5,
+      "total_states": 6,
+      "state_coverage": 83.33333333333334,
+      "transitions_covered": 17,
+      "total_transitions": 17,
+      "transition_coverage": 100.0
+    }
+  },
+  "ethical_alignment": {
+    "test_cases": [
+      {
+        "name": "enter_unaligned",
+        "to_state": 0,
+        "inputs": {
+          "account_eetf": 50,
+          "ethical_streak": 0
+        },
+        "expected": {
+          "tier": 0
+        }
+      },
+      {
+        "name": "enter_basic",
+        "to_state": 1,
+        "inputs": {
+          "account_eetf": 100,
+          "ethical_streak": 5
+        },
+        "expected": {
+          "tier": 1
+        }
+      },
+      {
+        "name": "enter_aligned",
+        "to_state": 2,
+        "inputs": {
+          "account_eetf": 150,
+          "ethical_streak": 20
+        },
+        "expected": {
+          "tier": 2
+        }
+      },
+      {
+        "name": "enter_highly_aligned",
+        "to_state": 3,
+        "inputs": {
+          "account_eetf": 200,
+          "ethical_streak": 50
+        },
+        "expected": {
+          "tier": 3
+        }
+      },
+      {
+        "name": "enter_exemplary",
+        "to_state": 4,
+        "inputs": {
+          "account_eetf": 200,
+          "ethical_streak": 150
+        },
+        "expected": {
+          "tier": 3
+        }
+      },
+      {
+        "name": "enter_ai_aligned",
+        "to_state": 5,
+        "inputs": {
+          "account_eetf": 220,
+          "ethical_streak": 60,
+          "is_ai_agent": true
+        },
+        "expected": {
+          "ai_bonus_active": true
+        }
+      },
+      {
+        "name": "enter_penalized",
+        "to_state": 6,
+        "inputs": {
+          "account_eetf": 40,
+          "tx_unethical": true
+        },
+        "expected": {
+          "penalty_amount_positive": true
+        }
+      },
+      {
+        "name": "enter_recovering",
+        "from_state": 6,
+        "to_state": 7,
+        "inputs": {
+          "account_eetf": 80,
+          "tx_ethical": true
+        },
+        "expected": {}
+      },
+      {
+        "name": "unaligned_to_basic",
+        "from_state": 0,
+        "to_state": 1,
+        "inputs": {
+          "account_eetf": 100
+        },
+        "expected": {}
+      },
+      {
+        "name": "basic_to_aligned",
+        "from_state": 1,
+        "to_state": 2,
+        "inputs": {
+          "account_eetf": 150
+        },
+        "expected": {}
+      },
+      {
+        "name": "aligned_to_highly",
+        "from_state": 2,
+        "to_state": 3,
+        "inputs": {
+          "account_eetf": 200
+        },
+        "expected": {}
+      },
+      {
+        "name": "highly_to_exemplary",
+        "from_state": 3,
+        "to_state": 4,
+        "inputs": {
+          "account_eetf": 200,
+          "ethical_streak": 110
+        },
+        "expected": {}
+      },
+      {
+        "name": "aligned_to_penalized",
+        "from_state": 2,
+        "to_state": 6,
+        "inputs": {
+          "tx_unethical": true,
+          "penalty": 1000
+        },
+        "expected": {}
+      },
+      {
+        "name": "penalized_to_recovering",
+        "from_state": 6,
+        "to_state": 7,
+        "inputs": {
+          "tx_ethical": true
+        },
+        "expected": {}
+      },
+      {
+        "name": "recovering_to_basic",
+        "from_state": 7,
+        "to_state": 1,
+        "inputs": {
+          "account_eetf": 100,
+          "ethical_streak": 5
+        },
+        "expected": {}
+      },
+      {
+        "name": "exemplary_streak_broken",
+        "from_state": 4,
+        "to_state": 3,
+        "inputs": {
+          "account_eetf": 200,
+          "ethical_streak": 0
+        },
+        "expected": {}
+      },
+      {
+        "name": "ai_aligned_to_highly",
+        "from_state": 5,
+        "to_state": 3,
+        "inputs": {
+          "account_eetf": 200,
+          "is_ai_agent": false
+        },
+        "expected": {}
+      }
+    ],
+    "coverage": {
+      "states_covered": 8,
+      "total_states": 8,
+      "state_coverage": 100.0,
+      "transitions_covered": 9,
+      "total_transitions": 20,
+      "transition_coverage": 45.0
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# 2-state FSM: IDLE (0) <-> ACTIVE (1)
+# i1 = trigger input (toggle on 1)
+# o1 = current state
+# XOR behavior: toggle state when triggered
+# o1[t] = XOR(i1[t], o1[t-1])
+
+sbf i1 = console
+sbf o1 = console
+r o1[t] = (i1[t] & o1[t-1]') | (i1[t]' & o1[t-1])
+0
+1
+0
+1
+1
+0
+q
