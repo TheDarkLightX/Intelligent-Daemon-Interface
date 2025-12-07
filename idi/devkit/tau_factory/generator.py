@@ -1419,6 +1419,8 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_entry_exit_fsm_logic(block, schema.streams))
         elif block.pattern == "orthogonal_regions":
             logic_lines.append(_generate_orthogonal_regions_logic(block, schema.streams))
+        elif block.pattern == "state_aggregation":
+            logic_lines.append(_generate_state_aggregation_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     

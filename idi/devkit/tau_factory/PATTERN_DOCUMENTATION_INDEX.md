@@ -26,8 +26,9 @@ Complete reference guide for all implemented patterns in the Tau Agent Factory.
 | Risk FSM | ✅ | [HIGH_PRIORITY_PATTERNS_COMPLETE.md](HIGH_PRIORITY_PATTERNS_COMPLETE.md) | Risk management |
 | Entry-Exit FSM | ✅ | [ENTRY_EXIT_FSM_PATTERN.md](ENTRY_EXIT_FSM_PATTERN.md) | Trade lifecycle |
 | Orthogonal Regions | ✅ | [ORTHOGONAL_REGIONS_PATTERN.md](ORTHOGONAL_REGIONS_PATTERN.md) | Parallel FSMs |
+| State Aggregation | ✅ | [STATE_AGGREGATION_PATTERN.md](STATE_AGGREGATION_PATTERN.md) | State composition |
 
-**Total: 20/26 patterns (77%)**
+**Total: 21/26 patterns (81%)**
 
 ## Pattern Categories
 
@@ -60,10 +61,12 @@ Patterns for building complex, multi-level state machines.
 
 - **Supervisor-Worker**: Hierarchical FSM where supervisor coordinates workers
 - **Orthogonal Regions**: Parallel independent FSMs running simultaneously
+- **State Aggregation**: Combining multiple FSM states into superstate
 
 **Documentation**: 
 - [HIERARCHICAL_FSM_DESIGN.md](HIERARCHICAL_FSM_DESIGN.md)
 - [ORTHOGONAL_REGIONS_PATTERN.md](ORTHOGONAL_REGIONS_PATTERN.md)
+- [STATE_AGGREGATION_PATTERN.md](STATE_AGGREGATION_PATTERN.md)
 
 ### Bitvector Patterns
 
