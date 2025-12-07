@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Sequence
+from typing import Dict, Tuple, Iterable, Sequence
 import json
 
 from .domain import Action, StateKey

@@ -29,50 +29,32 @@ class TestTauNetZkAdapter:
     def test_verify_success(self, tmp_path):
         """Test successful proof verification."""
         import json
-        import hashlib
-        
-        # Create temporary files
-        receipt_path = tmp_path / "receipt.json"
-        manifest_path = tmp_path / "manifest.json"
-        proof_path = tmp_path / "proof.bin"
+        from idi.zk.proof_manager import generate_proof
+
         streams_dir = tmp_path / "streams"
         streams_dir.mkdir()
-        
-        # Create manifest
-        manifest_data = {"test": "data"}
-        manifest_path.write_text(json.dumps(manifest_data))
-        
-        # Create stream file
-        (streams_dir / "test.in").write_text("1\n")
-        
-        # Compute digest
-        hasher = hashlib.sha256()
-        hasher.update("manifest".encode())
-        hasher.update(len(manifest_path.read_bytes()).to_bytes(8, "little"))
-        hasher.update(manifest_path.read_bytes())
-        hasher.update("streams/test.in".encode())
-        hasher.update(len((streams_dir / "test.in").read_bytes()).to_bytes(8, "little"))
-        hasher.update((streams_dir / "test.in").read_bytes())
-        digest = hasher.hexdigest()
-        
-        # Create valid receipt matching proof_manager format
-        receipt_path.write_text(json.dumps({
-            "digest": digest,
-            "manifest": str(manifest_path),
-            "streams": str(streams_dir),
-            "proof": str(proof_path),
-        }))
-        proof_path.write_bytes(b"test_proof")
-        
+        (streams_dir / "test.in").write_text("1\n", encoding="utf-8")
+
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(json.dumps({"test": "data"}, sort_keys=True), encoding="utf-8")
+
+        bundle = generate_proof(
+            manifest_path=manifest_path,
+            stream_dir=streams_dir,
+            out_dir=tmp_path / "proof",
+            prover_command=None,
+        )
+
         config = ZkConfig(enabled=True, proof_system="stub")
         adapter = TauNetZkAdapter(config)
-        
+
         proof = ZkProofBundle(
-            proof_path=proof_path,
-            receipt_path=receipt_path,
-            manifest_path=manifest_path,
+            proof_path=bundle.proof_path,
+            receipt_path=bundle.receipt_path,
+            manifest_path=bundle.manifest_path,
+            tx_hash="tx123",
         )
-        
+
         # This will use stub verification which should pass with valid files
         result = adapter.verify(proof)
         assert result is True
@@ -92,6 +74,41 @@ class TestTauNetZkAdapter:
         result = adapter.verify(proof)
         assert result is True
 
+    def test_verify_rejects_tampered_receipt(self, tmp_path):
+        """Receipt digest tampering fails verification."""
+        import json
+        from idi.zk.proof_manager import generate_proof
+
+        streams_dir = tmp_path / "streams"
+        streams_dir.mkdir()
+        (streams_dir / "test.in").write_text("1\n", encoding="utf-8")
+
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(json.dumps({"test": "data"}, sort_keys=True), encoding="utf-8")
+
+        bundle = generate_proof(
+            manifest_path=manifest_path,
+            stream_dir=streams_dir,
+            out_dir=tmp_path / "proof",
+            prover_command=None,
+        )
+
+        receipt = json.loads(bundle.receipt_path.read_text())
+        receipt["digest"] = "0" * 64
+        bundle.receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+        config = ZkConfig(enabled=True, proof_system="stub")
+        adapter = TauNetZkAdapter(config)
+
+        proof = ZkProofBundle(
+            proof_path=bundle.proof_path,
+            receipt_path=bundle.receipt_path,
+            manifest_path=bundle.manifest_path,
+            tx_hash="tx123",
+        )
+
+        assert adapter.verify(proof) is False
+
     def test_integration_with_idi_modules(self):
         """Test adapter integrates with IDI ZK modules."""
         config = ZkConfig(enabled=True, proof_system="stub")
@@ -100,4 +117,3 @@ class TestTauNetZkAdapter:
         # Check that adapter has access to IDI modules
         assert hasattr(adapter, "_merkle_builder")
         assert isinstance(adapter._merkle_builder, MerkleTreeBuilder)
-

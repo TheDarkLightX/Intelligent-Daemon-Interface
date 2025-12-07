@@ -15,10 +15,10 @@ class CommunicationRewardShaper:
     learned reward model or preference data.
     """
 
-    alert_bonus: float = 0.2
-    alert_mismatch_penalty: float = -0.25
-    positive_bonus: float = 0.02
-    persistence_bonus: float = 0.02
+    alert_bonus: float = 0.1
+    alert_mismatch_penalty: float = -0.1
+    positive_bonus: float = 0.05
+    persistence_bonus: float = 0.05
 
     def shape(
         self,

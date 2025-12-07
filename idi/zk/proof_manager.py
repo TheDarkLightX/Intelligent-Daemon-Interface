@@ -1,4 +1,15 @@
-"""Proof bundle helpers for IDI zk workflows."""
+"""Proof bundle helpers for IDI zk workflows.
+
+Manages proof generation and verification for manifest-based ZK proofs.
+Supports both stub (SHA-256 only) and real zkVM provers (Risc0).
+
+Security Properties:
+- Integrity: Proof digest binds manifest and stream data
+- Determinism: Same inputs always produce same digest
+- Verifiability: Anyone can verify proofs without proving key
+
+Dependencies: hashlib, json, subprocess
+"""
 
 from __future__ import annotations
 
@@ -9,6 +20,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+MAX_RECEIPT_SIZE_BYTES = 512 * 1024  # safety cap
 
 def _combined_hash(manifest_path: Path, stream_dir: Path) -> str:
     hasher = hashlib.sha256()
@@ -26,8 +39,16 @@ def _combined_hash(manifest_path: Path, stream_dir: Path) -> str:
     return hasher.hexdigest()
 
 
-@dataclass
+@dataclass(frozen=True)
 class ProofBundle:
+    """Proof bundle containing manifest, proof binary, and receipt.
+    
+    Immutable dataclass representing a complete ZK proof bundle.
+    All paths must exist and be valid for the bundle to be usable.
+    
+    Security: Frozen dataclass prevents accidental modification.
+    """
+    
     manifest_path: Path
     proof_path: Path
     receipt_path: Path
@@ -83,7 +104,10 @@ def generate_proof(
 def verify_proof(bundle: ProofBundle) -> bool:
     """Verify that the proof digest matches the manifest and stream directory."""
 
-    receipt = json.loads(bundle.receipt_path.read_text())
+    receipt_bytes = bundle.receipt_path.read_bytes()
+    if len(receipt_bytes) > MAX_RECEIPT_SIZE_BYTES:
+        return False
+    receipt = json.loads(receipt_bytes.decode())
     manifest_path = Path(receipt["manifest"])
     stream_dir = Path(receipt.get("streams", manifest_path.parent / "streams"))
     if not stream_dir.exists():

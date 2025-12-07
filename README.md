@@ -253,14 +253,12 @@ See [archive/README.md](archive/README.md) and [ARCHIVE.md](ARCHIVE.md) for deta
 - [x] Hierarchical FSMs (Supervisor-Worker)
 - [x] Bitvector patterns (Weighted Vote, Time Lock)
 - [x] High-priority patterns (Multi-Bit Counter, Streak Counter, Mode Switch, Proposal FSM, Risk FSM)
-- [x] Wizard GUI (Python + Rust)
-- [x] End-to-end testing pipeline
-
-### Completed ✅
 - [x] Medium-priority patterns (Entry-Exit FSM, Orthogonal Regions, State Aggregation, TCP Connection FSM, UTXO State Machine)
 - [x] Low-priority patterns (Decomposed FSM, History State, Script Execution)
-- [x] Wizard GUI updates for new patterns
+- [x] Wizard GUI (Python + Rust)
+- [x] End-to-end testing pipeline
 - [x] Example agents using new patterns
+- [x] Tau Testnet ZK integration infrastructure
 
 ### In Progress 🚧
 - [ ] Risc0 ZK proof integration (infrastructure complete, integration pending)

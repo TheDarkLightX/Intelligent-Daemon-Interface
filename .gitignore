@@ -53,6 +53,12 @@ tectonic
 *.cover
 .pytest_cache/
 
+# Python linting artifacts
+.ruff_cache/
+
+# Tau development artifacts
+.tau_history
+
 # Lean build artifacts
 .lake/
 *.olean
