@@ -64,11 +64,19 @@ def test_verify_training_proofs(tmp_path: Path):
         ),
     }
     
-    # Create mock receipt
+    # Create mock receipt (must match proof_manager format)
     (tmp_path / "receipt.json").write_text(
-        json.dumps({"digest": "test", "timestamp": 0})
+        json.dumps({
+            "digest": "test",
+            "timestamp": 0,
+            "manifest": str(tmp_path / "manifest.json"),
+            "streams": str(tmp_path / "streams"),
+            "proof": str(tmp_path / "proof.bin"),
+        })
     )
     (tmp_path / "manifest.json").write_text(json.dumps({"test": "data"}))
+    (tmp_path / "streams").mkdir()
+    (tmp_path / "streams" / "test.in").write_text("1\n")
     (tmp_path / "proof.bin").write_bytes(b"test")
     
     # Verify (will use stub verification)
