@@ -1731,27 +1731,24 @@ def _generate_decomposed_fsm_logic(block: LogicBlock, streams: tuple[StreamConfi
     
     # Collect all unique substates first to avoid duplicates
     all_substates = {}
+    global_substate_idx = 0  # Track global index across all superstates
     for superstate_name, superstate_config in hierarchy.items():
         substates = superstate_config.get("substates", [])
         initial_substate = superstate_config.get("initial", substates[0] if substates else None)
         for i, substate_name in enumerate(substates):
             if substate_name not in all_substates:
-                # Get output stream for this substate
-                if i < len(substate_outputs):
-                    substate_output_name = substate_outputs[i]
+                # Get output stream for this substate using global index
+                if global_substate_idx < len(substate_outputs):
+                    substate_output_name = substate_outputs[global_substate_idx]
                 else:
-                    # Find index in flattened list
-                    flat_idx = sum(len(hierarchy[k].get("substates", [])) for k in list(hierarchy.keys())[:list(hierarchy.keys()).index(superstate_name)]) + i
-                    if flat_idx < len(substate_outputs):
-                        substate_output_name = substate_outputs[flat_idx]
-                    else:
-                        substate_output_name = f"{substate_name}_state"
+                    substate_output_name = f"{substate_name}_state"
                 
                 all_substates[substate_name] = {
                     "output_name": substate_output_name,
                     "superstate": superstate_name,
                     "is_initial": (substate_name == initial_substate)
                 }
+                global_substate_idx += 1
     
     # Generate FSM for each unique substate
     for substate_name, substate_info in all_substates.items():

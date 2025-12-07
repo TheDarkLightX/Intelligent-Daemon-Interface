@@ -3,6 +3,12 @@
 Demonstrates an ensemble agent using majority voting pattern.
 """
 
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
 from idi.devkit.tau_factory.generator import generate_tau_spec
 from pathlib import Path
