@@ -68,5 +68,7 @@ tectonic
 # Embedded git repos (submodules should be configured properly)
 .lake/packages/
 
+# Tau Testnet reference (for integration development)
+tau-testnet-ref/
 
-.cursor/
+

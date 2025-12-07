@@ -6,6 +6,30 @@ The Intelligent Daemon Interface (IDI) provides a complete ecosystem for buildin
 
 ## 🚀 Quick Start
 
+### Tau Testnet Integration
+
+The IDI ZK proof infrastructure integrates with [Tau Testnet](https://github.com/IDNI/tau-testnet) through the `idi/taunet_bridge/` module:
+
+```python
+from idi.taunet_bridge import TauNetZkAdapter, ZkConfig, ZkValidationStep
+from idi.taunet_bridge.validation import ValidationContext
+
+# Configure ZK verification
+config = ZkConfig(enabled=True, proof_system="stub")
+adapter = TauNetZkAdapter(config)
+
+# Create validation step for transaction pipeline
+zk_step = ZkValidationStep(adapter, required=False)
+
+# Validate transaction with ZK proof
+ctx = ValidationContext(tx_hash="...", payload={"zk_proof": proof_bundle})
+zk_step.run(ctx)  # Raises InvalidZkProofError if verification fails
+```
+
+See [`idi/taunet_bridge/README.md`](idi/taunet_bridge/README.md) for detailed integration guide.
+
+## 🚀 Quick Start (Original)
+
 ### Install Dependencies
 
 ```bash
