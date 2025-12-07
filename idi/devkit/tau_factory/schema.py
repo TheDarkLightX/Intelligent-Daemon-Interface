@@ -39,7 +39,7 @@ class LogicBlock:
 
     def __post_init__(self):
         """Validate logic block."""
-        valid_patterns = ("fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation", "tcp_connection_fsm", "utxo_state_machine")
+        valid_patterns = ("fsm", "counter", "accumulator", "vote", "passthrough", "majority", "unanimous", "custom", "quorum", "supervisor_worker", "weighted_vote", "time_lock", "hex_stake", "multi_bit_counter", "streak_counter", "mode_switch", "proposal_fsm", "risk_fsm", "entry_exit_fsm", "orthogonal_regions", "state_aggregation", "tcp_connection_fsm", "utxo_state_machine", "history_state", "decomposed_fsm", "script_execution")
         if self.pattern not in valid_patterns:
             raise ValueError(f"Invalid pattern: {self.pattern}. Must be one of {valid_patterns}")
 

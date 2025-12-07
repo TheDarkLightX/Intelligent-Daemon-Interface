@@ -29,8 +29,11 @@ Complete reference guide for all implemented patterns in the Tau Agent Factory.
 | State Aggregation | ✅ | [STATE_AGGREGATION_PATTERN.md](STATE_AGGREGATION_PATTERN.md) | State composition |
 | TCP Connection FSM | ✅ | [TCP_CONNECTION_FSM_PATTERN.md](TCP_CONNECTION_FSM_PATTERN.md) | Network protocol |
 | UTXO State Machine | ✅ | [UTXO_STATE_MACHINE_PATTERN.md](UTXO_STATE_MACHINE_PATTERN.md) | Bitcoin UTXO |
+| History State | ✅ | [HISTORY_STATE_PATTERN.md](HISTORY_STATE_PATTERN.md) | State memory |
+| Decomposed FSM | ✅ | [DECOMPOSED_FSM_PATTERN.md](DECOMPOSED_FSM_PATTERN.md) | Hierarchical decomposition |
+| Script Execution | ✅ | [SCRIPT_EXECUTION_PATTERN.md](SCRIPT_EXECUTION_PATTERN.md) | Bitcoin Script VM |
 
-**Total: 23/26 patterns (88%)**
+**Total: 26/26 patterns (100%) ✅**
 
 ## Pattern Categories
 

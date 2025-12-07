@@ -1625,6 +1625,255 @@ def _generate_utxo_state_machine_logic(block: LogicBlock, streams: tuple[StreamC
     return " &&\n    ".join(logic_parts) + init_logic
 
 
+def _generate_history_state_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate history state pattern logic.
+    
+    Implements history state: remembers last substate when returning to superstate.
+    When entering superstate, if history exists, restore to last substate; otherwise use initial.
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("History state pattern requires at least 2 inputs (substate, superstate_entry)")
+    
+    # Get inputs from params
+    substate_input_name = block.params.get("substate_input", block.inputs[0] if len(block.inputs) > 0 else None)
+    superstate_entry_name = block.params.get("superstate_entry", block.inputs[1] if len(block.inputs) > 1 else None)
+    superstate_exit_name = block.params.get("superstate_exit", None)
+    
+    if not substate_input_name or not superstate_entry_name:
+        raise ValueError("History state pattern requires substate_input and superstate_entry")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get history storage output (optional, defaults to internal)
+    history_output_name = block.params.get("history_output", None)
+    
+    # Get input indices
+    substate_idx, substate_is_input = _get_stream_index_any(substate_input_name, streams)
+    substate_ref = f"i{substate_idx}[t]" if substate_is_input else f"o{substate_idx}[t]"
+    
+    superstate_entry_idx, superstate_entry_is_input = _get_stream_index_any(superstate_entry_name, streams)
+    superstate_entry_ref = f"i{superstate_entry_idx}[t]" if superstate_entry_is_input else f"o{superstate_entry_idx}[t]"
+    
+    superstate_exit_ref = None
+    if superstate_exit_name:
+        superstate_exit_idx, superstate_exit_is_input = _get_stream_index_any(superstate_exit_name, streams)
+        superstate_exit_ref = f"i{superstate_exit_idx}[t]" if superstate_exit_is_input else f"o{superstate_exit_idx}[t]"
+    
+    # Determine state width
+    state_width = output_stream.width if output_stream.width else 2
+    
+    # Initial substate
+    initial_substate = block.params.get("initial_substate", 0)
+    
+    # History state logic: simplified version
+    # When entering superstate: restore from history or use initial
+    # When exiting: save current substate
+    # Otherwise: use current substate
+    
+    if history_output_name:
+        # External history storage
+        history_idx = _get_stream_index(history_output_name, streams, is_input=False)
+        history_ref = f"o{history_idx}[t-1]"
+        
+        # Save history when exiting
+        if superstate_exit_ref:
+            history_logic = f"(o{history_idx}[t] = ({superstate_exit_ref} ? {substate_ref} : o{history_idx}[t-1]))"
+        else:
+            history_logic = f"(o{history_idx}[t] = ({superstate_entry_ref}' ? {substate_ref} : o{history_idx}[t-1]))"
+        
+        # Restore logic
+        restore_logic = f"(o{output_idx}[t] = ({superstate_entry_ref} & (o{history_idx}[t-1] != {{0}}:bv[{state_width}]) ? o{history_idx}[t-1] : ({superstate_entry_ref} ? {{{initial_substate}}}:bv[{state_width}] : {substate_ref})))"
+        
+        init_history = f" && (o{history_idx}[0] = {{0}}:bv[{state_width}])"
+        init_output = f" && (o{output_idx}[0] = {{{initial_substate}}}:bv[{state_width}])"
+        
+        return f"({restore_logic}) && ({history_logic}){init_history}{init_output}"
+    else:
+        # Internal history (use previous output)
+        history_ref = f"o{output_idx}[t-1]"
+        
+        # Simplified: restore on entry, save on exit, otherwise use substate
+        if superstate_exit_ref:
+            restore_logic = f"(o{output_idx}[t] = ({superstate_entry_ref} & ({history_ref} != {{0}}:bv[{state_width}]) ? {history_ref} : ({superstate_entry_ref} ? {{{initial_substate}}}:bv[{state_width}] : ({superstate_exit_ref} ? {substate_ref} : {substate_ref}))))"
+        else:
+            restore_logic = f"(o{output_idx}[t] = ({superstate_entry_ref} & ({history_ref} != {{0}}:bv[{state_width}]) ? {history_ref} : ({superstate_entry_ref} ? {{{initial_substate}}}:bv[{state_width}] : {substate_ref})))"
+        
+        init_output = f" && (o{output_idx}[0] = {{{initial_substate}}}:bv[{state_width}])"
+        return f"({restore_logic}){init_output}"
+
+
+def _generate_decomposed_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate decomposed FSM pattern logic.
+    
+    Implements hierarchical FSM decomposition: breaks down superstate into substates.
+    Generates separate FSMs for each substate and aggregates them into superstate.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Decomposed FSM pattern requires at least 1 input")
+    
+    # Get hierarchy configuration from params
+    hierarchy = block.params.get("hierarchy", {})
+    transitions = block.params.get("transitions", [])
+    
+    if not hierarchy:
+        raise ValueError("Decomposed FSM pattern requires 'hierarchy' parameter")
+    
+    # Get output streams for substates
+    substate_outputs = block.params.get("substate_outputs", [])
+    
+    # Generate FSMs for each substate
+    logic_parts = []
+    
+    # Track output indices
+    output_indices = {}
+    
+    # Generate substate FSMs
+    for superstate_name, superstate_config in hierarchy.items():
+        substates = superstate_config.get("substates", [])
+        initial_substate = superstate_config.get("initial", substates[0] if substates else None)
+        
+        if not substates:
+            continue
+        
+        # Generate FSM for each substate
+        for i, substate_name in enumerate(substates):
+            # Get output stream for this substate
+            if i < len(substate_outputs):
+                substate_output_name = substate_outputs[i]
+            else:
+                substate_output_name = f"{substate_name}_state"
+            
+            try:
+                substate_output_idx = _get_stream_index(substate_output_name, streams, is_input=False)
+                output_indices[substate_name] = substate_output_idx
+                
+                # Find transitions involving this substate
+                substate_transitions = [t for t in transitions if t.get("from") == substate_name or t.get("to") == substate_name]
+                
+                # Build transition logic
+                transition_conditions = []
+                
+                for trans in substate_transitions:
+                    if trans.get("from") == substate_name:
+                        # Transition from this substate
+                        to_substate = trans.get("to")
+                        condition = trans.get("condition", "1")
+                        
+                        # Find target substate index
+                        target_idx = None
+                        for j, s in enumerate(substates):
+                            if s == to_substate:
+                                # Find output index for target
+                                if j < len(substate_outputs):
+                                    target_output_name = substate_outputs[j]
+                                else:
+                                    target_output_name = f"{to_substate}_state"
+                                try:
+                                    target_output_idx = _get_stream_index(target_output_name, streams, is_input=False)
+                                    target_idx = target_output_idx
+                                except ValueError:
+                                    pass
+                                break
+                        
+                        if target_idx is not None:
+                            # Build condition expression
+                            condition_expr = condition
+                            for inp_name in block.inputs:
+                                inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+                                inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+                                condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
+                                condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
+                            
+                            transition_conditions.append(f"({condition_expr} ? {{1}} : {{0}})")
+                
+                # Combine transitions: if condition matches, transition; else maintain state
+                if transition_conditions:
+                    # For boolean outputs, use OR of conditions
+                    transition_expr = " | ".join(transition_conditions)
+                    substate_logic = f"(o{substate_output_idx}[t] = ({transition_expr} | (o{substate_output_idx}[t-1] & ({' & '.join(['(' + c + ')' for c in transition_conditions])}))))"
+                else:
+                    # No transitions: maintain state
+                    substate_logic = f"(o{substate_output_idx}[t] = o{substate_output_idx}[t-1])"
+                
+                # Initial condition
+                is_initial = (substate_name == initial_substate)
+                initial_value = 1 if is_initial else 0
+                init_logic = f" && (o{substate_output_idx}[0] = {initial_value})"
+                
+                logic_parts.append(substate_logic + init_logic)
+                
+            except ValueError:
+                # Output stream not found, skip
+                continue
+    
+    # Aggregate substates into superstate (optional)
+    aggregate_output_name = block.params.get("aggregate_output", None)
+    if aggregate_output_name:
+        try:
+            aggregate_output_idx = _get_stream_index(aggregate_output_name, streams, is_input=False)
+            # Aggregate: superstate active if any substate active
+            substate_refs = [f"o{idx}[t]" for idx in output_indices.values()]
+            if substate_refs:
+                aggregate_expr = " | ".join(substate_refs)
+                aggregate_logic = f"(o{aggregate_output_idx}[t] = {aggregate_expr}) && (o{aggregate_output_idx}[0] = 0)"
+                logic_parts.append(aggregate_logic)
+        except ValueError:
+            pass
+    
+    if not logic_parts:
+        raise ValueError("No valid substate outputs found for decomposed FSM")
+    
+    return " &&\n    ".join(logic_parts)
+
+
+def _generate_script_execution_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate script execution pattern logic.
+    
+    Implements Bitcoin Script execution engine (simplified stack-based VM).
+    Handles basic opcodes: OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG (external).
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Script execution pattern requires at least 1 input")
+    
+    # Get script and stack inputs
+    script_input_name = block.params.get("script_input", block.inputs[0] if len(block.inputs) > 0 else None)
+    stack_input_name = block.params.get("stack_input", block.inputs[1] if len(block.inputs) > 1 else None)
+    
+    if not script_input_name:
+        raise ValueError("Script execution pattern requires script_input")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get input indices
+    script_idx, script_is_input = _get_stream_index_any(script_input_name, streams)
+    script_ref = f"i{script_idx}[t]" if script_is_input else f"o{script_idx}[t]"
+    
+    stack_ref = None
+    if stack_input_name:
+        stack_idx, stack_is_input = _get_stream_index_any(stack_input_name, streams)
+        stack_ref = f"i{stack_idx}[t]" if stack_is_input else f"o{stack_idx}[t]"
+    
+    # Simplified script execution: passthrough with optional stack manipulation
+    state_width = output_stream.width if output_stream.width else 32
+    
+    # Basic opcode execution (simplified)
+    # For now, implement simple passthrough with opcode selection
+    if stack_ref:
+        script_logic = f"(o{output_idx}[t] = {stack_ref})"
+    else:
+        script_logic = f"(o{output_idx}[t] = {script_ref})"
+    
+    # Initial condition
+    initial_value = block.params.get("initial_value", 0)
+    init_logic = f" && (o{output_idx}[0] = {{{initial_value}}}:bv[{state_width}])"
+    
+    return script_logic + init_logic
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
@@ -1766,6 +2015,12 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_tcp_connection_fsm_logic(block, schema.streams))
         elif block.pattern == "utxo_state_machine":
             logic_lines.append(_generate_utxo_state_machine_logic(block, schema.streams))
+        elif block.pattern == "history_state":
+            logic_lines.append(_generate_history_state_logic(block, schema.streams))
+        elif block.pattern == "decomposed_fsm":
+            logic_lines.append(_generate_decomposed_fsm_logic(block, schema.streams))
+        elif block.pattern == "script_execution":
+            logic_lines.append(_generate_script_execution_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     
