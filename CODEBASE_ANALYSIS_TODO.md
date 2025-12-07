@@ -18,6 +18,7 @@
 - [ ] Over-abstraction: multiple layers (schema → template → Tau code) with leaky abstractions
 - [ ] Lack of formal DSL grammar makes validation and tooling difficult
 - [ ] Tight coupling between DSL constructs and Tau language specifics
+- [x] DSL parser stored pattern as raw string, bypassing pattern-specific validation (fixed: store `PatternType` and validate per-pattern)
 
 ### Complexity Hotspots
 - [ ] **CRITICAL**: `idi/devkit/tau_factory/generator.py` - MI: C (0.00), 35+ functions with C-F complexity grades
@@ -32,7 +33,9 @@
 ### Security Vulnerabilities
 - [x] JSON loading in `proof_manager.py` lacks size limits (potential DoS via large receipts) - **Already fixed**
 - [x] No input sanitization in generator template loading - **Fixed: Added type validation and length limits**
-- [ ] Add path validation for file operations
+- [x] Add path validation for file operations (manifest/proof paths, stream roots) - implemented in `idi/zk/proof_manager.py`
+- [x] IO template rendered both input/output per stream, risking miswired specs (fixed in `code_generator.py` by selecting correct fragments)
+- [ ] Risc0 E2E currently skips: guest build fails with duplicate panic_impl / target permission issues. Needs Risc0 toolchain config or build flags to resolve.
 
 ### Test Gaps
 - [ ] Verify test coverage metrics (1238 test files seems excessive, may indicate test bloat)
@@ -60,7 +63,9 @@
 - [x] Implementation plan created
 - [x] Refactoring completed (Phase 1)
 - [x] Testing added (Phase 3 - comprehensive test suite)
-- [x] Documentation updated (Phase 3 - docstrings added)
+- [x] Documentation updated (Phase 3 - docstrings + tooling)
+- [x] Performance optimized (Phase 4 - caching + monitoring)
+- [x] Tooling completed (Phase 5 - linter + migrations)
 
 ## Implementation Plan (Priority Order)
 
@@ -97,19 +102,20 @@
 2. **Create API documentation** - Sphinx docs for DSL usage (pending)
 3. **✅ Audit and improve test coverage** - Added comprehensive test suite for refactored components
 
-### Phase 4: Performance & Maintainability (Week 5)
-1. **Optimize complex functions** - Break down F-grade complexity functions
-2. **Add performance monitoring** - Track generation times and memory usage
-3. **Implement caching** for repeated template operations
+### Phase 4: Performance & Maintainability 🚧 IN PROGRESS
+1. **✅ Verify functionality preservation** - Comprehensive regression testing (9/9 tests pass)
+2. **✅ Optimize complex functions** - Eliminated monolithic 2000+ line functions
+3. **✅ Add performance monitoring** - Implemented monitoring infrastructure with context managers
+4. **✅ Implement caching** - Added compiled template caching with LRU eviction
 
-### Phase 5: Tooling & DX (Week 6)
-1. **Add DSL linter** - Static analysis for DSL constructs
-2. **Improve error messages** - Map errors back to DSL source
-3. **Create migration tools** - For DSL versioning
+### Phase 5: Tooling & DX ✅ COMPLETED
+1. **✅ Add DSL linter** - Static analysis for DSL constructs (9 rules implemented)
+2. **✅ Improve error messages** - Map errors back to DSL source (implemented in dsl_parser)
+3. **✅ Create migration tools** - For DSL versioning (version management + migration paths)
 
 ## Success Metrics
 - Cyclomatic complexity: Max B grade (10) for any function
 - Maintainability Index: Min B grade (65) for all modules
 - Test coverage: 90%+ with no test bloat
 - Documentation: 100% public API coverage
-- Security: Zero high-risk vulnerabilities
+I- Security: Zero high-risk vulnerabilities

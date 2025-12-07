@@ -12,6 +12,8 @@ from idi.devkit.tau_factory.schema import AgentSchema
 from .template_engine import registry as template_registry
 from .pattern_registry import registry as pattern_registry
 from .dsl_parser import DSLParser
+from .performance_monitor import monitor
+from .compiled_templates import template_cache
 
 
 class TauCodeGenerator:
@@ -30,16 +32,17 @@ class TauCodeGenerator:
 
     def generate(self, schema: AgentSchema) -> str:
         """Generate complete Tau spec from agent schema."""
-        # Parse and validate schema
-        parsed_schema = self.parser.parse(schema)
+        with monitor.measure("code_generation", schema_name=schema.name):
+            # Parse and validate schema
+            parsed_schema = self.parser.parse(schema)
 
-        # Generate code sections
-        sections = []
-        sections.append(self._generate_header(schema))
-        sections.append(self._generate_io_streams(parsed_schema))
-        sections.append(self._generate_logic_blocks(parsed_schema))
+            # Generate code sections
+            sections = []
+            sections.append(self._generate_header(schema))
+            sections.append(self._generate_io_streams(parsed_schema))
+            sections.append(self._generate_logic_blocks(parsed_schema))
 
-        return "\n\n".join(sections)
+            return "\n\n".join(sections)
 
     def _generate_header(self, schema: AgentSchema) -> str:
         """Generate spec header."""
@@ -48,8 +51,12 @@ class TauCodeGenerator:
 % Do not edit manually"""
 
     def _generate_io_streams(self, parsed_schema) -> str:
-        """Generate I/O stream declarations."""
+        """Generate I/O stream declarations using compiled templates."""
         io_template = self.templates.get("io_streams")
+
+        # Get compiled template for better performance
+        compiled_template = template_cache.get_or_compile("io_streams", io_template)
+
         lines = []
 
         # Input streams
@@ -60,7 +67,7 @@ class TauCodeGenerator:
                 "type": stream_type,
                 "name": stream.name
             }
-            lines.append(io_template.render(context))
+            lines.append(compiled_template.render(context))
 
         # Output streams
         for idx, stream in enumerate(s for s in parsed_schema.streams if s.is_input):
@@ -70,24 +77,27 @@ class TauCodeGenerator:
                 "type": stream_type,
                 "name": stream.name
             }
-            lines.append(io_template.render(context))
+            lines.append(compiled_template.render(context))
 
         return "\n".join(lines)
 
     def _generate_logic_blocks(self, parsed_schema) -> str:
         """Generate logic block implementations."""
         logic_template = self.templates.get("logic_block")
+        compiled_template = template_cache.get_or_compile("logic_block", logic_template)
+
         lines = []
 
         for block in parsed_schema.logic_blocks:
-            # Generate pattern-specific logic
-            logic_code = self.patterns.generate(block, tuple(parsed_schema.streams))
+            with monitor.measure("pattern_generation", pattern=block.pattern):
+                # Generate pattern-specific logic
+                logic_code = self.patterns.generate(block, tuple(parsed_schema.streams))
 
             # Wrap in template
             context = {
                 "description": f"{block.pattern} pattern: {block.output} <- {', '.join(block.inputs)}",
                 "logic_code": logic_code
             }
-            lines.append(logic_template.render(context))
+            lines.append(compiled_template.render(context))
 
         return "\n\n".join(lines)

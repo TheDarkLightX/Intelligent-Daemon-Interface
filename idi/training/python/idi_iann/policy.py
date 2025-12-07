@@ -66,12 +66,11 @@ class LookupPolicy:
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     def export_trace(
-    """Export policy execution trace for debugging."""
         self,
         episodes: Iterable[Sequence[Dict[str, int]]],
         target_dir: Path,
     ) -> None:
-        """Write sbf/bv traces for Tau specs."""
+        """Export policy execution trace for debugging (Tau spec inputs)."""
 
         target_dir.mkdir(parents=True, exist_ok=True)
         streams: Dict[str, list[int]] = {
@@ -95,4 +94,3 @@ class LookupPolicy:
         for name, values in streams.items():
             (target_dir / f"{name}.in").write_text("\n".join(str(v) for v in values), encoding="utf-8")
         (target_dir / "q_regime.in").write_text("\n".join(str(v) for v in regimes), encoding="utf-8")
-

@@ -6,12 +6,9 @@ The complex logic has been moved to specialized modules for better maintainabili
 
 from __future__ import annotations
 
-import itertools
-
 from idi.devkit.tau_factory.schema import AgentSchema
 from .code_generator import TauCodeGenerator
 from .dsl_parser import DSLParser, ValidationError
-from .performance_monitor import monitor
 
 
 def generate_tau_spec(schema: AgentSchema) -> str:
@@ -29,9 +26,8 @@ def generate_tau_spec(schema: AgentSchema) -> str:
     Raises:
         ValidationError: If the schema contains validation errors
     """
-    with monitor.measure("total_generation", schema_name=schema.name):
-        generator = TauCodeGenerator()
-        return generator.generate(schema)
+    generator = TauCodeGenerator()
+    return generator.generate(schema)
 
 
 def validate_schema(schema: AgentSchema) -> list[ValidationError]:
@@ -2178,3 +2174,4 @@ def generate_tau_spec(schema: AgentSchema, validate: bool = True) -> str:
             raise ValueError(f"Generated spec validation failed:\n{error_msg}\n\nSpec:\n{spec}")
     
     return spec
+

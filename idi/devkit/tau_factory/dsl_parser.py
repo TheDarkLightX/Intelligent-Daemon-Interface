@@ -78,7 +78,7 @@ class PatternType(Enum):
 class ParsedLogicBlock:
     """Parsed and validated logic block."""
 
-    pattern: str
+    pattern: PatternType
     inputs: List[str]
     output: str
     params: Dict[str, Any]
@@ -87,9 +87,9 @@ class ParsedLogicBlock:
     @classmethod
     def from_logic_block(cls, block: LogicBlock, location: str = "") -> ParsedLogicBlock:
         """Create from schema LogicBlock with validation."""
-        PatternType.validate(block.pattern)  # Validate but don't store enum
+        pattern = PatternType.validate(block.pattern)  # Validate and store enum
         return cls(
-            pattern=block.pattern,
+            pattern=pattern,
             inputs=list(block.inputs),
             output=block.output,
             params=dict(block.params),

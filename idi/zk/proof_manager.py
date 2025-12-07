@@ -90,6 +90,11 @@ def generate_proof(
 ) -> ProofBundle:
     """Generate a proof bundle via stub or external prover command."""
 
+    # Path safety validation
+    _validate_path_safety(manifest_path)
+    _validate_path_safety(stream_dir)
+    _validate_path_safety(out_dir)
+
     out_dir.mkdir(parents=True, exist_ok=True)
     proof_path = out_dir / "proof.bin"
     receipt_path = out_dir / "receipt.json"
@@ -158,4 +163,3 @@ def verify_proof(bundle: ProofBundle) -> bool:
 
     digest = _combined_hash(manifest_path, stream_dir)
     return digest == receipt["digest"]
-
