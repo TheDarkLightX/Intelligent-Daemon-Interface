@@ -17,6 +17,13 @@ class ValidationError(Exception):
     """Validation error with context information."""
 
     def __init__(self, message: str, path: str = "", suggestion: str = ""):
+        """Initialize validation error.
+
+        Args:
+            message: Human-readable error message
+            path: Path/context where error occurred
+            suggestion: Suggested fix for the error
+        """
         self.message = message
         self.path = path
         self.suggestion = suggestion
@@ -158,6 +165,14 @@ class ParsedAgentSchema:
         """Validate the entire schema."""
         errors = []
 
+        # Basic field validation
+        if not self.name.strip():
+            errors.append(ValidationError(
+                "Schema name cannot be empty",
+                "schema.name",
+                "Provide a non-empty name for the agent schema"
+            ))
+
         # Validate streams
         errors.extend(self._validate_streams())
 
@@ -189,22 +204,23 @@ class ParsedAgentSchema:
     def _validate_references(self) -> List[ValidationError]:
         """Validate that logic blocks reference valid streams."""
         errors = []
-        stream_names = {s.name for s in self.streams}
+        all_stream_names = {s.name for s in self.streams}
+        output_names = {s.name for s in self.streams if not s.is_input}
 
         for block in self.logic_blocks:
             for input_name in block.inputs:
-                if input_name not in stream_names:
+                if input_name not in all_stream_names:
                     errors.append(ValidationError(
                         f"Logic block references unknown input stream: {input_name}",
                         f"{block.source_location}",
-                        f"Available streams: {sorted(stream_names)}"
+                        f"Available streams: {sorted(all_stream_names)}"
                     ))
 
-            if block.output not in stream_names:
+            if block.output not in output_names:
                 errors.append(ValidationError(
-                    f"Logic block references unknown output stream: {block.output}",
+                    f"Logic block outputs to undefined stream: {block.output}",
                     f"{block.source_location}",
-                    f"Available streams: {sorted(stream_names)}"
+                    f"Available output streams: {sorted(output_names)}"
                 ))
 
         return errors

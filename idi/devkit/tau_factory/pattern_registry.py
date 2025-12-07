@@ -22,9 +22,14 @@ class PatternGenerator(Protocol):
 
 
 class PatternRegistry:
-    """Registry for pattern generators with dependency injection support."""
+    """Registry for pattern generators with dependency injection support.
+
+    This registry decouples pattern definitions from their implementations,
+    allowing for easy extension and testing of individual pattern generators.
+    """
 
     def __init__(self) -> None:
+        """Initialize registry and register built-in pattern generators."""
         self._generators: Dict[str, PatternGenerator] = {}
         self._register_builtin_generators()
 

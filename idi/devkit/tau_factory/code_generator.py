@@ -15,9 +15,15 @@ from .dsl_parser import DSLParser
 
 
 class TauCodeGenerator:
-    """Clean Tau code generator with separated concerns."""
+    """Clean Tau code generator with separated concerns.
+
+    This class orchestrates the Tau code generation process using
+    the modular architecture: parser for validation, templates for
+    structured code emission, and pattern registry for logic generation.
+    """
 
     def __init__(self) -> None:
+        """Initialize the code generator with required components."""
         self.parser = DSLParser()
         self.templates = template_registry
         self.patterns = pattern_registry

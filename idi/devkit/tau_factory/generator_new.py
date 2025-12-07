@@ -6,6 +6,8 @@ The complex logic has been moved to specialized modules for better maintainabili
 
 from __future__ import annotations
 
+from typing import Union
+
 from idi.devkit.tau_factory.schema import AgentSchema
 from .code_generator import TauCodeGenerator
 from .dsl_parser import DSLParser, ValidationError
@@ -43,12 +45,11 @@ def validate_schema(schema: AgentSchema) -> list[ValidationError]:
     return parser.validate_schema(schema)
 
 
-def create_minimal_schema(name: str, strategy: str = "custom") -> AgentSchema:
+def create_minimal_schema(name: str) -> AgentSchema:
     """Create a minimal valid AgentSchema for testing.
 
     Args:
         name: Name for the agent schema
-        strategy: Trading strategy type
 
     Returns:
         Minimal AgentSchema instance
@@ -72,9 +73,6 @@ def create_minimal_schema(name: str, strategy: str = "custom") -> AgentSchema:
 
     return AgentSchema(
         name=name,
-        strategy=strategy,
         streams=streams,
         logic_blocks=logic_blocks
     )
-
-

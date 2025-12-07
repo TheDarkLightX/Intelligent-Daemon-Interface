@@ -56,30 +56,10 @@ class AgentSchema:
     include_mirrors: bool = True
 
     def __post_init__(self):
-        """Validate schema consistency."""
-        if not self.name.strip():
-            raise ValueError("Schema name cannot be empty")
+        """Basic field validation only - comprehensive validation moved to DSL parser."""
+        # Only validate basic field constraints, not cross-references
         if self.num_steps < 1:
             raise ValueError(f"num_steps must be >= 1, got {self.num_steps}")
-
-        # Build stream name sets
-        all_stream_names = {s.name for s in self.streams}
-        input_names = {s.name for s in self.streams if s.is_input}
-        output_names = {s.name for s in self.streams if not s.is_input}
-
-        # Validate logic block references
-        for block in self.logic_blocks:
-            # Check inputs exist
-            for input_name in block.inputs:
-                if input_name not in all_stream_names:
-                    raise ValueError(
-                        f"Logic block '{block.pattern}' references unknown input stream: {input_name}"
-                    )
-            # Check output is defined as output stream
-            if block.output not in output_names:
-                raise ValueError(
-                    f"Logic block '{block.pattern}' outputs to undefined stream: {block.output}"
-                )
 
 
 def validate_schema(schema: AgentSchema) -> None:
