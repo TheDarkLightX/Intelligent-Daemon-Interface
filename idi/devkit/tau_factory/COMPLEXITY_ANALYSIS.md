@@ -8,9 +8,19 @@
 3. **Accumulator** - Sum values over time (bitvector only)
 4. **Passthrough** - Direct input-to-output mapping
 5. **Vote** - OR-based voting from multiple inputs
-6. **Majority** - N-of-M majority voting (e.g., 2-of-3, 3-of-5) ✅ NEW
-7. **Unanimous** - Unanimous consensus (all inputs must agree) ✅ NEW
-8. **Custom** - Custom boolean expressions with stream names/indices ✅ NEW
+6. **Majority** - N-of-M majority voting (e.g., 2-of-3, 3-of-5) ✅
+7. **Unanimous** - Unanimous consensus (all inputs must agree) ✅
+8. **Custom** - Custom boolean expressions with stream names/indices ✅
+9. **Quorum** - Minimum votes required ✅
+10. **Supervisor-Worker** - Hierarchical FSM coordination ✅
+11. **Weighted Vote** - Weighted voting with bitvector arithmetic ✅
+12. **Time Lock** - Time-based locking with bitvector arithmetic ✅
+13. **Hex Stake** - Time-lock staking system ✅
+14. **Multi-Bit Counter** - Multi-bit counters with increment/reset ✅ NEW
+15. **Streak Counter** - Consecutive event tracking with reset ✅ NEW
+16. **Mode Switch** - Adaptive mode switching ✅ NEW
+17. **Proposal FSM** - Governance proposal lifecycle ✅ NEW
+18. **Risk FSM** - Risk state machine (NORMAL/WARNING/CRITICAL) ✅ NEW
 
 ### Stream Types
 - `sbf` - Simple Boolean Functions
@@ -166,7 +176,7 @@ LogicBlock(
 
 ## Complexity Score
 
-### Current System: **7/10** (Updated from 3/10)
+### Current System: **8/10** (Updated from 7/10)
 - ✅ Basic FSMs
 - ✅ Simple counters
 - ✅ Basic voting
@@ -179,14 +189,14 @@ LogicBlock(
 - ❌ No weighted voting
 
 ### Required for Complex Agents: **8/10**
-- ✅ Multi-bit timers
-- ✅ State decomposition
+- ✅ Multi-bit timers (Multi-Bit Counter)
+- ⚠️ State decomposition (partial - Supervisor-Worker)
 - ✅ Custom boolean expressions
-- ✅ Intermediate outputs
-- ✅ Multi-layer coordination
-- ✅ Arithmetic operations
-- ✅ Streak tracking
-- ✅ Mode switching
+- ✅ Intermediate outputs (outputs can be inputs)
+- ✅ Multi-layer coordination (Majority, Unanimous, Quorum)
+- ✅ Arithmetic operations (Weighted Vote, Time Lock)
+- ✅ Streak tracking (Streak Counter)
+- ✅ Mode switching (Mode Switch)
 
 ## Recommendations
 

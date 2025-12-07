@@ -1098,6 +1098,108 @@ def _generate_risk_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...
     return risk_logic + init_logic
 
 
+def _generate_entry_exit_fsm_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate entry-exit FSM pattern logic.
+    
+    Implements multi-phase trade lifecycle: PRE_TRADE → IN_TRADE → POST_TRADE
+    Each phase can have sub-states for fine-grained control.
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("Entry-exit FSM pattern requires at least 2 inputs (entry_signal, exit_signal)")
+    
+    # Get inputs
+    entry_signal_name = block.params.get("entry_signal", block.inputs[0] if len(block.inputs) > 0 else None)
+    exit_signal_name = block.params.get("exit_signal", block.inputs[1] if len(block.inputs) > 1 else None)
+    stop_loss_name = block.params.get("stop_loss", block.inputs[2] if len(block.inputs) > 2 else None)
+    take_profit_name = block.params.get("take_profit", block.inputs[3] if len(block.inputs) > 3 else None)
+    
+    if not entry_signal_name or not exit_signal_name:
+        raise ValueError("Entry-exit FSM pattern requires entry_signal and exit_signal")
+    
+    # Get phases from params (default: PRE_TRADE, IN_TRADE, POST_TRADE)
+    phases = block.params.get("phases", ["PRE_TRADE", "IN_TRADE", "POST_TRADE"])
+    if len(phases) < 2:
+        raise ValueError("Entry-exit FSM pattern requires at least 2 phases")
+    
+    # Get output streams
+    phase_output_name = block.params.get("phase_output", block.output)
+    position_output_name = block.params.get("position_output", None)
+    
+    # Get phase output stream
+    phase_output_idx = _get_stream_index(phase_output_name, streams, is_input=False)
+    phase_output_stream = next(s for s in streams if s.name == phase_output_name and not s.is_input)
+    
+    # Determine phase state width (log2 of number of phases)
+    import math
+    phase_width = max(2, math.ceil(math.log2(len(phases))))
+    
+    # Get input indices
+    entry_idx, entry_is_input = _get_stream_index_any(entry_signal_name, streams)
+    entry_ref = f"i{entry_idx}[t]" if entry_is_input else f"o{entry_idx}[t]"
+    
+    exit_idx, exit_is_input = _get_stream_index_any(exit_signal_name, streams)
+    exit_ref = f"i{exit_idx}[t]" if exit_is_input else f"o{exit_idx}[t]"
+    
+    stop_loss_ref = None
+    if stop_loss_name:
+        stop_loss_idx, stop_loss_is_input = _get_stream_index_any(stop_loss_name, streams)
+        stop_loss_ref = f"i{stop_loss_idx}[t]" if stop_loss_is_input else f"o{stop_loss_idx}[t]"
+    
+    take_profit_ref = None
+    if take_profit_name:
+        take_profit_idx, take_profit_is_input = _get_stream_index_any(take_profit_name, streams)
+        take_profit_ref = f"i{take_profit_idx}[t]" if take_profit_is_input else f"o{take_profit_idx}[t]"
+    
+    # Phase transitions:
+    # PRE_TRADE (0) → entry → IN_TRADE (1)
+    # IN_TRADE (1) → (exit | stop_loss | take_profit) → POST_TRADE (2)
+    # POST_TRADE (2) → reset → PRE_TRADE (0)
+    
+    # Build phase transition logic
+    transitions = []
+    
+    # PRE_TRADE → IN_TRADE: entry signal
+    transitions.append(f"((o{phase_output_idx}[t-1] = {{0}}:bv[{phase_width}]) & {entry_ref} ? {{1}}:bv[{phase_width}] : {{999}}:bv[{phase_width}])")
+    
+    # IN_TRADE → POST_TRADE: exit, stop_loss, or take_profit
+    exit_conditions = [exit_ref]
+    if stop_loss_ref:
+        exit_conditions.append(stop_loss_ref)
+    if take_profit_ref:
+        exit_conditions.append(take_profit_ref)
+    
+    exit_expr = " | ".join(exit_conditions)
+    transitions.append(f"((o{phase_output_idx}[t-1] = {{1}}:bv[{phase_width}]) & ({exit_expr}) ? {{2}}:bv[{phase_width}] : {{999}}:bv[{phase_width}])")
+    
+    # POST_TRADE → PRE_TRADE: reset (no entry signal)
+    # Reset when not entering (entry signal is false)
+    transitions.append(f"((o{phase_output_idx}[t-1] = {{2}}:bv[{phase_width}]) & {entry_ref}' ? {{0}}:bv[{phase_width}] : {{999}}:bv[{phase_width}])")
+    
+    # Combine transitions with fallback to maintain current phase
+    if transitions:
+        transition_expr = " : ".join(transitions) + f" : o{phase_output_idx}[t-1]"
+        phase_logic = f"(o{phase_output_idx}[t] = {transition_expr})"
+    else:
+        # Fallback: simple entry → exit
+        phase_logic = f"(o{phase_output_idx}[t] = ({entry_ref} ? {{1}}:bv[{phase_width}] : ({exit_ref} ? {{2}}:bv[{phase_width}] : o{phase_output_idx}[t-1])))"
+    
+    # Position output: true when IN_TRADE
+    logic_parts = [phase_logic]
+    
+    if position_output_name:
+        try:
+            position_output_idx = _get_stream_index(position_output_name, streams, is_input=False)
+            position_logic = f"(o{position_output_idx}[t] = (o{phase_output_idx}[t] = {{1}}:bv[{phase_width}])) && (o{position_output_idx}[0] = 0)"
+            logic_parts.append(position_logic)
+        except ValueError:
+            pass  # Position output not declared
+    
+    # Initial condition: PRE_TRADE
+    init_logic = f" && (o{phase_output_idx}[0] = {{0}}:bv[{phase_width}])"
+    
+    return " &&\n    ".join(logic_parts) + init_logic
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
@@ -1229,6 +1331,8 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_proposal_fsm_logic(block, schema.streams))
         elif block.pattern == "risk_fsm":
             logic_lines.append(_generate_risk_fsm_logic(block, schema.streams))
+        elif block.pattern == "entry_exit_fsm":
+            logic_lines.append(_generate_entry_exit_fsm_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     

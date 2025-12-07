@@ -188,12 +188,12 @@ See [LICENSE](LICENSE) for details.
 
 ## 📊 Current Status
 
-### Pattern Implementation: 18/26 (69%)
+### Pattern Implementation: 19/26 (73%)
 - ✅ **Basic Patterns** (5): FSM, Counter, Accumulator, Passthrough, Vote
 - ✅ **Composite Patterns** (4): Majority, Unanimous, Custom, Quorum
 - ✅ **Hierarchical Patterns** (1): Supervisor-Worker
 - ✅ **Bitvector Patterns** (2): Weighted Vote, Time Lock
-- ✅ **Domain Patterns** (1): Hex Stake
+- ✅ **Domain Patterns** (2): Hex Stake, Entry-Exit FSM ✅ NEW
 - ✅ **High Priority Patterns** (5): Multi-Bit Counter, Streak Counter, Mode Switch, Proposal FSM, Risk FSM
 
 ### Remaining Work
