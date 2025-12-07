@@ -82,6 +82,23 @@ class StrategyStepFrame(StepFrame):
         pattern_frame.pack(fill=tk.X, pady=5)
         
         patterns = [
+            "majority",
+            "unanimous",
+            "custom",
+            "quorum",
+            "history_state",
+            "decomposed_fsm",
+            "script_execution",
+            "tcp_connection_fsm",
+            "utxo_state_machine",
+            "entry_exit_fsm",
+            "orthogonal_regions",
+            "state_aggregation",
+            "multi_bit_counter",
+            "streak_counter",
+            "mode_switch",
+            "proposal_fsm",
+            "risk_fsm",
             ("majority", "Majority Voting (N-of-M)"),
             ("unanimous", "Unanimous Consensus (All Agree)"),
             ("custom", "Custom Expression"),

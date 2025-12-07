@@ -43,6 +43,21 @@
     "description": "Quorum checking (minimum votes required)",
     "template": "(o{output_idx}[t] = {quorum_expr})",
     "requires": ["inputs", "output", "threshold"]
+  },
+  "history_state": {
+    "description": "Remember last substate when returning to superstate",
+    "template": "(o{output_idx}[t] = ({superstate_entry} & (history != {0}:bv[{width}]) ? history : ({superstate_entry} ? {initial}:bv[{width}] : {substate})))",
+    "requires": ["substate_input", "superstate_entry", "output", "initial_substate"]
+  },
+  "decomposed_fsm": {
+    "description": "Hierarchical state decomposition into substates",
+    "template": "(o{output_idx}[t] = {fsm_logic})",
+    "requires": ["hierarchy", "transitions", "substate_outputs"]
+  },
+  "script_execution": {
+    "description": "Bitcoin Script execution engine (simplified)",
+    "template": "(o{output_idx}[t] = {stack_input})",
+    "requires": ["script_input", "stack_input", "output"]
   }
 }
 

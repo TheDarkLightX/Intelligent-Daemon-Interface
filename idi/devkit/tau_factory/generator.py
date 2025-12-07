@@ -1729,84 +1729,109 @@ def _generate_decomposed_fsm_logic(block: LogicBlock, streams: tuple[StreamConfi
     # Track output indices
     output_indices = {}
     
-    # Generate substate FSMs
+    # Collect all unique substates first to avoid duplicates
+    all_substates = {}
     for superstate_name, superstate_config in hierarchy.items():
         substates = superstate_config.get("substates", [])
         initial_substate = superstate_config.get("initial", substates[0] if substates else None)
-        
-        if not substates:
-            continue
-        
-        # Generate FSM for each substate
         for i, substate_name in enumerate(substates):
-            # Get output stream for this substate
-            if i < len(substate_outputs):
-                substate_output_name = substate_outputs[i]
-            else:
-                substate_output_name = f"{substate_name}_state"
+            if substate_name not in all_substates:
+                # Get output stream for this substate
+                if i < len(substate_outputs):
+                    substate_output_name = substate_outputs[i]
+                else:
+                    # Find index in flattened list
+                    flat_idx = sum(len(hierarchy[k].get("substates", [])) for k in list(hierarchy.keys())[:list(hierarchy.keys()).index(superstate_name)]) + i
+                    if flat_idx < len(substate_outputs):
+                        substate_output_name = substate_outputs[flat_idx]
+                    else:
+                        substate_output_name = f"{substate_name}_state"
+                
+                all_substates[substate_name] = {
+                    "output_name": substate_output_name,
+                    "superstate": superstate_name,
+                    "is_initial": (substate_name == initial_substate)
+                }
+    
+    # Generate FSM for each unique substate
+    for substate_name, substate_info in all_substates.items():
+        try:
+            substate_output_idx = _get_stream_index(substate_info["output_name"], streams, is_input=False)
+            output_indices[substate_name] = substate_output_idx
             
-            try:
-                substate_output_idx = _get_stream_index(substate_output_name, streams, is_input=False)
-                output_indices[substate_name] = substate_output_idx
+            # Find transitions FROM this substate (exit transitions)
+            from_transitions = [t for t in transitions if t.get("from") == substate_name]
+            # Find transitions TO this substate (entry transitions)
+            to_transitions = [t for t in transitions if t.get("to") == substate_name]
+            
+            # Build entry conditions (transitions TO this substate)
+            entry_parts = []
+            for trans in to_transitions:
+                from_substate = trans.get("from")
+                condition = trans.get("condition", "1")
                 
-                # Find transitions involving this substate
-                substate_transitions = [t for t in transitions if t.get("from") == substate_name or t.get("to") == substate_name]
-                
-                # Build transition logic
-                transition_conditions = []
-                
-                for trans in substate_transitions:
-                    if trans.get("from") == substate_name:
-                        # Transition from this substate
-                        to_substate = trans.get("to")
-                        condition = trans.get("condition", "1")
+                # Find source substate output index
+                if from_substate in all_substates:
+                    source_output_name = all_substates[from_substate]["output_name"]
+                    try:
+                        source_output_idx = _get_stream_index(source_output_name, streams, is_input=False)
                         
-                        # Find target substate index
-                        target_idx = None
-                        for j, s in enumerate(substates):
-                            if s == to_substate:
-                                # Find output index for target
-                                if j < len(substate_outputs):
-                                    target_output_name = substate_outputs[j]
-                                else:
-                                    target_output_name = f"{to_substate}_state"
-                                try:
-                                    target_output_idx = _get_stream_index(target_output_name, streams, is_input=False)
-                                    target_idx = target_output_idx
-                                except ValueError:
-                                    pass
-                                break
+                        # Build condition expression
+                        condition_expr = condition
+                        for inp_name in block.inputs:
+                            inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+                            inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+                            condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
+                            condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
                         
-                        if target_idx is not None:
-                            # Build condition expression
-                            condition_expr = condition
-                            for inp_name in block.inputs:
-                                inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
-                                inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
-                                condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
-                                condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
-                            
-                            transition_conditions.append(f"({condition_expr} ? {{1}} : {{0}})")
-                
-                # Combine transitions: if condition matches, transition; else maintain state
-                if transition_conditions:
-                    # For boolean outputs, use OR of conditions
-                    transition_expr = " | ".join(transition_conditions)
-                    substate_logic = f"(o{substate_output_idx}[t] = ({transition_expr} | (o{substate_output_idx}[t-1] & ({' & '.join(['(' + c + ')' for c in transition_conditions])}))))"
+                        # Entry: source was active AND condition is true
+                        entry_parts.append(f"(o{source_output_idx}[t-1] & ({condition_expr}))")
+                    except ValueError:
+                        pass
+            
+            # Build exit conditions (transitions FROM this substate)
+            exit_parts = []
+            for trans in from_transitions:
+                condition = trans.get("condition", "1")
+                condition_expr = condition
+                for inp_name in block.inputs:
+                    inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+                    inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+                    condition_expr = condition_expr.replace(f"{inp_name}[t]", inp_ref)
+                    condition_expr = condition_expr.replace(f"{{{inp_name}}}", inp_ref)
+                # Exit: this substate was active AND condition is true
+                exit_parts.append(f"(o{substate_output_idx}[t-1] & ({condition_expr}))")
+            
+            # Build FSM logic:
+            # Active if: (entry condition) OR (was active AND NOT exit condition)
+            if entry_parts:
+                entry_expr = " | ".join(entry_parts)
+                if exit_parts:
+                    exit_expr = " | ".join(exit_parts)
+                    # Active if: entry OR (was active AND not exit)
+                    substate_logic = f"(o{substate_output_idx}[t] = ({entry_expr} | (o{substate_output_idx}[t-1] & ({exit_expr})')))"
+                else:
+                    # Active if: entry OR was active
+                    substate_logic = f"(o{substate_output_idx}[t] = ({entry_expr} | o{substate_output_idx}[t-1]))"
+            else:
+                # No entry transitions
+                if exit_parts:
+                    exit_expr = " | ".join(exit_parts)
+                    # Active if: was active AND not exit
+                    substate_logic = f"(o{substate_output_idx}[t] = (o{substate_output_idx}[t-1] & ({exit_expr})'))"
                 else:
                     # No transitions: maintain state
                     substate_logic = f"(o{substate_output_idx}[t] = o{substate_output_idx}[t-1])"
-                
-                # Initial condition
-                is_initial = (substate_name == initial_substate)
-                initial_value = 1 if is_initial else 0
-                init_logic = f" && (o{substate_output_idx}[0] = {initial_value})"
-                
-                logic_parts.append(substate_logic + init_logic)
-                
-            except ValueError:
-                # Output stream not found, skip
-                continue
+            
+            # Initial condition
+            initial_value = 1 if substate_info["is_initial"] else 0
+            init_logic = f" && (o{substate_output_idx}[0] = {initial_value})"
+            
+            logic_parts.append(substate_logic + init_logic)
+            
+        except ValueError:
+            # Output stream not found, skip
+            continue
     
     # Aggregate substates into superstate (optional)
     aggregate_output_name = block.params.get("aggregate_output", None)
