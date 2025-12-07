@@ -1,0 +1,18 @@
+# Toggle - XOR with previous state
+# NEW SYNTAX for Tau v0.7.0-alpha
+#
+# o[t] = (i[t] AND NOT o[t-1]) OR (NOT i[t] AND o[t-1])
+# Input 1 toggles state, input 0 keeps state
+# Initial condition: o1[0] = 0
+#
+# Expected: input 1,0,1,0 -> output 0,1,1,0,0
+
+i1 : sbf = in file("inputs/signal.in")
+o1 : sbf = out file("outputs/toggle.out")
+r (o1[t] = (i1[t] & o1[t-1]') | (i1[t]' & o1[t-1])) && (o1[0] = 0)
+n
+n
+n
+n
+q
+

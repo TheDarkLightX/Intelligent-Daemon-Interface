@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -56,6 +56,91 @@ class EmoteConfig:
 
 
 @dataclass(frozen=True)
+class TileCoderConfig:
+    """Tile-coding abstraction parameters for compact Q-tables."""
+
+    num_tilings: int = 3
+    tile_sizes: Tuple[int, ...] = (4, 4, 4, 4, 4)
+    offsets: Tuple[int, ...] = (0, 1, 2, 3, 4)
+
+    def validate(self) -> None:
+        if len(self.tile_sizes) != len(self.offsets):
+            raise ValueError("tile_sizes and offsets must have the same length")
+        if self.num_tilings <= 0:
+            raise ValueError("num_tilings must be > 0")
+
+
+@dataclass(frozen=True)
+class CommunicationConfig:
+    """Controls the auxiliary Q-table for expressive communication."""
+
+    actions: Sequence[str] = ("silent", "positive", "alert", "persist")
+
+    def validate(self) -> None:
+        if not self.actions:
+            raise ValueError("communication actions cannot be empty")
+
+
+@dataclass(frozen=True)
+class LayerConfig:
+    """Controls layer-weight stream generation for layered Tau specs."""
+
+    emit_weight_streams: bool = True
+    momentum_threshold: float = 0.6  # threshold on normalized trend bucket
+    contrarian_threshold: float = 0.3
+    trend_favors_even: bool = True
+
+    def validate(self) -> None:
+        if not (0.0 <= self.contrarian_threshold <= 1.0):
+            raise ValueError("contrarian_threshold must be in [0, 1]")
+        if not (0.0 <= self.momentum_threshold <= 1.0):
+            raise ValueError("momentum_threshold must be in [0, 1]")
+        if self.contrarian_threshold > self.momentum_threshold:
+            raise ValueError("contrarian_threshold cannot exceed momentum_threshold")
+
+
+@dataclass(frozen=True)
+class FractalLevelConfig:
+    """Configuration for a single fractal abstraction level."""
+    features: Tuple[Tuple[str, int], ...]  # [(feature_name, num_buckets), ...]
+    scale_factor: float  # Scaling factor for this level
+    visit_threshold: int = 5  # Minimum visits before using this level
+
+
+@dataclass(frozen=True)
+class FractalConfig:
+    """Configuration for fractal state abstraction."""
+    levels: Tuple[FractalLevelConfig, ...]
+    backoff_enabled: bool = True
+    hierarchical_updates: bool = True
+
+    def validate(self) -> None:
+        if not self.levels:
+            raise ValueError("fractal config must have at least one level")
+        for level in self.levels:
+            if level.scale_factor <= 0:
+                raise ValueError("scale_factor must be > 0")
+            if level.visit_threshold < 0:
+                raise ValueError("visit_threshold must be >= 0")
+
+
+@dataclass(frozen=True)
+class MultiLayerConfig:
+    """Configuration for multi-layer Q-learning."""
+    layers: Tuple[str, ...] = ("momentum", "mean_reversion", "regime_aware")
+    coordination: str = "weighted_voting"  # "weighted_voting", "ensemble", "hierarchical"
+    communication_enabled: bool = True
+    layer_specific_rewards: Dict[str, RewardWeights] = field(default_factory=dict)
+
+    def validate(self) -> None:
+        if not self.layers:
+            raise ValueError("multi_layer config must have at least one layer")
+        valid_coordination = {"weighted_voting", "ensemble", "hierarchical"}
+        if self.coordination not in valid_coordination:
+            raise ValueError(f"coordination must be one of {valid_coordination}")
+
+
+@dataclass(frozen=True)
 class TrainingConfig:
     """High-level training knobs."""
 
@@ -67,6 +152,11 @@ class TrainingConfig:
     quantizer: QuantizerConfig = field(default_factory=QuantizerConfig)
     rewards: RewardWeights = field(default_factory=RewardWeights)
     emote: EmoteConfig = field(default_factory=EmoteConfig)
+    layers: LayerConfig = field(default_factory=LayerConfig)
+    tile_coder: Optional[TileCoderConfig] = None
+    communication: CommunicationConfig = field(default_factory=CommunicationConfig)
+    fractal: Optional[FractalConfig] = None
+    multi_layer: Optional[MultiLayerConfig] = None
 
     def validate(self) -> None:
         if not (0.0 < self.discount <= 1.0):
@@ -76,4 +166,12 @@ class TrainingConfig:
         if not (0.0 < self.exploration_decay <= 1.0):
             raise ValueError("exploration_decay must be in (0, 1]")
         self.quantizer.validate()
+        self.layers.validate()
+        self.communication.validate()
+        if self.tile_coder:
+            self.tile_coder.validate()
+        if self.fractal:
+            self.fractal.validate()
+        if self.multi_layer:
+            self.multi_layer.validate()
 

@@ -1,0 +1,12 @@
+# Tau Language Experiment 05: AND Gate
+# Output is AND of two inputs
+# Tests: multiple input streams, Boolean AND
+
+# Define streams
+i1 : sbf = in console.
+i2 : sbf = in console.
+o1 : sbf = out console.
+
+# Spec: output is AND of both inputs
+o1[t] = i1[t] & i2[t].
+

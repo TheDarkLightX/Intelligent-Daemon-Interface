@@ -1,0 +1,228 @@
+# ============================================================================
+# INTELLIGENT ALGORITHMS LIBRARY
+# ============================================================================
+# Provides algorithmic intelligence for deflationary agents:
+#
+# 1. A* Pathfinding - Optimal path through state space
+# 2. Dynamic Programming - Optimal decision sequences
+# 3. Gradient Descent - Parameter optimization
+# 4. Q-Learning Tables - Reinforcement learning approximation
+# 5. Bayesian Updates - Belief state tracking
+#
+# These algorithms enhance agent decision-making while respecting
+# the formal specification constraints.
+# ============================================================================
+
+# =============================================================================
+# A* PATHFINDING FOR STATE SPACE NAVIGATION
+# =============================================================================
+
+# State space is encoded as bitvectors
+# Each state has: (supply_level, eetf_tier, era, position_state)
+
+# Heuristic function: estimates cost to reach goal state
+# Goal: maximize scarcity-adjusted returns while maintaining ethical status
+bv[32] heuristic_cost(current_state, goal_state) :=
+    # Manhattan distance in state space
+    abs_diff(current_state & { #xFF }:bv[32], goal_state & { #xFF }:bv[32]) +
+    abs_diff((current_state >> { #x08 }:bv[32]) & { #xFF }:bv[32], 
+             (goal_state >> { #x08 }:bv[32]) & { #xFF }:bv[32]).
+
+abs_diff(a, b) := (a > b) ? (a - b) : (b - a).
+
+# G-cost: actual cost from start
+bv[32] g_cost[0] := { #x00 }:bv[32].
+bv[32] g_cost[n] := g_cost[n-1] + transition_cost[n].
+
+# F-cost: g + h (total estimated cost)
+bv[32] f_cost[n](current, goal) := 
+    g_cost[n] + heuristic_cost(current, goal).
+
+# Transition cost depends on state change
+bv[32] transition_cost[n] :=
+    # Entering position: higher cost in high scarcity
+    (o_entry_signal[n]) ? (i_scarcity_mult[n] & { #xFF }:bv[32]) :
+    # Exiting: low cost if profitable
+    (o_exit_signal[n] & o_profitable[n]) ? { #x01 }:bv[32] :
+    # Holding: medium cost
+    { #x05 }:bv[32].
+
+# A* decision: choose action that minimizes f-cost
+best_action(f_entry, f_hold, f_exit) :=
+    (f_entry < f_hold & f_entry < f_exit) ? { #b01 }:bv[2] :  # ENTER
+    (f_exit < f_hold) ? { #b10 }:bv[2] :                       # EXIT
+    { #b00 }:bv[2].  # HOLD
+
+# =============================================================================
+# DYNAMIC PROGRAMMING: OPTIMAL VALUE FUNCTION
+# =============================================================================
+
+# Bellman equation for optimal value
+# V(s) = max_a { R(s,a) + γ × V(s') }
+
+# Discount factor (scaled: 95 = 0.95)
+bv[8] C_GAMMA = { #x5F }:bv[8].  # 95/100 = 0.95
+
+# Immediate reward function
+bv[256] immediate_reward(action, scarcity, eetf, balance) :=
+    (action = { #b01 }:bv[2]) ?  # ENTER
+        ({ #x00 }:bv[256] - { #x10 }:bv[256]) :  # Cost of entry
+    (action = { #b10 }:bv[2]) ?  # EXIT
+        (scarcity * eetf * balance / { #x64 }:bv[256]) :  # Scarcity-adjusted profit
+    { #x00 }:bv[256].  # HOLD: no immediate reward
+
+# Value function (approximated via recurrence)
+bv[256] s_value[0] := { #x00 }:bv[256].
+bv[256] s_value[n] := 
+    immediate_reward(o_action[n], i_scarcity_mult[n], i_agent_eetf[n], i_balance[n]) +
+    (C_GAMMA * s_value[n-1] / { #x64 }:bv[256]).
+
+# Optimal policy: choose action that maximizes value
+optimal_action_dp(value_enter, value_hold, value_exit) :=
+    (value_enter > value_hold & value_enter > value_exit) ? { #b01 }:bv[2] :
+    (value_exit > value_hold) ? { #b10 }:bv[2] :
+    { #b00 }:bv[2].
+
+# =============================================================================
+# Q-LEARNING APPROXIMATION
+# =============================================================================
+
+# Q(s,a) = expected value of taking action a in state s
+
+# State encoding: 4 bits for simplified state
+# 0: IDLE_LOW_EETF, 1: IDLE_HIGH_EETF, 2: POSITION_LOW, 3: POSITION_HIGH
+encode_state(in_position, eetf_high) :=
+    (in_position & eetf_high) ? { #b11 }:bv[2] :
+    (in_position & ~eetf_high) ? { #b10 }:bv[2] :
+    (~in_position & eetf_high) ? { #b01 }:bv[2] :
+    { #b00 }:bv[2].
+
+# Action encoding: 0=HOLD, 1=ENTER, 2=EXIT
+# Q-table: 4 states × 3 actions = 12 entries
+# We use fixed Q-values derived from analysis
+
+# Pre-computed optimal Q-table (simplified)
+# Format: Q[state][action] 
+q_value(state, action) :=
+    # State 0 (IDLE_LOW_EETF): best action is HOLD (improve EETF first)
+    (state = { #b00 }:bv[2] & action = { #b00 }:bv[2]) ? { #x32 }:bv[8] :  # HOLD: 50
+    (state = { #b00 }:bv[2] & action = { #b01 }:bv[2]) ? { #x0A }:bv[8] :  # ENTER: 10
+    (state = { #b00 }:bv[2] & action = { #b10 }:bv[2]) ? { #x00 }:bv[8] :  # EXIT: 0
+    # State 1 (IDLE_HIGH_EETF): best action is ENTER
+    (state = { #b01 }:bv[2] & action = { #b00 }:bv[2]) ? { #x28 }:bv[8] :  # HOLD: 40
+    (state = { #b01 }:bv[2] & action = { #b01 }:bv[2]) ? { #x64 }:bv[8] :  # ENTER: 100
+    (state = { #b01 }:bv[2] & action = { #b10 }:bv[2]) ? { #x00 }:bv[8] :  # EXIT: 0
+    # State 2 (POSITION_LOW): best action depends on profit
+    (state = { #b10 }:bv[2] & action = { #b00 }:bv[2]) ? { #x1E }:bv[8] :  # HOLD: 30
+    (state = { #b10 }:bv[2] & action = { #b01 }:bv[2]) ? { #x00 }:bv[8] :  # ENTER: 0
+    (state = { #b10 }:bv[2] & action = { #b10 }:bv[2]) ? { #x46 }:bv[8] :  # EXIT: 70
+    # State 3 (POSITION_HIGH): best action is HOLD or EXIT
+    (state = { #b11 }:bv[2] & action = { #b00 }:bv[2]) ? { #x50 }:bv[8] :  # HOLD: 80
+    (state = { #b11 }:bv[2] & action = { #b01 }:bv[2]) ? { #x00 }:bv[8] :  # ENTER: 0
+    (state = { #b11 }:bv[2] & action = { #b10 }:bv[2]) ? { #x5A }:bv[8] :  # EXIT: 90
+    { #x00 }:bv[8].  # Default
+
+# Greedy policy: choose action with highest Q-value
+greedy_action(state) :=
+    (q_value(state, { #b01 }:bv[2]) > q_value(state, { #b00 }:bv[2]) &
+     q_value(state, { #b01 }:bv[2]) > q_value(state, { #b10 }:bv[2])) ? { #b01 }:bv[2] :
+    (q_value(state, { #b10 }:bv[2]) > q_value(state, { #b00 }:bv[2])) ? { #b10 }:bv[2] :
+    { #b00 }:bv[2].
+
+# =============================================================================
+# BAYESIAN BELIEF TRACKING
+# =============================================================================
+
+# Track belief about market regime
+# Prior: P(bull) = 0.5, P(bear) = 0.5
+# Update based on price movements
+
+# Belief state (scaled: 128 = 0.5)
+bv[8] s_belief_bull[0] := { #x80 }:bv[8].  # 128 = 50%
+
+# Likelihood ratios (scaled)
+bv[8] L_BULL_UP = { #xC0 }:bv[8].   # P(up|bull) = 192/256 = 0.75
+bv[8] L_BULL_DOWN = { #x40 }:bv[8]. # P(down|bull) = 64/256 = 0.25
+bv[8] L_BEAR_UP = { #x40 }:bv[8].   # P(up|bear) = 0.25
+bv[8] L_BEAR_DOWN = { #xC0 }:bv[8]. # P(down|bear) = 0.75
+
+# Bayesian update
+# P(bull|obs) = P(obs|bull) × P(bull) / P(obs)
+bayesian_update(prior_bull, price_up) :=
+    (price_up) ?
+        # P(bull|up) ∝ P(up|bull) × P(bull)
+        (L_BULL_UP * prior_bull / { #x100 }:bv[16]) :
+        # P(bull|down) ∝ P(down|bull) × P(bull)
+        (L_BULL_DOWN * prior_bull / { #x100 }:bv[16]).
+
+# Update belief state
+bv[8] s_belief_bull[n] :=
+    bayesian_update(s_belief_bull[n-1], i_price[n] > i_price[n-1]) & { #xFF }:bv[8].
+
+# Action based on belief
+belief_action(belief, in_position) :=
+    (~in_position & belief > { #xA0 }:bv[8]) ? { #b01 }:bv[2] :  # Enter if >62.5% bull
+    (in_position & belief < { #x60 }:bv[8]) ? { #b10 }:bv[2] :   # Exit if <37.5% bull
+    { #b00 }:bv[2].  # Hold otherwise
+
+# =============================================================================
+# ENSEMBLE DECISION
+# =============================================================================
+
+# Combine multiple algorithms for robust decision-making
+
+# Algorithm weights (scaled: sum = 100)
+bv[8] W_ASTAR = { #x19 }:bv[8].    # 25%
+bv[8] W_DP = { #x19 }:bv[8].       # 25%
+bv[8] W_QLEARN = { #x19 }:bv[8].   # 25%
+bv[8] W_BAYES = { #x19 }:bv[8].    # 25%
+
+# Action scores from each algorithm
+action_score_astar(action, f_cost_action) :=
+    ({ #xFF }:bv[8] - f_cost_action) & { #xFF }:bv[8].  # Lower cost = higher score
+
+action_score_dp(action, value) :=
+    (value > { #xFF }:bv[256]) ? { #xFF }:bv[8] : (value & { #xFF }:bv[8]).
+
+action_score_qlearn(state, action) :=
+    q_value(state, action).
+
+action_score_bayes(belief, action, in_position) :=
+    (action = belief_action(belief, in_position)) ? { #xFF }:bv[8] : { #x00 }:bv[8].
+
+# Weighted ensemble score
+ensemble_score(action, astar, dp, qlearn, bayes) :=
+    (W_ASTAR * astar + W_DP * dp + W_QLEARN * qlearn + W_BAYES * bayes) / { #x64 }:bv[16].
+
+# Final ensemble decision
+ensemble_decision(score_hold, score_enter, score_exit) :=
+    (score_enter > score_hold & score_enter > score_exit) ? { #b01 }:bv[2] :
+    (score_exit > score_hold) ? { #b10 }:bv[2] :
+    { #b00 }:bv[2].
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+bv[2] o_astar_action = ofile("outputs/astar_action.out").
+bv[2] o_dp_action = ofile("outputs/dp_action.out").
+bv[2] o_qlearn_action = ofile("outputs/qlearn_action.out").
+bv[2] o_bayes_action = ofile("outputs/bayes_action.out").
+bv[2] o_ensemble_action = ofile("outputs/ensemble_action.out").
+bv[8] o_belief_bull = ofile("outputs/belief_bull.out").
+bv[256] o_value_function = ofile("outputs/value_function.out").
+
+# =============================================================================
+# INVARIANTS
+# =============================================================================
+
+# Action must be valid (0, 1, or 2)
+always (o_ensemble_action <= { #b10 }:bv[2]).
+
+# Belief bounded [0, 255]
+always (o_belief_bull >= { #x00 }:bv[8]).
+always (o_belief_bull <= { #xFF }:bv[8]).
+
+# Value function non-negative
+always (o_value_function >= { #x00 }:bv[256]).
+

@@ -1,0 +1,17 @@
+[package]
+name = "tau-q-daemon"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance Q-learning daemon for Tau agents"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.0", features = ["derive"] }
+
+[[bin]]
+name = "tau-q-daemon"
+path = "src/main.rs"
+

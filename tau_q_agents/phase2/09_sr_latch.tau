@@ -1,0 +1,17 @@
+# SR Latch - Set/Reset memory
+# i1 = SET, i2 = RESET, o1 = Q
+# SET=1 -> Q=1, RESET=1 -> Q=0, both 0 -> hold
+
+sbf i1 = console
+sbf i2 = console
+sbf o1 = console
+r o1[t] = i1[t] | (o1[t-1] & i2[t]')
+0
+0
+1
+0
+0
+0
+0
+1
+q

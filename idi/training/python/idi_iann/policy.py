@@ -4,45 +4,64 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple, Iterable, Sequence
+from typing import Dict, Iterable, Sequence
 import json
 
-StateKey = Tuple[int, int, int, int, int]
-Action = str
+from .domain import Action, StateKey
 
 
 @dataclass
 class PolicyEntry:
-    q_values: Dict[Action, float]
+    """Q-value entry for a single state."""
+    q_values: Dict[str, float]  # Use str for serialization compatibility
 
-    def best_action(self) -> Action:
+    def best_action(self) -> str:
+        """Return best action as string (for compatibility)."""
+        if not self.q_values:
+            return Action.HOLD.value
         return max(self.q_values.items(), key=lambda item: item[1])[0]
 
 
 class LookupPolicy:
     """In-memory policy with export helpers."""
 
-    ACTIONS: Sequence[Action] = ("hold", "buy", "sell")
+    ACTIONS: Sequence[Action] = (Action.HOLD, Action.BUY, Action.SELL)
+    
+    @property
+    def action_strings(self) -> Sequence[str]:
+        """Return action strings for compatibility."""
+        return tuple(a.value for a in self.ACTIONS)
 
     def __init__(self) -> None:
         self._table: Dict[StateKey, PolicyEntry] = {}
 
     def q_value(self, state: StateKey, action: Action) -> float:
-        return self._table.setdefault(state, PolicyEntry({a: 0.0 for a in self.ACTIONS})).q_values[action]
+        """Get Q-value for state-action pair."""
+        action_str = action.value if isinstance(action, Action) else action
+        default_entry = PolicyEntry({a.value: 0.0 for a in self.ACTIONS})
+        return self._table.setdefault(state, default_entry).q_values.get(action_str, 0.0)
 
     def update(self, state: StateKey, action: Action, delta: float) -> None:
-        entry = self._table.setdefault(state, PolicyEntry({a: 0.0 for a in self.ACTIONS}))
-        entry.q_values[action] += delta
+        """Update Q-value for state-action pair."""
+        action_str = action.value if isinstance(action, Action) else action
+        default_entry = PolicyEntry({a.value: 0.0 for a in self.ACTIONS})
+        entry = self._table.setdefault(state, default_entry)
+        entry.q_values[action_str] = entry.q_values.get(action_str, 0.0) + delta
 
     def best_action(self, state: StateKey) -> Action:
-        return self._table.setdefault(
-            state, PolicyEntry({a: 0.0 for a in self.ACTIONS})
-        ).best_action()
+        """Get best action for state."""
+        default_entry = PolicyEntry({a.value: 0.0 for a in self.ACTIONS})
+        best_str = self._table.setdefault(state, default_entry).best_action()
+        # Convert string back to Action enum
+        for action in Action:
+            if action.value == best_str:
+                return action
+        return Action.HOLD  # Default fallback
 
     def serialize_manifest(self, target: Path) -> None:
         payload = {
             "states": len(self._table),
-            "actions": list(self.ACTIONS),
+            "actions": [a.value for a in self.ACTIONS],
         }
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 

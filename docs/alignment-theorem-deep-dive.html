@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tau Net Deflationary Ecosystem - Deep Dive</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #05060c;
+            --panel: #101222;
+            --surface: #1a1c33;
+            --accent: #00f0ff;
+            --accent-2: #ffd447;
+            --text: #f4f8ff;
+            --muted: #a9b3d4;
+            --border: rgba(255,255,255,0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: radial-gradient(circle at top, #10142a, var(--bg) 55%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image:
+                radial-gradient(2px 2px at 10% 20%, rgba(255,255,255,0.3), transparent),
+                radial-gradient(2px 2px at 80% 10%, rgba(0,255,255,0.4), transparent),
+                radial-gradient(1px 1px at 50% 80%, rgba(255,255,255,0.5), transparent);
+            animation: drift 120s linear infinite;
+            opacity: 0.6;
+        }
+        @keyframes drift {
+            from { transform: translateY(0); }
+            to { transform: translateY(-300px); }
+        }
+        .container {
+            position: relative;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            font-size: 2.5rem;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        header p {
+            color: var(--muted);
+            margin-top: 10px;
+            font-size: 1.2rem;
+        }
+        .cta-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 25px;
+        }
+        .cta {
+            border: 1px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 999px;
+            text-decoration: none;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: transform 0.2s ease, border-color 0.2s;
+        }
+        .cta.primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #05060c;
+            font-weight: 700;
+        }
+        .cta:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+        section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
+        }
+        section h2 {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            font-size: 1.2rem;
+            letter-spacing: 0.15em;
+            margin-bottom: 16px;
+            color: var(--accent-2);
+        }
+        section p {
+            margin-bottom: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 16px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+        li + li { margin-top: 6px; }
+        code {
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="container">
+        <header>
+            <h1>Tau Net Deflationary Ecosystem Deep Dive</h1>
+            <p>Research notes, AoT logs, and build-ready templates for the Virtuous Cycle Compounder stack.</p>
+            <div class="cta-bar">
+                <a class="cta" href="alignment_theorem_visualizer.html">← Back to Visualizer</a>
+                <a class="cta primary" href="Alignment_Theorem_Academic.pdf" target="_blank" rel="noopener">Download PDF</a>
+            </div>
+        </header>
+
+        <section>
+            <h2>Purpose</h2>
+            <p>Design a robust deflationary economy on Tau Net that uses boolean-function agents, formal invariants, MEV/oracle safety, upgrade wrappers, and demand sinks. Content condenses a 100-iteration research loop with Atom of Thoughts reasoning.</p>
+        </section>
+
+        <section>
+            <h2>Pillars</h2>
+            <ul>
+                <li>Deflationary kernel agents with structural burn sinks and bounded emissions.</li>
+                <li>MEV and oracle hardening through commit-reveal, banding, cooldowns, and replayable traces.</li>
+                <li>Demand formation via POL, ve locks, staking sinks, auctions, and bonding curves.</li>
+                <li>Governance wrappers that guard pointwise revisions with invariants.</li>
+                <li>Verification-first design: BF monitors, frontier-aware factoring, and deterministic trace capture.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Core Math</h2>
+            <ul>
+                <li>Gate-first additive bound: shared gate literal first yields ROBDD size ≤ 1 + Σ|Ci|.</li>
+                <li>Frontier-width gating: select gates early to reduce max frontier during normalization.</li>
+                <li>Quantification cost model: T ≈ poly · 2^support · κ(block) → minimize offsets and cluster signals.</li>
+                <li>Tight bounds: parity demands 2^n nodes; ripple adders reach O(n) when interleaved.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Economic Mechanisms</h2>
+            <ul>
+                <li>Base-fee burns echo EIP-1559: burns act as reward for ethical throughput.</li>
+                <li>Buyback-and-burn vs buyback-and-make toggles encoded as policy booleans.</li>
+                <li>Protocol-owned liquidity (POL) reduces mercenary LP risk and is guarded by monitors.</li>
+                <li>Strict circuit breakers ensure seigniorage-style components cannot run uncollateralized.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>MEV / Oracle Templates</h2>
+            <ul>
+                <li>Commit-reveal phases `commit_ok`, `reveal_ok` gate sensitive state transitions.</li>
+                <li>Batch auctions ensure execution only at settlement boundaries `batch_window_open`.</li>
+                <li>TWA-based cooldown timers enforce paced execution to dampen frontrunning.</li>
+                <li>Freshness and band checks (`fresh`, `in_band`) guard every oracle feed.</li>
+                <li>MEV tax routing ensures captured MEV flows into sinks or treasury burn.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Demand Sinks</h2>
+            <ul>
+                <li>ve locks with boolean monitor `lock_active` for voting power.</li>
+                <li>Staking sinks map `staked -> non_circulating`; slash events burn.</li>
+                <li>Auctions and bonding curves rely on `demand_event` inputs with strict overspend guards.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Invariant Catalog</h2>
+            <ul>
+                <li>Mutual exclusion: `mutex2(buy,sell)` prevents conflicting actions.</li>
+                <li>No-overspend: `spend_event -> budget_ok` for treasury safety.</li>
+                <li>Fresh execution gating: `(progress' | (state' | fresh))` eliminates ghost actions.</li>
+                <li>Monotone burn: `burn' | profit` ensures no reverse edges.</li>
+                <li>Nonce discipline and assume-guarantee composition across modules.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Agent Templates</h2>
+            <ul>
+                <li>Gray-coded timers for pacing and cooldowns.</li>
+                <li>Progress gating to avoid t = 0 artifacts and latch flips.</li>
+                <li>Shared enable literal `en := exec & buy' & sell'` reused across SOP cubes.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Libraries Added</h2>
+            <ul>
+                <li><code>libraries/invariants_v36.tau</code> – shared logical helpers.</li>
+                <li><code>libraries/deflationary_economy_v1.tau</code> – burn, emission caps, pacing, demand monitors.</li>
+                <li><code>libraries/mev_oracle_safety_v1.tau</code> – commit-reveal, batching, staleness/band checks.</li>
+                <li><code>dCFMM_Math_Spec_V1.md</code> – CFMM reserve tax math.</li>
+                <li><code>ITERATION_LOG_Deflationary_Math_AoT.md</code> – AoT log with new theorems.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Iteration Highlights</h2>
+            <ol>
+                <li>Early gating shrinks frontier pathwidth and avoids ROBDD blowups.</li>
+                <li>XOR removal plus helper factoring keeps normalization linear in clauses.</li>
+                <li>Group sifting + literal clustering preserve cache locality.</li>
+                <li>Token-bucket pacing combined with cooldown inputs counters MEV oscillations.</li>
+                <li>Median-of-medians oracles with slash-to-burn incentives resist manipulation.</li>
+                <li>Buyback + POL loops convert EETF uplifts into compounding scarcity.</li>
+                <li>Progress monitors and L2S counters certify bounded execution windows.</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Next Steps</h2>
+            <ul>
+                <li>Integrate the libraries into exemplar agents with counting witnesses on emissions.</li>
+                <li>Extend TauViz to visualize invariant satisfaction across traces.</li>
+                <li>Build regression suites that replay randomized inputs for invariant catalog sign-off.</li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>
+
+
+

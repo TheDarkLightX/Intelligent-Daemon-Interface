@@ -1,0 +1,11 @@
+# Tau Language Experiment 11: BitVector Echo
+# 8-bit echo - output equals input
+# Tests: BitVector I/O
+
+# Define streams with bitvector type (8-bit)
+i1 : bv[8] = in console.
+o1 : bv[8] = out console.
+
+# Spec: output equals input
+o1[t] = i1[t].
+

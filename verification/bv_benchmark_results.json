@@ -1,0 +1,60 @@
+{
+  "trending_up": {
+    "steps": 20,
+    "entries": 1,
+    "exits": 1,
+    "profits": 1,
+    "total_profit": 15,
+    "entry_prices": [
+      100
+    ],
+    "exit_prices": [
+      115
+    ],
+    "sim_time_ms": 0.10867201490327716
+  },
+  "trending_down": {
+    "steps": 20,
+    "entries": 0,
+    "exits": 0,
+    "profits": 0,
+    "total_profit": 0,
+    "entry_prices": [],
+    "exit_prices": [],
+    "sim_time_ms": 0.07813895354047418
+  },
+  "volatile": {
+    "steps": 20,
+    "entries": 0,
+    "exits": 0,
+    "profits": 0,
+    "total_profit": 0,
+    "entry_prices": [],
+    "exit_prices": [],
+    "sim_time_ms": 0.07229798939079046
+  },
+  "range_bound": {
+    "steps": 20,
+    "entries": 1,
+    "exits": 1,
+    "profits": 1,
+    "total_profit": 1,
+    "entry_prices": [
+      127
+    ],
+    "exit_prices": [
+      128
+    ],
+    "sim_time_ms": 0.07076800102367997
+  },
+  "flash_crash": {
+    "steps": 20,
+    "entries": 0,
+    "exits": 0,
+    "profits": 0,
+    "total_profit": 0,
+    "entry_prices": [],
+    "exit_prices": [],
+    "sim_time_ms": 0.06619701161980629
+  }
+}

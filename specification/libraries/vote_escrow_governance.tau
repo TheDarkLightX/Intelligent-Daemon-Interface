@@ -1,0 +1,372 @@
+# ==============================================================================
+# VOTE-ESCROW GOVERNANCE - veCRV-Style Voting with Decaying Power
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - Core Primitive
+#
+# Based on veCRV model:
+# - Voting power = Amount * (RemainingLock / MaxLock)
+# - Power decays linearly, requiring re-locks for max power
+# - Up to 2.5x boost on rewards for max lockers
+# - Fee sharing proportional to veCRV balance
+# - Quadratic voting option for more democratic outcomes
+#
+# Integrates with VCC's EETF for post-EETF phase:
+# - Governance power boosted by account EETF
+# - Proposals can modify burn parameters
+# - Meta-governance for evolving ethics definitions
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Governance Parameters
+# ------------------------------------------------------------------------------
+
+# Locked token amount (256-bit)
+bv[256] i_locked_amount = ifile("inputs/locked_amount.in").
+
+# Lock start time in days (32-bit)
+bv[32] i_lock_start = ifile("inputs/lock_start.in").
+
+# Lock duration in days (16-bit, max 1460 = 4 years)
+bv[16] i_lock_duration = ifile("inputs/lock_duration.in").
+
+# Current time in days (32-bit)
+bv[32] i_current_time = ifile("inputs/current_time.in").
+
+# Account EETF score (8-bit, 100 = 1.0)
+bv[8] i_eetf_account = ifile("inputs/eetf_account.in").
+
+# Total vTokens in system (for calculating proportional share)
+bv[256] i_total_vtokens = ifile("inputs/total_vtokens.in").
+
+# Protocol fees available for distribution (256-bit)
+bv[256] i_fees_to_distribute = ifile("inputs/fees_to_distribute.in").
+
+# Proposal to vote on (32-bit proposal ID)
+bv[32] i_proposal_id = ifile("inputs/proposal_id.in").
+
+# Vote direction (sbf: 1 = for, 0 = against)
+sbf i_vote_for = ifile("inputs/vote_for.in").
+
+# Action signals
+sbf i_cast_vote = ifile("inputs/cast_vote.in").
+sbf i_delegate_vote = ifile("inputs/delegate_vote.in").
+sbf i_claim_fees = ifile("inputs/claim_fees.in").
+sbf i_extend_lock = ifile("inputs/extend_lock.in").
+
+# Quadratic voting enabled for this proposal
+sbf i_quadratic_enabled = ifile("inputs/quadratic_enabled.in").
+
+# New lock duration for extension (16-bit)
+bv[16] i_new_duration = ifile("inputs/new_duration.in").
+
+# Delegate address hash (for delegation)
+bv[256] i_delegate_to = ifile("inputs/delegate_to.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Governance State
+# ------------------------------------------------------------------------------
+
+# Current voting power (256-bit)
+bv[256] o_voting_power = ofile("outputs/voting_power.out").
+
+# Quadratic voting power (sqrt of linear, 128-bit)
+bv[128] o_quadratic_power = ofile("outputs/quadratic_power.out").
+
+# Remaining lock days (16-bit)
+bv[16] o_remaining_days = ofile("outputs/remaining_days.out").
+
+# Decay factor (8-bit, 0-255 representing 0-100%)
+bv[8] o_decay_factor = ofile("outputs/decay_factor.out").
+
+# Boost multiplier (8-bit, 100-250 representing 1.0x-2.5x)
+bv[8] o_boost_multiplier = ofile("outputs/boost_multiplier.out").
+
+# Fee share this period (256-bit)
+bv[256] o_fee_share = ofile("outputs/fee_share.out").
+
+# Vote status
+sbf o_vote_cast = ofile("outputs/vote_cast.out").
+sbf o_is_delegated = ofile("outputs/is_delegated.out").
+
+# Cumulative fees claimed (256-bit)
+bv[256] o_cumulative_fees_claimed = ofile("outputs/cumulative_fees_claimed.out").
+
+# EETF-enhanced voting power (post-EETF phase)
+bv[256] o_eetf_voting_power = ofile("outputs/eetf_voting_power.out").
+
+# Lock status
+sbf o_lock_active = ofile("outputs/lock_active.out").
+
+# Power ratio vs max possible (8-bit percentage)
+bv[8] o_power_utilization = ofile("outputs/power_utilization.out").
+
+# ------------------------------------------------------------------------------
+# CONSTANTS
+# ------------------------------------------------------------------------------
+
+# MAX_LOCK_DURATION = 1460 days (4 years like veCRV)
+# { #x05B4 }:bv[16] = 1460
+
+# MIN_LOCK_DURATION = 7 days (1 week)
+# { #x0007 }:bv[16] = 7
+
+# BASE_BOOST = 100 (1.0x)
+# MAX_BOOST = 250 (2.5x)
+
+# EETF_BASE = 100 (representing 1.0)
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Voting Power Calculations
+# ------------------------------------------------------------------------------
+
+# Calculate remaining days in lock
+calc_remaining_days(start, duration, current) :=
+    ((start + duration) > current) ? 
+        ((start + duration) - current) : 
+        { #x0000 }:bv[16].
+
+# Check if lock is active
+is_lock_active(start, duration, current) :=
+    (current >= start) & (current < (start + duration)).
+
+# Calculate decay factor (remaining / original, scaled to 256)
+# Returns 255 for max, 0 for expired
+calc_decay_factor(remaining, original) :=
+    (original = { #x0000 }:bv[16]) ? { #x00 }:bv[8] :
+    ((remaining * { #x00FF }:bv[32]) / original).
+
+# Calculate linear voting power
+# voting_power = locked_amount * (remaining_lock / max_lock)
+calc_linear_voting_power(amount, remaining) :=
+    (amount * remaining) / { #x05B4 }:bv[256].  # Divide by max_lock (1460)
+
+# Calculate quadratic voting power (sqrt of linear)
+# Uses integer approximation for sqrt
+calc_quadratic_power(linear_power) :=
+    # Simplified sqrt using bit manipulation
+    # For 256-bit input, output is 128-bit
+    # Using babylonian method approximation
+    sqrt_approx_128(linear_power).
+
+# Sqrt approximation for 256-bit to 128-bit
+sqrt_approx_128(x) :=
+    (x = { #x00 }:bv[256]) ? { #x00 }:bv[128] :
+    (x < { #x0100 }:bv[256]) ? { #x10 }:bv[128] :
+    (x < { #x010000 }:bv[256]) ? { #x0100 }:bv[128] :
+    (x < { #x01000000 }:bv[256]) ? { #x1000 }:bv[128] :
+    (x < { #x0100000000 }:bv[256]) ? { #x00010000 }:bv[128] :
+    { #x0001000000 }:bv[128].  # Rough estimate for large values
+
+# Calculate boost multiplier based on decay
+# boost = 100 + (decay_factor * 150 / 255)
+# At max decay (255): boost = 250 (2.5x)
+# At min decay (0): boost = 100 (1.0x)
+calc_boost_multiplier(decay) :=
+    ({ #x64 }:bv[8] + ((decay * { #x96 }:bv[16]) >> { #x08 }:bv[16])).  # 100 + decay*150/256
+
+# Calculate fee share based on voting power proportion
+# fee_share = (voting_power * total_fees) / total_vtokens
+calc_fee_share(voting_power, total_fees, total_vtokens) :=
+    (total_vtokens = { #x00 }:bv[256]) ? { #x00 }:bv[256] :
+    ((voting_power * total_fees) / total_vtokens).
+
+# EETF-enhanced voting power (post-EETF phase)
+# eetf_power = voting_power * (eetf_account / 100)
+calc_eetf_power(voting_power, eetf) :=
+    (voting_power * eetf) / { #x64 }:bv[256].
+
+# Power utilization percentage
+# utilization = (current_power * 100) / max_possible_power
+calc_utilization(current_power, locked_amount) :=
+    (locked_amount = { #x00 }:bv[256]) ? { #x00 }:bv[8] :
+    ((current_power * { #x64 }:bv[256]) / locked_amount).
+
+# ------------------------------------------------------------------------------
+# DELEGATION LOGIC
+# ------------------------------------------------------------------------------
+
+# Delegated voting power transfers to delegate
+# Original holder keeps fee-sharing rights but loses voting
+
+delegation_active(delegate_addr) :=
+    delegate_addr != { #x00 }:bv[256].
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+# States: NO_LOCK -> LOCKED -> (VOTING | DELEGATED) -> EXPIRED
+#
+# Voting actions only available while LOCKED
+
+state_no_lock := ~o_lock_active.
+state_locked := o_lock_active & ~o_is_delegated.
+state_delegated := o_lock_active & o_is_delegated.
+state_expired := ~o_lock_active & (o_remaining_days = { #x0000 }:bv[16]).
+
+# Transition conditions
+can_cast_vote := state_locked & i_cast_vote & 
+                 (i_proposal_id != { #x00 }:bv[32]).
+
+can_delegate := state_locked & i_delegate_vote &
+                (i_delegate_to != { #x00 }:bv[256]).
+
+can_claim_fees := (state_locked | state_delegated) & i_claim_fees &
+                  (o_fee_share > { #x00 }:bv[256]).
+
+can_extend := state_locked & i_extend_lock &
+              (i_new_duration > o_remaining_days) &
+              (i_new_duration <= { #x05B4 }:bv[16]).
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS - State Updates
+# ------------------------------------------------------------------------------
+
+# Lock active status
+o_lock_active[0] := 0.
+o_lock_active[t] :=
+    is_lock_active(i_lock_start[t], i_lock_duration[t], i_current_time[t]).
+
+# Remaining days
+o_remaining_days[0] := { #x0000 }:bv[16].
+o_remaining_days[t] :=
+    can_extend[t-1] ? i_new_duration[t-1] :
+    calc_remaining_days(i_lock_start[t], i_lock_duration[t], i_current_time[t]).
+
+# Decay factor
+o_decay_factor[0] := { #x00 }:bv[8].
+o_decay_factor[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[8] :
+    calc_decay_factor(o_remaining_days[t], i_lock_duration[t]).
+
+# Linear voting power
+o_voting_power[0] := { #x00 }:bv[256].
+o_voting_power[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    o_is_delegated[t] ? { #x00 }:bv[256] :  # No voting if delegated
+    calc_linear_voting_power(i_locked_amount[t], o_remaining_days[t]).
+
+# Quadratic voting power
+o_quadratic_power[0] := { #x00 }:bv[128].
+o_quadratic_power[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[128] :
+    i_quadratic_enabled[t] ? calc_quadratic_power(o_voting_power[t]) : { #x00 }:bv[128].
+
+# EETF-enhanced voting power
+o_eetf_voting_power[0] := { #x00 }:bv[256].
+o_eetf_voting_power[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    calc_eetf_power(o_voting_power[t], i_eetf_account[t]).
+
+# Boost multiplier
+o_boost_multiplier[0] := { #x64 }:bv[8].  # 100 = 1.0x
+o_boost_multiplier[t] :=
+    ~o_lock_active[t] ? { #x64 }:bv[8] :
+    calc_boost_multiplier(o_decay_factor[t]).
+
+# Fee share calculation
+o_fee_share[0] := { #x00 }:bv[256].
+o_fee_share[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    calc_fee_share(
+        o_voting_power[t-1] + (o_is_delegated[t] ? { #x00 }:bv[256] : o_voting_power[t]),
+        i_fees_to_distribute[t],
+        i_total_vtokens[t]
+    ).
+
+# Delegation status
+o_is_delegated[0] := 0.
+o_is_delegated[t] :=
+    can_delegate[t-1] ? 1 :
+    ~o_lock_active[t] ? 0 :
+    o_is_delegated[t-1].
+
+# Vote cast status
+o_vote_cast[0] := 0.
+o_vote_cast[t] :=
+    can_cast_vote[t-1] ? 1 : 0.
+
+# Cumulative fees claimed
+o_cumulative_fees_claimed[0] := { #x00 }:bv[256].
+o_cumulative_fees_claimed[t] :=
+    can_claim_fees[t-1] ? 
+        (o_cumulative_fees_claimed[t-1] + o_fee_share[t-1]) :
+    o_cumulative_fees_claimed[t-1].
+
+# Power utilization
+o_power_utilization[0] := { #x00 }:bv[8].
+o_power_utilization[t] :=
+    calc_utilization(o_voting_power[t], i_locked_amount[t]).
+
+# ------------------------------------------------------------------------------
+# INVARIANTS - Safety Properties
+# ------------------------------------------------------------------------------
+
+# Invariant 1: Voting power never exceeds locked amount
+inv_power_bounded := always (o_voting_power <= i_locked_amount).
+
+# Invariant 2: Decay factor in valid range [0, 255]
+inv_decay_bounded := always (o_decay_factor <= { #xFF }:bv[8]).
+
+# Invariant 3: Boost multiplier in valid range [100, 250]
+inv_boost_bounded := always (
+    (o_boost_multiplier >= { #x64 }:bv[8]) & 
+    (o_boost_multiplier <= { #xFA }:bv[8])
+).
+
+# Invariant 4: No voting power when delegated
+inv_no_power_when_delegated := always (
+    o_is_delegated -> (o_voting_power = { #x00 }:bv[256])
+).
+
+# Invariant 5: Remaining days <= lock duration
+inv_remaining_bounded := always (o_remaining_days <= i_lock_duration).
+
+# Invariant 6: State consistency
+inv_state_consistent := always ~(state_locked & state_delegated).
+
+# Invariant 7: Cumulative fees monotonically increasing
+inv_fees_monotonic := always (o_cumulative_fees_claimed >= o_cumulative_fees_claimed').
+
+# Combined invariants
+o_invariants_hold := inv_power_bounded & inv_decay_bounded & inv_boost_bounded &
+                     inv_no_power_when_delegated & inv_remaining_bounded &
+                     inv_state_consistent & inv_fees_monotonic.
+
+# ------------------------------------------------------------------------------
+# OBSERVABLE PROPERTIES (for verification)
+# ------------------------------------------------------------------------------
+
+# Property: Longer remaining lock = more voting power (same amount)
+prop_longer_more_power := always (
+    ((o_remaining_days > o_remaining_days') &
+     (i_locked_amount = i_locked_amount') &
+     o_lock_active & o_lock_active')
+    -> (o_voting_power >= o_voting_power')
+).
+
+# Property: Extension increases power
+prop_extension_increases_power := always (
+    can_extend -> (o_voting_power' >= o_voting_power)
+).
+
+# Property: Quadratic power <= linear power
+prop_quadratic_bounded := always (
+    o_quadratic_power <= o_voting_power
+).
+
+# Property: Max locker gets max boost
+prop_max_lock_max_boost := always (
+    ((o_remaining_days = i_lock_duration) & (i_lock_duration = { #x05B4 }:bv[16]))
+    -> (o_boost_multiplier = { #xFA }:bv[8])
+).
+
+# Property: EETF > 1.0 increases effective power
+prop_eetf_amplifies := always (
+    (i_eetf_account > { #x64 }:bv[8]) -> 
+    (o_eetf_voting_power > o_voting_power)
+).
+
+# ==============================================================================
+# END OF VOTE_ESCROW_GOVERNANCE.TAU
+# ==============================================================================
+

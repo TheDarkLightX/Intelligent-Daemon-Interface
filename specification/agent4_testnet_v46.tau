@@ -1,0 +1,243 @@
+# Deflationary Agent V46 - Complete Risk Management
+# Stop-loss, take-profit, drawdown protection, and cooldown states
+# Copyright DarkLightX/Dana Edwards
+#
+# CRITICAL USER NEED: Capital Preservation
+# Without proper risk management, a single bad trade can wipe out all gains.
+# This version implements professional-grade risk controls.
+#
+# NEW FSM STATES:
+# - IDLE (0): Waiting for entry signal
+# - EXECUTING (1): In position, monitoring
+# - STOP_LOSS (2): Emergency exit triggered
+# - TAKE_PROFIT (3): Profit target hit
+# - COOLDOWN (4): Paused after losses
+#
+# RISK PARAMETERS:
+# - Stop-loss: Exit if price drops > X% from entry
+# - Take-profit: Exit if price rises > Y% from entry
+# - Max consecutive losses: Enter cooldown after N losses
+# - Cooldown duration: Wait M ticks before re-enabling
+
+# === BITVECTOR INPUTS ===
+bv[16] i0 = ifile("inputs/price.in").
+bv[16] i5 = ifile("inputs/stop_loss_pct.in").     # Stop-loss percentage (scaled by 100)
+bv[16] i6 = ifile("inputs/take_profit_pct.in").   # Take-profit percentage (scaled by 100)
+bv[16] i7 = ifile("inputs/max_consecutive_loss.in"). # Max losses before cooldown
+
+# === BOOLEAN INPUTS ===
+sbf i1 = ifile("inputs/volume.in").
+sbf i2 = ifile("inputs/trend.in").
+sbf i3 = ifile("inputs/profit_guard.in").
+sbf i4 = ifile("inputs/failure_echo.in").
+sbf i8 = ifile("inputs/emergency_halt.in").       # External emergency stop
+
+# === HELPER PREDICATES ===
+timed_out(b1, b0) := b1 & b0.
+
+# Stop-loss check: (entry_price - current_price) * 100 / entry_price > stop_loss_pct
+# Simplified: (entry_price - current_price) * 100 > entry_price * stop_loss_pct
+stop_loss_hit(current, entry, pct) := 
+    ((entry > current) & ((entry - current) * {100}:bv[16] > entry * pct / {100}:bv[16])).
+
+# Take-profit check: (current_price - entry_price) * 100 / entry_price > take_profit_pct
+take_profit_hit(current, entry, pct) := 
+    ((current > entry) & ((current - entry) * {100}:bv[16] > entry * pct / {100}:bv[16])).
+
+# === OUTPUT STREAMS ===
+# State encoding (2 bits for 5 states)
+sbf o0 = ofile("outputs/state_b0.out").           # State bit 0
+sbf o24 = ofile("outputs/state_b1.out").          # State bit 1
+sbf o25 = ofile("outputs/state_b2.out").          # State bit 2
+
+# Standard outputs
+sbf o1 = ofile("outputs/holding.out").
+sbf o2 = ofile("outputs/buy_signal.out").
+sbf o3 = ofile("outputs/sell_signal.out").
+sbf o6 = ofile("outputs/timer_b0.out").
+sbf o7 = ofile("outputs/timer_b1.out").
+sbf o9 = ofile("outputs/nonce.out").
+sbf o11 = ofile("outputs/profit.out").
+sbf o13 = ofile("outputs/has_burned.out").
+
+# Bitvector tracking
+bv[16] o14 = ofile("outputs/entry_price.out").
+bv[16] o15 = ofile("outputs/highest_price.out").  # Track high watermark
+bv[16] o16 = ofile("outputs/lowest_price.out").   # Track low watermark
+
+# Risk management outputs
+bv[4] o17 = ofile("outputs/consecutive_losses.out"). # Loss counter
+bv[4] o18 = ofile("outputs/cooldown_timer.out").     # Cooldown counter
+bv[8] o19 = ofile("outputs/total_wins.out").         # Win counter
+bv[8] o20 = ofile("outputs/total_losses.out").       # Loss counter
+
+# Exit reason signals
+sbf o21 = ofile("outputs/exit_stop_loss.out").
+sbf o22 = ofile("outputs/exit_take_profit.out").
+sbf o23 = ofile("outputs/exit_timeout.out").
+
+# === STATE ENCODING ===
+# IDLE = 000, EXECUTING = 001, STOP_LOSS = 010, TAKE_PROFIT = 011, COOLDOWN = 100
+is_idle(b2, b1, b0) := b2' & b1' & b0'.
+is_executing(b2, b1, b0) := b2' & b1' & b0.
+is_stop_loss(b2, b1, b0) := b2' & b1 & b0'.
+is_take_profit(b2, b1, b0) := b2' & b1 & b0.
+is_cooldown(b2, b1, b0) := b2 & b1' & b0'.
+
+# === V46 RISK MANAGEMENT SPECIFICATION ===
+r (
+    # === TRACK PRICE WATERMARKS ===
+    # Highest price since entry (for trailing stop)
+    (o15[t] = (o2[t] ? i0[t] : 
+               (is_executing(o25[t-1], o24[t-1], o0[t-1]) & (i0[t] > o15[t-1])) ? i0[t] : o15[t-1])) &&
+    
+    # Lowest price since entry
+    (o16[t] = (o2[t] ? i0[t] :
+               (is_executing(o25[t-1], o24[t-1], o0[t-1]) & (i0[t] < o16[t-1])) ? i0[t] : o16[t-1])) &&
+    
+    # === STOP-LOSS DETECTION ===
+    (o21[t] = is_executing(o25[t-1], o24[t-1], o0[t-1]) & 
+              stop_loss_hit(i0[t], o14[t-1], i5[t])) &&
+    
+    # === TAKE-PROFIT DETECTION ===
+    (o22[t] = is_executing(o25[t-1], o24[t-1], o0[t-1]) &
+              take_profit_hit(i0[t], o14[t-1], i6[t])) &&
+    
+    # === TIMEOUT DETECTION ===
+    (o23[t] = is_executing(o25[t-1], o24[t-1], o0[t-1]) &
+              timed_out(o7[t-1], o6[t-1])) &&
+    
+    # === STATE MACHINE ===
+    # State bit 0: Executing flag
+    (o0[t] = 
+        # Enter EXECUTING from IDLE
+        (is_idle(o25[t-1], o24[t-1], o0[t-1]) &
+         i0[t] < o15[t-1] &           # Price below resistance
+         i1[t] & i2[t] &              # Volume + trend
+         o1[t-1]' &                   # Not holding
+         o9[t-1]' & i4[t]' & i8[t]') |
+        
+        # Stay in EXECUTING
+        (is_executing(o25[t-1], o24[t-1], o0[t-1]) &
+         o21[t]' & o22[t]' & o23[t]' &  # No exit triggers
+         i1[t] & i4[t]' & i8[t]') |
+         
+        # TAKE_PROFIT state (exit reason)
+        (is_take_profit(o25[t-1], o24[t-1], o0[t-1]))
+    ) &&
+    
+    # State bit 1: Stop-loss or take-profit flag
+    (o24[t] = 
+        # Enter STOP_LOSS
+        (is_executing(o25[t-1], o24[t-1], o0[t-1]) & o21[t]) |
+        
+        # Enter TAKE_PROFIT
+        (is_executing(o25[t-1], o24[t-1], o0[t-1]) & o22[t] & o21[t]') |
+        
+        # Stay in exit state for 1 tick
+        (is_stop_loss(o25[t-1], o24[t-1], o0[t-1])) |
+        (is_take_profit(o25[t-1], o24[t-1], o0[t-1]))
+    ) &&
+    
+    # State bit 2: Cooldown flag
+    (o25[t] = 
+        # Enter COOLDOWN after stop-loss
+        (is_stop_loss(o25[t-1], o24[t-1], o0[t-1]) &
+         (o17[t-1] >= i7[t])) |  # Max losses reached
+        
+        # Stay in COOLDOWN
+        (is_cooldown(o25[t-1], o24[t-1], o0[t-1]) &
+         (o18[t-1] < {8}:bv[4]))  # Cooldown not complete
+    ) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = is_idle(o25[t-1], o24[t-1], o0[t-1]) &
+             is_executing(o25[t], o24[t], o0[t])) &&
+    
+    (o3[t] = (is_executing(o25[t-1], o24[t-1], o0[t-1]) &
+              is_executing(o25[t], o24[t], o0[t])') &
+             o1[t-1]) &&
+    
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = is_executing(o25[t], o24[t], o0[t]) & o6[t-1]') &&
+    (o7[t] = is_executing(o25[t], o24[t], o0[t]) & 
+             ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o9[t] = o2[t] | (is_executing(o25[t-1], o24[t-1], o0[t-1]) & o3[t]' & o9[t-1])) &&
+    
+    # === PROFIT (only on take-profit exit) ===
+    (o11[t] = o22[t] & i3[t]) &&
+    
+    # === BURNS ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === ENTRY PRICE ===
+    (o14[t] = (o2[t] ? i0[t] : o14[t-1])) &&
+    
+    # === CONSECUTIVE LOSS TRACKING ===
+    (o17[t] = (o21[t] ? o17[t-1] + {1}:bv[4] :       # Increment on stop-loss
+               (o22[t] ? {0}:bv[4] : o17[t-1]))) &&  # Reset on take-profit
+    
+    # === COOLDOWN TIMER ===
+    (o18[t] = (is_cooldown(o25[t], o24[t], o0[t]) ? o18[t-1] + {1}:bv[4] :
+               {0}:bv[4])) &&
+    
+    # === WIN/LOSS TRACKING ===
+    (o19[t] = (o22[t] ? o19[t-1] + {1}:bv[8] : o19[t-1])) &&
+    (o20[t] = (o21[t] ? o20[t-1] + {1}:bv[8] : o20[t-1]))
+)
+
+# === V46 FSM STATE DIAGRAM ===
+#
+#                    ┌─────────────────────────────────────┐
+#                    │                                     │
+#                    ▼                                     │
+#              ┌──────────┐    entry_signal          ┌─────┴─────┐
+#         ┌───►│   IDLE   │─────────────────────────►│ EXECUTING │◄───┐
+#         │    │  (000)   │                          │   (001)   │    │
+#         │    └──────────┘                          └───────────┘    │
+#         │         ▲                                  │   │   │      │
+#         │         │                      stop_loss◄──┘   │   └──►continue
+#         │         │                                      │
+#         │    cooldown_done                         take_profit
+#         │         │                                      │
+#         │    ┌────┴─────┐                          ┌─────▼─────┐
+#         │    │ COOLDOWN │◄────max_losses───────────│STOP_LOSS  │
+#         │    │  (100)   │                          │   (010)   │
+#         │    └──────────┘                          └───────────┘
+#         │                                                │
+#         │                                          ┌─────▼─────┐
+#         └──────────────────────────────────────────│TAKE_PROFIT│
+#                                                    │   (011)   │
+#                                                    └───────────┘
+#
+# === RISK PARAMETERS ===
+# i5 (stop_loss_pct): 5 = 5% stop-loss
+# i6 (take_profit_pct): 10 = 10% take-profit
+# i7 (max_consecutive_loss): 3 = cooldown after 3 losses
+
+# === EXIT SCENARIOS ===
+# 1. STOP_LOSS: Price drops > stop_loss_pct% from entry
+#    - Increments consecutive_losses
+#    - If consecutive_losses >= max, enters COOLDOWN
+#
+# 2. TAKE_PROFIT: Price rises > take_profit_pct% from entry
+#    - Resets consecutive_losses
+#    - Increments win counter
+#    - Burns token
+#
+# 3. TIMEOUT: Timer reaches 3 ticks
+#    - Normal exit, evaluates profit/loss
+#
+# 4. EMERGENCY: i8 = 1 or i4 = 1
+#    - Immediate exit regardless of profit
+
+# === PERFORMANCE TRACKING ===
+# o19: Total wins (profitable exits)
+# o20: Total losses (stop-loss exits)
+# Win rate = o19 / (o19 + o20)
+# Risk/reward = take_profit_pct / stop_loss_pct
+

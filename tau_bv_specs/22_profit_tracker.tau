@@ -1,0 +1,20 @@
+# Tau Language Experiment 22: Profit Tracker
+# Track buy price and calculate if sale is profitable
+# Tests: BitVector memory and comparison
+
+# Define streams
+price : bv[8] = in console.
+buy_signal : sbf = in console.
+sell_signal : sbf = in console.
+holding : sbf = in console.
+buy_price : bv[8] = out console.
+is_profitable : sbf = out console.
+
+# Store buy price when we enter position
+# buy_price = price when buy signal, else maintain previous buy_price
+buy_price[t] = (buy_signal[t] & holding[t-1]' ? price[t] : buy_price[t-1]).
+
+# Profitable if current price > buy price
+(price[t] > buy_price[t] -> is_profitable[t] = 1) &&
+(price[t] !> buy_price[t] -> is_profitable[t] = 0).
+

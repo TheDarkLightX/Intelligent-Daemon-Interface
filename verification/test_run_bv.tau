@@ -1,0 +1,6 @@
+# Attempt demo style
+i1 : tau = in console
+o1 : tau = out console
+
+o1[t] := i1[t]
+run o1[t]

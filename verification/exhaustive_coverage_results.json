@@ -1,0 +1,20 @@
+{
+  "virtue_shares": {
+    "fsm_name": "virtue_shares",
+    "state_coverage": 100.0,
+    "transition_coverage": 100.0,
+    "uncovered_states": [],
+    "uncovered_transitions": [],
+    "invariants_passed": true,
+    "num_test_sequences": 5
+  },
+  "reflexivity_guard": {
+    "fsm_name": "reflexivity_guard",
+    "state_coverage": 100.0,
+    "transition_coverage": 100.0,
+    "uncovered_states": [],
+    "uncovered_transitions": [],
+    "invariants_passed": true,
+    "num_test_sequences": 6
+  }
+}

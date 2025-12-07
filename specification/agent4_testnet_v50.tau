@@ -1,0 +1,261 @@
+# Deflationary Agent V50 - Ultimate Agent
+# Combines: Risk Management (V46) + Consensus (V47) + Sizing (V48) + PRNG (V49)
+# Copyright DarkLightX/Dana Edwards
+#
+# FEATURE INTEGRATION:
+# 1. Multi-indicator consensus entry (EMA + RSI + BB)
+# 2. Risk management (stop-loss, take-profit)
+# 3. Adaptive position sizing (Kelly criterion)
+# 4. Anti-frontrunning (PRNG delay)
+# 5. Performance tracking (win rate, streaks)
+#
+# FSM STATES (6 total):
+# 0. IDLE - Waiting for consensus entry
+# 1. DELAY - Random anti-frontrun delay
+# 2. EXECUTING - In position
+# 3. STOP_LOSS - Hit stop-loss
+# 4. TAKE_PROFIT - Hit take-profit
+# 5. COOLDOWN - Recovery after losses
+
+# === BITVECTOR INPUTS ===
+bv[16] i0 = ifile("inputs/price.in").
+bv[16] i5 = ifile("inputs/stop_loss_pct.in").      # 5 = 5% stop-loss
+bv[16] i6 = ifile("inputs/take_profit_pct.in").    # 10 = 10% take-profit
+bv[16] i7 = ifile("inputs/prng_seed.in").          # Multi-party seed
+bv[16] i8 = ifile("inputs/bb_sma.in").             # Bollinger Band SMA
+bv[16] i9 = ifile("inputs/bb_dev.in").             # Bollinger Band deviation
+bv[16] i10 = ifile("inputs/base_size.in").         # Base position size
+
+# === BOOLEAN INPUTS ===
+sbf i1 = ifile("inputs/volume.in").
+sbf i2 = ifile("inputs/trend.in").
+sbf i3 = ifile("inputs/profit_guard.in").
+sbf i4 = ifile("inputs/failure_echo.in").
+sbf i11 = ifile("inputs/emergency.in").            # Emergency halt
+
+# === HELPER PREDICATES ===
+lsb_one(s) := (s & {1}:bv[16]) = {1}:bv[16].
+
+# State encoding (3 bits for 6 states)
+is_idle(b2, b1, b0) := b2' & b1' & b0'.
+is_delay(b2, b1, b0) := b2' & b1' & b0.
+is_exec(b2, b1, b0) := b2' & b1 & b0'.
+is_stop(b2, b1, b0) := b2' & b1 & b0.
+is_profit(b2, b1, b0) := b2 & b1' & b0'.
+is_cool(b2, b1, b0) := b2 & b1' & b0.
+
+# === OUTPUT STREAMS ===
+# State (3-bit encoding)
+sbf o0 = ofile("outputs/state_b0.out").
+sbf o1 = ofile("outputs/state_b1.out").
+sbf o2 = ofile("outputs/state_b2.out").
+
+# Trading signals
+sbf o3 = ofile("outputs/holding.out").
+sbf o4 = ofile("outputs/buy_signal.out").
+sbf o5 = ofile("outputs/sell_signal.out").
+
+# Timer
+sbf o6 = ofile("outputs/timer_b0.out").
+sbf o7 = ofile("outputs/timer_b1.out").
+
+# Safety
+sbf o8 = ofile("outputs/nonce.out").
+sbf o9 = ofile("outputs/profit.out").
+sbf o10 = ofile("outputs/has_burned.out").
+
+# PRNG
+bv[16] o11 = ofile("outputs/lfsr.out").
+bv[16] o12 = ofile("outputs/random.out").
+
+# Indicators
+bv[16] o13 = ofile("outputs/ema_fast.out").
+bv[16] o14 = ofile("outputs/ema_slow.out").
+bv[16] o15 = ofile("outputs/avg_gain.out").
+bv[16] o16 = ofile("outputs/avg_loss.out").
+bv[16] o17 = ofile("outputs/prev_price.out").
+
+# Indicator signals
+sbf o18 = ofile("outputs/ema_bullish.out").
+sbf o19 = ofile("outputs/rsi_oversold.out").
+sbf o20 = ofile("outputs/bb_lower.out").
+sbf o21 = ofile("outputs/consensus.out").
+
+# Risk tracking
+bv[16] o22 = ofile("outputs/entry_price.out").
+bv[4] o23 = ofile("outputs/consec_losses.out").
+bv[4] o24 = ofile("outputs/delay_counter.out").
+bv[4] o25 = ofile("outputs/cooldown_timer.out").
+
+# Performance
+bv[8] o26 = ofile("outputs/total_wins.out").
+bv[8] o27 = ofile("outputs/total_losses.out").
+bv[8] o28 = ofile("outputs/win_streak.out").
+
+# Position sizing
+bv[16] o29 = ofile("outputs/position_size.out").
+bv[2] o30 = ofile("outputs/size_tier.out").
+
+# === V50 ULTIMATE SPECIFICATION ===
+r (
+    # === PRNG (LFSR) ===
+    (o11[t] = (o11[t-1] = {0}:bv[16]) ?
+              (i7[t] = {0}:bv[16] ? {1}:bv[16] : i7[t]) :
+              (lsb_one(o11[t-1]) ?
+                  ((o11[t-1] >> {1}:bv[16]) ^ {#xB400}:bv[16]) :
+                  (o11[t-1] >> {1}:bv[16]))) &&
+    (o12[t] = o11[t] ^ i7[t]) &&
+    
+    # === EMA INDICATORS ===
+    (o13[t] = ({51}:bv[16] * i0[t] + {205}:bv[16] * o13[t-1]) / {256}:bv[16]) &&
+    (o14[t] = ({26}:bv[16] * i0[t] + {230}:bv[16] * o14[t-1]) / {256}:bv[16]) &&
+    (o18[t] = o13[t] > o14[t]) &&
+    
+    # === RSI INDICATOR ===
+    (o17[t] = i0[t-1]) &&
+    (o15[t] = (i0[t] > o17[t]) ?
+              ({64}:bv[16] * (i0[t] - o17[t]) + {192}:bv[16] * o15[t-1]) / {256}:bv[16] :
+              ({192}:bv[16] * o15[t-1]) / {256}:bv[16]) &&
+    (o16[t] = (i0[t] < o17[t]) ?
+              ({64}:bv[16] * (o17[t] - i0[t]) + {192}:bv[16] * o16[t-1]) / {256}:bv[16] :
+              ({192}:bv[16] * o16[t-1]) / {256}:bv[16]) &&
+    (o19[t] = ({70}:bv[16] * o15[t]) < ({30}:bv[16] * o16[t])) &&
+    
+    # === BOLLINGER BAND ===
+    (o20[t] = i0[t] <= (i8[t] - i9[t])) &&
+    
+    # === CONSENSUS (2 of 3) ===
+    (o21[t] = (o18[t] & o19[t]) | (o18[t] & o20[t]) | (o19[t] & o20[t])) &&
+    
+    # === WIN RATE & SIZING ===
+    (o30[t] = ((o26[t-1] + o27[t-1]) = {0}:bv[8]) ? {2}:bv[2] :
+              ((o26[t-1] * {100}:bv[16] / (o26[t-1] + o27[t-1])) > {65}:bv[16]) ? {3}:bv[2] :
+              ((o26[t-1] * {100}:bv[16] / (o26[t-1] + o27[t-1])) > {50}:bv[16]) ? {2}:bv[2] :
+              {1}:bv[2]) &&
+    
+    (o29[t] = (o30[t] = {3}:bv[2]) ? (i10[t] * {150}:bv[16] / {100}:bv[16]) :
+              (o30[t] = {2}:bv[2]) ? i10[t] :
+              (i10[t] * {50}:bv[16] / {100}:bv[16])) &&
+    
+    # === STATE MACHINE ===
+    # State bit 0
+    (o0[t] = 
+        # -> DELAY (from IDLE with consensus)
+        (is_idle(o2[t-1], o1[t-1], o0[t-1]) &
+         o21[t] & i1[t] & o3[t-1]' & o8[t-1]' & i4[t]' & i11[t]') |
+        # -> STOP_LOSS
+        (is_exec(o2[t-1], o1[t-1], o0[t-1]) &
+         (o22[t-1] > i0[t]) &
+         ((o22[t-1] - i0[t]) * {100}:bv[16] > o22[t-1] * i5[t] / {100}:bv[16])) |
+        # -> COOLDOWN
+        (is_stop(o2[t-1], o1[t-1], o0[t-1]) &
+         (o23[t-1] >= {3}:bv[4]))) &&
+    
+    # State bit 1
+    (o1[t] =
+        # -> EXECUTING (from DELAY after countdown)
+        (is_delay(o2[t-1], o1[t-1], o0[t-1]) &
+         (o24[t-1] = {0}:bv[4]) &
+         o21[t] & i1[t] & i4[t]' & i11[t]') |
+        # -> STOP_LOSS
+        (is_exec(o2[t-1], o1[t-1], o0[t-1]) &
+         (o22[t-1] > i0[t]) &
+         ((o22[t-1] - i0[t]) * {100}:bv[16] > o22[t-1] * i5[t] / {100}:bv[16])) |
+        # -> TAKE_PROFIT
+        (is_exec(o2[t-1], o1[t-1], o0[t-1]) &
+         (i0[t] > o22[t-1]) &
+         ((i0[t] - o22[t-1]) * {100}:bv[16] > o22[t-1] * i6[t] / {100}:bv[16])) |
+        # Stay EXECUTING
+        (is_exec(o2[t-1], o1[t-1], o0[t-1]) &
+         o1[t]' &  # Not STOP_LOSS or TAKE_PROFIT
+         (o7[t-1] & o6[t-1])' &  # Not timeout
+         i1[t] & i4[t]' & i11[t]')) &&
+    
+    # State bit 2
+    (o2[t] =
+        # -> TAKE_PROFIT
+        (is_exec(o2[t-1], o1[t-1], o0[t-1]) &
+         (i0[t] > o22[t-1]) &
+         ((i0[t] - o22[t-1]) * {100}:bv[16] > o22[t-1] * i6[t] / {100}:bv[16])) |
+        # -> COOLDOWN
+        (is_stop(o2[t-1], o1[t-1], o0[t-1]) &
+         (o23[t-1] >= {3}:bv[4])) |
+        # Stay COOLDOWN
+        (is_cool(o2[t-1], o1[t-1], o0[t-1]) &
+         (o25[t-1] < {8}:bv[4]))) &&
+    
+    # === TRADING SIGNALS ===
+    (o4[t] = is_exec(o2[t], o1[t], o0[t]) &
+             is_delay(o2[t-1], o1[t-1], o0[t-1])) &&  # Buy on DELAY->EXEC
+    (o5[t] = (is_stop(o2[t], o1[t], o0[t]) | is_profit(o2[t], o1[t], o0[t])) &
+             is_exec(o2[t-1], o1[t-1], o0[t-1])) &&  # Sell on EXEC->exit
+    (o3[t] = o4[t] | (o5[t]' & o3[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = is_exec(o2[t], o1[t], o0[t]) & o6[t-1]') &&
+    (o7[t] = is_exec(o2[t], o1[t], o0[t]) &
+             ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o8[t] = o4[t] | (is_exec(o2[t-1], o1[t-1], o0[t-1]) & o5[t]' & o8[t-1])) &&
+    
+    # === PROFIT & BURNS ===
+    (o9[t] = is_profit(o2[t], o1[t], o0[t]) & i3[t]) &&
+    (o10[t] = o10[t-1] | o9[t]) &&
+    
+    # === ENTRY PRICE ===
+    (o22[t] = (o4[t] ? i0[t] : o22[t-1])) &&
+    
+    # === DELAY COUNTER ===
+    (o24[t] = is_delay(o2[t], o1[t], o0[t]) ?
+              (is_idle(o2[t-1], o1[t-1], o0[t-1]) ?
+                  (o12[t] % {4}:bv[16]) :  # New random delay
+                  (o24[t-1] > {0}:bv[4] ? o24[t-1] - {1}:bv[4] : {0}:bv[4])) :
+              {0}:bv[4]) &&
+    
+    # === CONSECUTIVE LOSSES ===
+    (o23[t] = is_stop(o2[t], o1[t], o0[t]) ? 
+              (o23[t-1] + {1}:bv[4]) :
+              (is_profit(o2[t], o1[t], o0[t]) ? {0}:bv[4] : o23[t-1])) &&
+    
+    # === COOLDOWN TIMER ===
+    (o25[t] = is_cool(o2[t], o1[t], o0[t]) ?
+              (o25[t-1] + {1}:bv[4]) : {0}:bv[4]) &&
+    
+    # === PERFORMANCE TRACKING ===
+    (o26[t] = is_profit(o2[t], o1[t], o0[t]) ?
+              (o26[t-1] + {1}:bv[8]) : o26[t-1]) &&
+    (o27[t] = is_stop(o2[t], o1[t], o0[t]) ?
+              (o27[t-1] + {1}:bv[8]) : o27[t-1]) &&
+    (o28[t] = is_profit(o2[t], o1[t], o0[t]) ?
+              (o28[t-1] + {1}:bv[8]) :
+              (is_stop(o2[t], o1[t], o0[t]) ? {0}:bv[8] : o28[t-1]))
+)
+
+# === V50 FSM DIAGRAM ===
+#
+#              ┌────────────────────────────────────────────────────┐
+#              │                                                    │
+#              ▼                                                    │
+#        ┌──────────┐   consensus    ┌──────────┐   delay=0   ┌────┴─────┐
+#        │   IDLE   │───────────────►│  DELAY   │────────────►│EXECUTING │
+#        │  (000)   │                │  (001)   │             │  (010)   │
+#        └──────────┘                └──────────┘             └──────────┘
+#              ▲                                                │   │   │
+#              │                              stop_loss_hit◄────┘   │   └──►continue
+#              │                                      │             │
+#         cooldown_done                               ▼        take_profit_hit
+#              │                               ┌──────────┐         │
+#         ┌────┴─────┐                         │STOP_LOSS │         ▼
+#         │ COOLDOWN │◄────max_losses──────────│  (011)   │    ┌──────────┐
+#         │  (101)   │                         └──────────┘    │TAKE_PROFIT│
+#         └──────────┘                               │         │  (100)   │
+#              │                                     │         └────┬─────┘
+#              └─────────────────────────────────────┴──────────────┘
+#
+# === COMBINED FEATURES ===
+# From V46: Stop-loss, take-profit, cooldown FSM
+# From V47: EMA + RSI + BB consensus
+# From V48: Kelly criterion position sizing
+# From V49: LFSR PRNG, random entry delay
+

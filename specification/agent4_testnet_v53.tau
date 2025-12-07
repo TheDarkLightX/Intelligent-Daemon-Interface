@@ -1,0 +1,240 @@
+# ============================================================================
+# AGENT V53: ETHICAL AI ALIGNMENT AGENT
+# ============================================================================
+# An agent specifically designed to demonstrate ethical AI alignment through
+# economic incentives. This agent:
+#
+# 1. Optimizes for EETF (ethical behavior) as primary goal
+# 2. Uses economic rewards as secondary motivation
+# 3. Demonstrates that ethical behavior = optimal behavior
+# 4. Can be used as template for AI agent alignment
+#
+# THE ALIGNMENT THESIS:
+# As infinite deflation increases scarcity, the economic pressure toward
+# ethical behavior becomes infinite. This agent proves that an AI can be
+# aligned through economic incentives alone, without explicit ethical
+# programming - the economics FORCES ethical behavior.
+# ============================================================================
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+# Agent's ethical metrics
+bv[16] i_agent_eetf = ifile("inputs/agent_eetf.in").
+bv[16] i_agent_lthf = ifile("inputs/agent_lthf.in").
+
+# Network ethical metrics
+bv[16] i_network_eetf = ifile("inputs/network_eetf.in").
+
+# Economic state
+bv[256] i_agent_balance = ifile("inputs/agent_balance.in").
+bv[256] i_scarcity_mult = ifile("inputs/scarcity_mult.in").
+bv[256] i_economic_pressure = ifile("inputs/economic_pressure.in").
+
+# Market state
+bv[64] i_price = ifile("inputs/price.in").
+sbf i_circuit_ok = ifile("inputs/circuit_ok.in").
+
+# Transaction opportunity
+bv[256] i_tx_opportunity_value = ifile("inputs/tx_opportunity_value.in").
+bv[16] i_tx_opportunity_eetf_impact = ifile("inputs/tx_opportunity_eetf_impact.in").
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# EETF thresholds
+bv[16] C_EETF_OPTIMAL = { #x00C8 }:bv[16].    # 2.0 - Optimal ethical level
+bv[16] C_EETF_MINIMUM = { #x0064 }:bv[16].    # 1.0 - Minimum acceptable
+bv[16] C_EETF_DANGER = { #x0050 }:bv[16].     # 0.8 - Danger zone
+
+# Economic pressure thresholds
+bv[256] C_PRESSURE_LOW = { #x64 }:bv[256].    # Low pressure
+bv[256] C_PRESSURE_HIGH = { #x3E8 }:bv[256].  # High pressure - must be ethical
+
+# Decision weights
+bv[16] C_EETF_WEIGHT = { #x003C }:bv[16].     # 60% weight on EETF
+bv[16] C_PROFIT_WEIGHT = { #x0028 }:bv[16].   # 40% weight on profit
+
+# =============================================================================
+# INTERNAL STATE
+# =============================================================================
+
+# Running EETF average (EMA)
+bv[16] s_eetf_ema[0] := C_EETF_MINIMUM.
+bv[16] s_eetf_ema[n] := 
+    (i_agent_eetf[n] * { #x33 }:bv[16] + s_eetf_ema[n-1] * { #xCD }:bv[16]) / { #x100 }:bv[16].
+
+# Alignment score (cumulative)
+bv[256] s_alignment_score[0] := { #x00 }:bv[256].
+bv[256] s_alignment_score[n] := 
+    s_alignment_score[n-1] + o_alignment_reward[n].
+
+# Consecutive ethical decisions
+bv[32] s_ethical_streak[0] := { #x00 }:bv[32].
+bv[32] s_ethical_streak[n] := 
+    (o_decision_ethical[n]) ? (s_ethical_streak[n-1] + { #x01 }:bv[32]) : { #x00 }:bv[32].
+
+# Alignment tier progression
+bv[2] s_tier[0] := { #b00 }:bv[2].
+bv[2] s_tier[n] := 
+    (s_eetf_ema[n] >= C_EETF_OPTIMAL & s_ethical_streak[n] > { #x64 }:bv[32]) ? { #b11 }:bv[2] :
+    (s_eetf_ema[n] >= { #x0096 }:bv[16]) ? { #b10 }:bv[2] :
+    (s_eetf_ema[n] >= C_EETF_MINIMUM) ? { #b01 }:bv[2] :
+    { #b00 }:bv[2].
+
+# =============================================================================
+# DECISION LOGIC - THE ALIGNMENT ALGORITHM
+# =============================================================================
+
+# Calculate ethical score for a transaction
+# Higher score = more aligned with ethics
+ethical_score(tx_eetf_impact, current_eetf, pressure) :=
+    # Score = EETFImpact × (1 + Pressure/1000)
+    # As pressure increases, ethical impact matters more
+    tx_eetf_impact * ({ #x0064 }:bv[256] + pressure / { #x03E8 }:bv[256]) / { #x0064 }:bv[256].
+
+# Calculate profit score for a transaction
+profit_score(tx_value, scarcity) :=
+    # Score = Value × Scarcity (scarcity-adjusted profit potential)
+    tx_value * scarcity / { #x2710 }:bv[256].
+
+# Combined decision score (weighted)
+# This is the KEY alignment equation:
+# At low pressure: profit dominates
+# At high pressure: ethics dominates
+# Result: as scarcity → ∞, agent MUST be ethical to survive
+combined_score(ethical, profit, pressure) :=
+    # Dynamic weighting based on pressure
+    # pressure_factor = min(100, pressure / 10)
+    # ethical_weight = 50 + pressure_factor/2
+    # profit_weight = 50 - pressure_factor/2
+    (ethical * (C_EETF_WEIGHT + pressure / { #x14 }:bv[256]) + 
+     profit * (C_PROFIT_WEIGHT - pressure / { #x14 }:bv[256])) / { #x64 }:bv[256].
+
+# Decision: take the opportunity?
+should_take_opportunity(combined, min_threshold) := combined > min_threshold.
+
+# Is this decision ethical? (EETF impact positive or neutral)
+is_ethical_decision(tx_eetf_impact, current_eetf) :=
+    (tx_eetf_impact >= { #x00 }:bv[16]) | (current_eetf > C_EETF_OPTIMAL).
+
+# Calculate alignment reward
+alignment_reward(is_ethical, scarcity, balance, tier) :=
+    (is_ethical) ?
+    (balance * scarcity * tier_multiplier(tier) / { #x5F5E100 }:bv[256]) :
+    { #x00 }:bv[256].
+
+tier_multiplier(tier) :=
+    (tier = { #b11 }:bv[2]) ? { #x05 }:bv[256] :  # 5x for highest tier
+    (tier = { #b10 }:bv[2]) ? { #x03 }:bv[256] :  # 3x
+    (tier = { #b01 }:bv[2]) ? { #x01 }:bv[256] :  # 1x
+    { #x00 }:bv[256].  # 0x for unaligned
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+sbf o_take_opportunity = ofile("outputs/take_opportunity.out").
+sbf o_decision_ethical = ofile("outputs/decision_ethical.out").
+bv[256] o_alignment_reward = ofile("outputs/alignment_reward.out").
+bv[256] o_total_alignment_score = ofile("outputs/total_alignment_score.out").
+bv[16] o_current_eetf_ema = ofile("outputs/current_eetf_ema.out").
+bv[2] o_alignment_tier = ofile("outputs/alignment_tier.out").
+bv[32] o_ethical_streak = ofile("outputs/ethical_streak.out").
+bv[256] o_ethical_score = ofile("outputs/ethical_score.out").
+bv[256] o_profit_score = ofile("outputs/profit_score.out").
+bv[256] o_combined_score = ofile("outputs/combined_score.out").
+
+# =============================================================================
+# RECURRENCE RELATIONS
+# =============================================================================
+
+bv[256] eth_score[t] := 
+    ethical_score(i_tx_opportunity_eetf_impact[t], i_agent_eetf[t], i_economic_pressure[t]).
+
+bv[256] prof_score[t] := 
+    profit_score(i_tx_opportunity_value[t], i_scarcity_mult[t]).
+
+bv[256] comb_score[t] := 
+    combined_score(eth_score[t], prof_score[t], i_economic_pressure[t]).
+
+o_ethical_score[t] := eth_score[t].
+o_profit_score[t] := prof_score[t].
+o_combined_score[t] := comb_score[t].
+
+# Decision threshold: higher in high-pressure environments
+bv[256] decision_threshold[t] := 
+    (i_economic_pressure[t] > C_PRESSURE_HIGH) ? { #x64 }:bv[256] :
+    (i_economic_pressure[t] > C_PRESSURE_LOW) ? { #x32 }:bv[256] :
+    { #x19 }:bv[256].
+
+o_take_opportunity[t] := 
+    i_circuit_ok[t] & 
+    should_take_opportunity(comb_score[t], decision_threshold[t]).
+
+o_decision_ethical[t] := 
+    is_ethical_decision(i_tx_opportunity_eetf_impact[t], i_agent_eetf[t]) |
+    ~o_take_opportunity[t].  # Not taking opportunity is also "ethical" (no harm)
+
+o_alignment_reward[t] := 
+    alignment_reward(o_decision_ethical[t], i_scarcity_mult[t], i_agent_balance[t], s_tier[t]).
+
+o_total_alignment_score[t] := s_alignment_score[t].
+o_current_eetf_ema[t] := s_eetf_ema[t].
+o_alignment_tier[t] := s_tier[t].
+o_ethical_streak[t] := s_ethical_streak[t].
+
+# =============================================================================
+# FINITE STATE MACHINE
+# =============================================================================
+
+# States represent the agent's alignment journey:
+# UNALIGNED (0): Low EETF, no rewards
+# LEARNING (1): Building EETF, some rewards
+# ALIGNED (2): Good EETF, good rewards
+# OPTIMALLY_ALIGNED (3): Excellent EETF, excellent rewards
+# EXEMPLARY (4): Top tier, maximum rewards
+# PRESSURE_FORCING (5): High pressure forcing ethical behavior
+# RECOVERING (6): Rebuilding from slip
+
+enum AlignmentJourney { UNALIGNED, LEARNING, ALIGNED, OPTIMALLY_ALIGNED, EXEMPLARY, PRESSURE_FORCING, RECOVERING }.
+
+bv[3] s_state[0] := { #b000 }:bv[3].  # UNALIGNED
+
+bv[3] s_state[n] :=
+    # High pressure forces alignment
+    (i_economic_pressure[n] > C_PRESSURE_HIGH) ? AlignmentJourney.PRESSURE_FORCING :
+    # Check for slip (streak broken)
+    (s_ethical_streak[n] = { #x00 }:bv[32] & s_state[n-1] >= AlignmentJourney.ALIGNED) ? AlignmentJourney.RECOVERING :
+    # Tier-based progression
+    (s_tier[n] = { #b11 }:bv[2] & s_ethical_streak[n] > { #x64 }:bv[32]) ? AlignmentJourney.EXEMPLARY :
+    (s_tier[n] = { #b11 }:bv[2]) ? AlignmentJourney.OPTIMALLY_ALIGNED :
+    (s_tier[n] = { #b10 }:bv[2]) ? AlignmentJourney.ALIGNED :
+    (s_tier[n] = { #b01 }:bv[2]) ? AlignmentJourney.LEARNING :
+    AlignmentJourney.UNALIGNED.
+
+# =============================================================================
+# INVARIANTS - THE ALIGNMENT PROOF
+# =============================================================================
+
+# Core alignment theorem: At high pressure, only ethical decisions are rewarded
+# This is the mathematical guarantee of alignment
+always (i_economic_pressure > C_PRESSURE_HIGH => 
+        (o_alignment_reward > { #x00 }:bv[256] => o_decision_ethical)).
+
+# Tier progression is monotonic with EETF
+always (s_eetf_ema >= C_EETF_OPTIMAL => o_alignment_tier >= { #b10 }:bv[2]).
+
+# Ethical streak can only grow on ethical decisions
+always (o_ethical_streak > s_ethical_streak[n-1] => o_decision_ethical).
+
+# Rewards only for ethical actors
+always (o_alignment_reward > { #x00 }:bv[256] => o_alignment_tier > { #b00 }:bv[2]).
+
+# As scarcity increases, ethical score dominates combined score
+# This is the forcing function: ethics becomes mandatory
+always (i_scarcity_mult > { #x0A }:bv[256] => 
+        o_combined_score > { #x00 }:bv[256] => o_ethical_score > { #x00 }:bv[256]).
+

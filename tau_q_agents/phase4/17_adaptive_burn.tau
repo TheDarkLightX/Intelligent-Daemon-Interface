@@ -1,0 +1,38 @@
+# Adaptive Burn Agent
+# Burns more when market is volatile (both up and down signals)
+# Burns less when market is calm
+#
+# INPUTS:
+#   i1 = price_up
+#   i2 = price_down
+#   i3 = daemon_burn_boost (1=extra burn from Q-table)
+#
+# OUTPUTS:
+#   o1 = buy_signal
+#   o2 = sell_signal
+#   o3 = burn_signal (base burn on sell)
+#   o4 = extra_burn (volatility + daemon boost)
+#   o5 = position
+#   o6 = volatility (up XOR down recently)
+#   o7 = total_burn_active
+
+sbf i1 = console
+sbf i2 = console
+sbf i3 = console
+sbf o1 = console
+sbf o2 = console
+sbf o3 = console
+sbf o4 = console
+sbf o5 = console
+sbf o6 = console
+sbf o7 = console
+
+# Volatility: detected if both up and down in last 2 steps
+# Base burn: always on sell
+# Extra burn: volatility OR daemon boost
+# Total burn: base OR extra when selling
+
+r o6[t] = (i1[t] | i1[t-1]) & (i2[t] | i2[t-1]) && o1[t] = i1[t] & o5[t-1]' && o2[t] = i2[t] & o5[t-1] && o3[t] = o2[t] && o4[t] = (o6[t] | i3[t]) & o2[t] && o5[t] = o1[t] | (o5[t-1] & o2[t]') && o7[t] = o3[t] | o4[t]
+
+q
+

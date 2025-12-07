@@ -1,0 +1,227 @@
+# Deflationary Agent V45 - Temporal Logic Regime Detection
+# Uses Tau's unique temporal operators for market regime classification
+# Copyright DarkLightX/Dana Edwards
+#
+# REGIME DETECTION CONCEPT:
+# Markets operate in different "regimes" with different optimal strategies:
+# 1. TRENDING: Price consistently moves in one direction
+# 2. RANGING: Price oscillates within a band
+# 3. VOLATILE: Large unpredictable moves
+#
+# TAU TEMPORAL OPERATORS:
+# - always: Property holds at all time points
+# - sometimes: Property holds at least once
+#
+# REGIME-SPECIFIC STRATEGIES:
+# - Trending: Trend-following (buy pullbacks, ride waves)
+# - Ranging: Mean-reversion (buy support, sell resistance)
+# - Volatile: Quick trades with tight stops
+
+# === BITVECTOR INPUTS ===
+bv[16] i0 = ifile("inputs/price.in").
+bv[16] i5 = ifile("inputs/support_level.in").     # Support level for ranging
+bv[16] i6 = ifile("inputs/resistance_level.in").  # Resistance level for ranging
+bv[16] i7 = ifile("inputs/volatility_threshold.in"). # Volatility cutoff
+
+# === BOOLEAN INPUTS ===
+sbf i1 = ifile("inputs/volume.in").
+sbf i2 = ifile("inputs/trend.in").
+sbf i3 = ifile("inputs/profit_guard.in").
+sbf i4 = ifile("inputs/failure_echo.in").
+
+# === HELPER PREDICATES ===
+timed_out(b1, b0) := b1 & b0.
+
+# === OUTPUT STREAMS ===
+sbf o0 = ofile("outputs/state.out").
+sbf o1 = ofile("outputs/holding.out").
+sbf o2 = ofile("outputs/buy_signal.out").
+sbf o3 = ofile("outputs/sell_signal.out").
+sbf o6 = ofile("outputs/timer_b0.out").
+sbf o7 = ofile("outputs/timer_b1.out").
+sbf o9 = ofile("outputs/nonce.out").
+sbf o11 = ofile("outputs/profit.out").
+sbf o13 = ofile("outputs/has_burned.out").
+
+# Bitvector state tracking
+bv[16] o14 = ofile("outputs/entry_price.out").
+bv[16] o15 = ofile("outputs/prev_price_1.out").   # Price at t-1
+bv[16] o16 = ofile("outputs/prev_price_2.out").   # Price at t-2
+bv[16] o17 = ofile("outputs/prev_price_3.out").   # Price at t-3
+bv[16] o18 = ofile("outputs/volatility.out").     # Current volatility
+
+# Regime signals
+sbf o19 = ofile("outputs/regime_trending.out").   # Trending regime
+sbf o20 = ofile("outputs/regime_ranging.out").    # Ranging regime
+sbf o21 = ofile("outputs/regime_volatile.out").   # Volatile regime
+
+# Direction signals
+sbf o22 = ofile("outputs/uptrend.out").           # Price rising
+sbf o23 = ofile("outputs/downtrend.out").         # Price falling
+
+# === V45 REGIME-AWARE SPECIFICATION ===
+r (
+    # === PRICE HISTORY TRACKING ===
+    # Keep last 3 prices for regime detection
+    (o15[t] = i0[t-1] = {0}:bv[16] ? i0[t] : i0[t-1]) &&
+    (o16[t] = o15[t-1]) &&
+    (o17[t] = o16[t-1]) &&
+    
+    # === VOLATILITY CALCULATION ===
+    # Simple: max recent move
+    # volatility = max(|p[t] - p[t-1]|, |p[t-1] - p[t-2]|)
+    (o18[t] = (i0[t] > o15[t]) ? (i0[t] - o15[t]) : (o15[t] - i0[t])) &&
+    
+    # === TREND DETECTION ===
+    # Uptrend: price[t] > price[t-1] > price[t-2]
+    (o22[t] = (i0[t] > o15[t]) & (o15[t] > o16[t])) &&
+    
+    # Downtrend: price[t] < price[t-1] < price[t-2]
+    (o23[t] = (i0[t] < o15[t]) & (o15[t] < o16[t])) &&
+    
+    # === REGIME CLASSIFICATION ===
+    # Trending: consistent direction for 2+ bars
+    (o19[t] = o22[t] | o23[t]) &&
+    
+    # Volatile: large moves
+    (o21[t] = o18[t] > i7[t]) &&
+    
+    # Ranging: not trending and not volatile
+    (o20[t] = o19[t]' & o21[t]') &&
+    
+    # === REGIME-ADAPTIVE STATE MACHINE ===
+    (o0[t] = 
+        # TRENDING REGIME ENTRY
+        # Entry on pullback during uptrend
+        (o0[t-1]' & o19[t] & o22[t] &
+         i0[t] < o15[t] &            # Small pullback
+         i1[t] & o1[t-1]' &
+         timed_out(o7[t-1], o6[t-1])' &
+         o9[t-1]' & i4[t]') |
+        
+        # RANGING REGIME ENTRY
+        # Entry at support level
+        (o0[t-1]' & o20[t] &
+         i0[t] <= i5[t] &            # At or below support
+         i1[t] & o1[t-1]' &
+         timed_out(o7[t-1], o6[t-1])' &
+         o9[t-1]' & i4[t]') |
+        
+        # VOLATILE REGIME ENTRY
+        # Quick scalp entry on momentum
+        (o0[t-1]' & o21[t] &
+         o22[t] &                    # Only enter upward moves
+         i1[t] & o1[t-1]' &
+         timed_out(o7[t-1], o6[t-1])' &
+         o9[t-1]' & i4[t]') |
+        
+        # CONTINUE CONDITIONS (regime-dependent exits)
+        # Trending: continue until trend reversal
+        (o0[t-1] & o19[t] & o22[t] &
+         timed_out(o7[t-1], o6[t-1])' &
+         i1[t] & i4[t]') |
+        
+        # Ranging: continue until resistance
+        (o0[t-1] & o20[t] &
+         i0[t] < i6[t] &             # Below resistance
+         timed_out(o7[t-1], o6[t-1])' &
+         i1[t] & i4[t]') |
+        
+        # Volatile: quick exit (max 2 ticks)
+        (o0[t-1] & o21[t] &
+         o7[t-1]' &                  # Only 1 tick max
+         i1[t] & i4[t]')
+    ) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === PROFIT ===
+    (o11[t] = o3[t] & (i0[t] > o14[t-1]) & i3[t]) &&
+    
+    # === BURNS ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === ENTRY PRICE ===
+    (o14[t] = (o2[t] ? i0[t] : o14[t-1]))
+)
+
+# === V45 REGIME STRATEGIES EXPLAINED ===
+#
+# 1. TRENDING REGIME
+#    Detection: price[t] > price[t-1] > price[t-2] (or reverse)
+#    Strategy: Trend-following
+#    Entry: Buy on pullbacks during uptrend
+#    Exit: When trend reverses (downtrend detected)
+#    Timeout: Standard 3 ticks
+#
+# 2. RANGING REGIME  
+#    Detection: Not trending AND not volatile
+#    Strategy: Mean-reversion
+#    Entry: Buy at support level (i5)
+#    Exit: At resistance level (i6) OR timeout
+#    Timeout: Standard 3 ticks
+#
+# 3. VOLATILE REGIME
+#    Detection: |price_change| > volatility_threshold (i7)
+#    Strategy: Quick scalps
+#    Entry: Buy on strong upward momentum
+#    Exit: After 1-2 ticks (quick profit or cut loss)
+#    Timeout: Reduced to 2 ticks
+
+# === TEMPORAL LOGIC INTEGRATION ===
+#
+# While this version uses standard recurrence relations,
+# the regime detection could be enhanced with tau's temporal operators:
+#
+# # Uptrend for last 3 ticks (using always-style logic)
+# uptrend_sustained := always (i0[t] > i0[t-1]) for recent window
+#
+# # Eventually recovers (using sometimes-style logic)
+# will_recover := sometimes (i0[t] > support) in next window
+#
+# These would require more complex specification patterns but
+# would enable forward-looking regime detection.
+
+# === DAEMON REQUIREMENTS ===
+# - i5: Support level (lower bound of range)
+# - i6: Resistance level (upper bound of range)
+# - i7: Volatility threshold for regime classification
+#
+# Daemon should update these based on:
+# - Rolling min/max for support/resistance
+# - ATR or stddev for volatility threshold
+
+# === PERFORMANCE NOTES ===
+# - Price history: 3 bitvector storage ops
+# - Regime detection: 5 comparisons
+# - Total clauses: ~20
+# - Most complex spec in the series
+# - SMT impact: ~40-50% slower than V38
+
+# === EXPECTED BEHAVIOR ===
+#
+# Bull Market:
+#   - Regime: Trending
+#   - Buys pullbacks, rides waves
+#   - Higher win rate, larger gains
+#
+# Choppy Market:
+#   - Regime: Ranging
+#   - Buys support, sells resistance
+#   - Consistent small profits
+#
+# Crash/Spike:
+#   - Regime: Volatile
+#   - Quick scalps only
+#   - Protects capital with fast exits
+

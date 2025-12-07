@@ -1,0 +1,9 @@
+# Test 02: Negation - File-based test
+# Input: alternating 0s and 1s
+# Expected output: 1, 0, 1, 0, 1, 0 (negated)
+
+i1 : sbf = in file("inputs/sbf_alternating.in").
+o1 : sbf = out file("outputs/test_02_output.out").
+
+o1[t] = i1[t]'.
+

@@ -1,0 +1,39 @@
+# Deflationary Trading Agent
+# Burns tokens on every profitable trade (sell after buying)
+#
+# Inputs:
+#   i1 = price_up
+#   i2 = price_down
+#
+# Outputs:
+#   o1 = position (0=idle, 1=holding)
+#   o2 = buy_signal  
+#   o3 = sell_signal
+#   o4 = burn_signal (fires when selling at profit)
+#
+# Logic: Track entry price direction, burn on profitable exit
+
+sbf i1 = console
+sbf i2 = console
+sbf o1 = console
+sbf o2 = console
+sbf o3 = console
+sbf o4 = console
+
+# Buy on price up when idle
+# Sell on price down when holding  
+# Burn when selling (any sell is considered "profitable" in this simple model)
+r o2[t] = i1[t] & o1[t-1]' && o3[t] = i2[t] & o1[t-1] && o1[t] = o2[t] | (o1[t-1] & o3[t]') && o4[t] = o3[t]
+
+0
+0
+1
+0
+0
+0
+0
+1
+0
+0
+q
+

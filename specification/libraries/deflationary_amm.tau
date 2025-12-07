@@ -1,0 +1,297 @@
+# Deflationary Constant Product AMM (dCFMM)
+# A DEX with built-in burn mechanics
+# Copyright DarkLightX/Dana Edwards
+#
+# CONSTANT PRODUCT FORMULA: x * y = k
+# Where:
+#   x = reserve of token A
+#   y = reserve of token B
+#   k = invariant (constant)
+#
+# DEFLATIONARY TWIST:
+# - Portion of each swap burned
+# - LP fees partially burned
+# - Accumulating deflation over time
+#
+# IMPLEMENTATION NOTES:
+# - 32-bit arithmetic limits precision
+# - Use scaled values (multiply by 10000)
+# - Division rounds down (favors protocol)
+
+# ============================================================================
+# INPUTS
+# ============================================================================
+
+# === RESERVE TRACKING (scaled by 10000) ===
+bv[32] i_reserve_a = ifile("inputs/amm_reserve_a.in").
+bv[32] i_reserve_b = ifile("inputs/amm_reserve_b.in").
+
+# === SWAP PARAMETERS ===
+bv[32] i_swap_amount = ifile("inputs/amm_swap_amount.in").
+sbf i_swap_a_for_b = ifile("inputs/amm_swap_a_for_b.in").    # A->B direction
+sbf i_swap_b_for_a = ifile("inputs/amm_swap_b_for_a.in").    # B->A direction
+
+# === LIQUIDITY PARAMETERS ===
+bv[32] i_add_liquidity_a = ifile("inputs/amm_add_a.in").
+bv[32] i_add_liquidity_b = ifile("inputs/amm_add_b.in").
+sbf i_add_liquidity = ifile("inputs/amm_add_liq.in").
+sbf i_remove_liquidity = ifile("inputs/amm_remove_liq.in").
+bv[32] i_lp_tokens_burn = ifile("inputs/amm_lp_burn.in").
+
+# === FEE PARAMETERS (basis points, 30 = 0.3%) ===
+bv[16] i_swap_fee_bps = ifile("inputs/amm_swap_fee.in").
+bv[16] i_burn_fee_bps = ifile("inputs/amm_burn_fee.in").     # Portion to burn
+
+# === PRICE ORACLE PROTECTION ===
+bv[32] i_min_output = ifile("inputs/amm_min_output.in").     # Slippage protection
+bv[16] i_max_price_impact = ifile("inputs/amm_max_impact.in"). # Max impact %
+
+# === LP TOKEN SUPPLY ===
+bv[32] i_lp_total_supply = ifile("inputs/amm_lp_supply.in").
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+
+# === RESERVE STATE ===
+bv[32] o_reserve_a = ofile("outputs/amm_reserve_a.out").
+bv[32] o_reserve_b = ofile("outputs/amm_reserve_b.out").
+bv[32] o_invariant_k = ofile("outputs/amm_invariant_k.out").
+
+# === SWAP OUTPUTS ===
+bv[32] o_swap_output = ofile("outputs/amm_swap_output.out").
+bv[32] o_fee_collected = ofile("outputs/amm_fee.out").
+bv[32] o_fee_burned = ofile("outputs/amm_fee_burned.out").
+sbf o_swap_valid = ofile("outputs/amm_swap_valid.out").
+
+# === PRICE OUTPUTS ===
+bv[32] o_price_a_per_b = ofile("outputs/amm_price_ab.out").  # Scaled by 10000
+bv[32] o_price_b_per_a = ofile("outputs/amm_price_ba.out").
+bv[16] o_price_impact = ofile("outputs/amm_price_impact.out").
+
+# === LP TOKEN OUTPUTS ===
+bv[32] o_lp_minted = ofile("outputs/amm_lp_minted.out").
+bv[32] o_lp_burned = ofile("outputs/amm_lp_burned.out").
+bv[32] o_lp_supply = ofile("outputs/amm_lp_supply.out").
+
+# === WITHDRAWAL OUTPUTS ===
+bv[32] o_withdraw_a = ofile("outputs/amm_withdraw_a.out").
+bv[32] o_withdraw_b = ofile("outputs/amm_withdraw_b.out").
+
+# === DEFLATIONARY METRICS ===
+bv[32] o_total_burned_a = ofile("outputs/amm_total_burn_a.out").
+bv[32] o_total_burned_b = ofile("outputs/amm_total_burn_b.out").
+bv[32] o_cumulative_fees = ofile("outputs/amm_cum_fees.out").
+
+# === INVARIANT MONITORS ===
+sbf o_k_preserved = ofile("outputs/amm_k_ok.out").           # k never decreases
+sbf o_reserves_positive = ofile("outputs/amm_reserves_ok.out").
+sbf o_slippage_ok = ofile("outputs/amm_slippage_ok.out").
+sbf o_amm_healthy = ofile("outputs/amm_healthy.out").
+
+# ============================================================================
+# HELPER PREDICATES
+# ============================================================================
+
+# Constant product: output for input (before fees)
+# dy = y * dx / (x + dx)
+calc_output(reserve_in, reserve_out, amount_in) :=
+    (reserve_out * amount_in) / (reserve_in + amount_in).
+
+# Fee calculation
+calc_fee(amount, fee_bps) := (amount * fee_bps) / {10000}:bv[32].
+
+# Burn portion of fee
+calc_burn(fee, burn_bps) := (fee * burn_bps) / {10000}:bv[32].
+
+# Price (scaled): price = reserve_b * 10000 / reserve_a
+calc_price(numerator, denominator) := 
+    (denominator > {0}:bv[32]) ? (numerator * {10000}:bv[32] / denominator) : {0}:bv[32].
+
+# Price impact: |new_price - old_price| / old_price * 10000
+calc_impact(old_price, new_price) :=
+    (old_price > {0}:bv[32]) ?
+    (((new_price > old_price) ? (new_price - old_price) : (old_price - new_price)) * {10000}:bv[32] / old_price) :
+    {0}:bv[16].
+
+# LP tokens to mint: sqrt(a * b) approximation
+# Using Newton's method would require loops, so we use ratio-based approach:
+# mint = min(a * total / reserve_a, b * total / reserve_b)
+calc_lp_mint(add_a, add_b, res_a, res_b, total) :=
+    (res_a > {0}:bv[32] & res_b > {0}:bv[32] & total > {0}:bv[32]) ?
+    ((add_a * total / res_a) < (add_b * total / res_b) ?
+     (add_a * total / res_a) : (add_b * total / res_b)) :
+    {0}:bv[32].
+
+# Withdrawal amounts for LP tokens
+calc_withdraw(lp_amount, reserve, total_supply) :=
+    (total_supply > {0}:bv[32]) ? (lp_amount * reserve / total_supply) : {0}:bv[32].
+
+# ============================================================================
+# DEFLATIONARY AMM SPECIFICATION
+# ============================================================================
+r (
+    # ==== SWAP EXECUTION ====
+    
+    # Calculate gross output (before fees)
+    (o_swap_output[t] = 
+        i_swap_a_for_b[t] ? 
+            calc_output(o_reserve_a[t-1], o_reserve_b[t-1], i_swap_amount[t]) :
+        i_swap_b_for_a[t] ?
+            calc_output(o_reserve_b[t-1], o_reserve_a[t-1], i_swap_amount[t]) :
+        {0}:bv[32]) &&
+    
+    # Calculate fees
+    (o_fee_collected[t] = calc_fee(o_swap_output[t], i_swap_fee_bps[t])) &&
+    
+    # Calculate burn (deflationary)
+    (o_fee_burned[t] = calc_burn(o_fee_collected[t], i_burn_fee_bps[t])) &&
+    
+    # ==== RESERVE UPDATES ====
+    
+    # Reserve A
+    (o_reserve_a[t] = 
+        # Swap A->B: A increases
+        i_swap_a_for_b[t] ?
+            (o_reserve_a[t-1] + i_swap_amount[t]) :
+        # Swap B->A: A decreases (output - fee + burn back)
+        i_swap_b_for_a[t] ?
+            (o_reserve_a[t-1] - o_swap_output[t] + o_fee_collected[t] - o_fee_burned[t]) :
+        # Add liquidity
+        i_add_liquidity[t] ?
+            (o_reserve_a[t-1] + i_add_liquidity_a[t]) :
+        # Remove liquidity
+        i_remove_liquidity[t] ?
+            (o_reserve_a[t-1] - o_withdraw_a[t]) :
+        o_reserve_a[t-1]) &&
+    
+    # Reserve B
+    (o_reserve_b[t] = 
+        # Swap A->B: B decreases
+        i_swap_a_for_b[t] ?
+            (o_reserve_b[t-1] - o_swap_output[t] + o_fee_collected[t] - o_fee_burned[t]) :
+        # Swap B->A: B increases
+        i_swap_b_for_a[t] ?
+            (o_reserve_b[t-1] + i_swap_amount[t]) :
+        # Add liquidity
+        i_add_liquidity[t] ?
+            (o_reserve_b[t-1] + i_add_liquidity_b[t]) :
+        # Remove liquidity
+        i_remove_liquidity[t] ?
+            (o_reserve_b[t-1] - o_withdraw_b[t]) :
+        o_reserve_b[t-1]) &&
+    
+    # ==== INVARIANT K ====
+    (o_invariant_k[t] = o_reserve_a[t] * o_reserve_b[t] / {10000}:bv[32]) &&
+    
+    # ==== PRICE CALCULATION ====
+    (o_price_a_per_b[t] = calc_price(o_reserve_a[t], o_reserve_b[t])) &&
+    (o_price_b_per_a[t] = calc_price(o_reserve_b[t], o_reserve_a[t])) &&
+    
+    # Price impact
+    (o_price_impact[t] = calc_impact(o_price_a_per_b[t-1], o_price_a_per_b[t])) &&
+    
+    # ==== LP TOKEN MANAGEMENT ====
+    
+    # Mint LP tokens on add liquidity
+    (o_lp_minted[t] = i_add_liquidity[t] ?
+        calc_lp_mint(i_add_liquidity_a[t], i_add_liquidity_b[t], 
+                     o_reserve_a[t-1], o_reserve_b[t-1], o_lp_supply[t-1]) :
+        {0}:bv[32]) &&
+    
+    # Burn LP tokens on remove liquidity
+    (o_lp_burned[t] = i_remove_liquidity[t] ? i_lp_tokens_burn[t] : {0}:bv[32]) &&
+    
+    # LP supply tracking
+    (o_lp_supply[t] = o_lp_supply[t-1] + o_lp_minted[t] - o_lp_burned[t]) &&
+    
+    # ==== WITHDRAWAL CALCULATION ====
+    (o_withdraw_a[t] = i_remove_liquidity[t] ?
+        calc_withdraw(i_lp_tokens_burn[t], o_reserve_a[t-1], o_lp_supply[t-1]) :
+        {0}:bv[32]) &&
+    
+    (o_withdraw_b[t] = i_remove_liquidity[t] ?
+        calc_withdraw(i_lp_tokens_burn[t], o_reserve_b[t-1], o_lp_supply[t-1]) :
+        {0}:bv[32]) &&
+    
+    # ==== DEFLATIONARY TRACKING ====
+    
+    # Cumulative burn A
+    (o_total_burned_a[t] = o_total_burned_a[t-1] + 
+        (i_swap_b_for_a[t] ? o_fee_burned[t] : {0}:bv[32])) &&
+    
+    # Cumulative burn B
+    (o_total_burned_b[t] = o_total_burned_b[t-1] +
+        (i_swap_a_for_b[t] ? o_fee_burned[t] : {0}:bv[32])) &&
+    
+    # Cumulative fees
+    (o_cumulative_fees[t] = o_cumulative_fees[t-1] + o_fee_collected[t]) &&
+    
+    # ==== VALIDITY CHECKS ====
+    
+    # Swap is valid if output meets minimum
+    (o_swap_valid[t] = (o_swap_output[t] - o_fee_collected[t]) >= i_min_output[t]) &&
+    
+    # Slippage protection
+    (o_slippage_ok[t] = o_price_impact[t] <= i_max_price_impact[t]) &&
+    
+    # ==== INVARIANT MONITORS ====
+    
+    # K should never decrease (grows with fees minus burns)
+    (o_k_preserved[t] = o_invariant_k[t] >= o_invariant_k[t-1]) &&
+    
+    # Reserves must stay positive
+    (o_reserves_positive[t] = (o_reserve_a[t] > {0}:bv[32]) & 
+                               (o_reserve_b[t] > {0}:bv[32])) &&
+    
+    # Overall health check
+    (o_amm_healthy[t] = o_k_preserved[t] & o_reserves_positive[t] & 
+                        o_slippage_ok[t] & o_swap_valid[t])
+)
+
+# ============================================================================
+# DEFLATIONARY PROPERTIES
+# ============================================================================
+#
+# 1. FEE STRUCTURE (example: 0.3% fee, 50% burned)
+#    - Swap fee: 30 bps (0.3%)
+#    - Burn: 15 bps (0.15%) of swap amount
+#    - LP reward: 15 bps (0.15%) to liquidity providers
+#
+# 2. BURN ACCUMULATION
+#    - Every swap burns tokens
+#    - o_total_burned_* tracks cumulative deflation
+#    - Visible, verifiable, permanent
+#
+# 3. K GROWTH
+#    - Fee portion not burned increases K
+#    - K = reserve_a * reserve_b
+#    - LPs benefit from K growth
+
+# ============================================================================
+# INTEGRATION
+# ============================================================================
+#
+# Daemon responsibilities:
+# 1. Maintain reserve state from on-chain
+# 2. Validate swap parameters
+# 3. Execute atomic reserve updates
+# 4. Track LP token ownership
+# 5. Report burn events to deflationary tracker
+
+# ============================================================================
+# LIMITATIONS & NOTES
+# ============================================================================
+#
+# 1. 32-bit arithmetic limits precision
+#    - Max reserve: ~4.29 billion units
+#    - Use scaled values (e.g., 18 decimals / 10^8 = 10 decimals)
+#
+# 2. No sqrt for LP minting
+#    - Use ratio-based minting instead
+#    - Initial liquidity provider sets ratio
+#
+# 3. Integer rounding
+#    - Always rounds down (favors protocol)
+#    - Small trades may lose to rounding
+

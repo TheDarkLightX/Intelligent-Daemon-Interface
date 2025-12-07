@@ -1,6 +1,11 @@
+pub mod action;
 pub mod config;
+pub mod crypto_sim;
 pub mod emote;
 pub mod env;
+pub mod error;
 pub mod policy;
+pub mod regime;
 pub mod trace;
+pub mod traits;
 pub mod trainer;

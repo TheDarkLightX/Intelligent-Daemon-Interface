@@ -1,0 +1,13 @@
+# Tau Language Experiment 14: BitVector Threshold Detector
+# Output 1 if input >= threshold, 0 otherwise
+# Tests: BitVector comparison with constant
+
+# Define streams
+i1 : bv[8] = in console.
+o1 : sbf = out console.
+
+# Spec: threshold detection (threshold = 128 = 0x80)
+# Output 1 if input >= 128, else 0
+(i1[t] >= {#x80}:bv[8] -> o1[t] = 1) && 
+(i1[t] !>= {#x80}:bv[8] -> o1[t] = 0).
+

@@ -1,0 +1,320 @@
+# ============================================================================
+# CHART ANALYSIS PREDICTOR ENGINE
+# ============================================================================
+# Implements on-chain price and supply prediction using:
+# 1. Technical indicators (EMA, RSI, Bollinger Bands)
+# 2. Supply curve modeling (exponential decay)
+# 3. Scarcity-value relationships
+# 4. Market regime detection
+#
+# This allows agents to make informed decisions about timing of trades,
+# burns, and staking based on predicted future states.
+# ============================================================================
+
+# =============================================================================
+# INPUTS - Price & Volume Data
+# =============================================================================
+
+# Current price (scaled by 10^8 for precision)
+bv[64] i_price = ifile("inputs/price.in").
+
+# Historical prices (rolling window)
+bv[64] i_price_1 = ifile("inputs/price_1.in").   # t-1
+bv[64] i_price_2 = ifile("inputs/price_2.in").   # t-2
+bv[64] i_price_3 = ifile("inputs/price_3.in").   # t-3
+bv[64] i_price_4 = ifile("inputs/price_4.in").   # t-4
+bv[64] i_price_5 = ifile("inputs/price_5.in").   # t-5
+bv[64] i_price_6 = ifile("inputs/price_6.in").   # t-6
+bv[64] i_price_7 = ifile("inputs/price_7.in").   # t-7
+
+# Volume data
+bv[128] i_volume = ifile("inputs/volume.in").
+bv[128] i_volume_avg = ifile("inputs/volume_avg.in").
+
+# Supply data
+bv[256] i_current_supply = ifile("inputs/current_supply.in").
+bv[256] i_initial_supply = ifile("inputs/initial_supply.in").
+bv[16] i_current_deflation_rate = ifile("inputs/current_deflation_rate.in").
+
+# Time period
+bv[32] i_time_period = ifile("inputs/time_period.in").
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# EMA smoothing factors (scaled by 256 for fixed-point)
+bv[16] C_EMA_FAST_ALPHA = { #x33 }:bv[16].  # 51/256 ≈ 0.2 (5-period EMA)
+bv[16] C_EMA_SLOW_ALPHA = { #x1A }:bv[16].  # 26/256 ≈ 0.1 (10-period EMA)
+
+# RSI thresholds
+bv[16] C_RSI_OVERSOLD = { #x1E }:bv[16].    # 30
+bv[16] C_RSI_OVERBOUGHT = { #x46 }:bv[16].  # 70
+
+# Bollinger Band multiplier (scaled: 200 = 2.0 std devs)
+bv[16] C_BB_MULT = { #x00C8 }:bv[16].
+
+# Prediction horizons (in periods)
+bv[16] C_SHORT_HORIZON = { #x07 }:bv[16].   # 7 periods
+bv[16] C_MED_HORIZON = { #x1E }:bv[16].     # 30 periods
+bv[16] C_LONG_HORIZON = { #x5A }:bv[16].    # 90 periods
+
+# =============================================================================
+# INTERNAL STATE - Technical Indicators
+# =============================================================================
+
+# Fast EMA (5-period equivalent)
+bv[64] s_ema_fast[0] := i_price[0].
+bv[64] s_ema_fast[n] := 
+    (C_EMA_FAST_ALPHA * i_price[n] + ({ #x100 }:bv[16] - C_EMA_FAST_ALPHA) * s_ema_fast[n-1]) / { #x100 }:bv[64].
+
+# Slow EMA (10-period equivalent)
+bv[64] s_ema_slow[0] := i_price[0].
+bv[64] s_ema_slow[n] := 
+    (C_EMA_SLOW_ALPHA * i_price[n] + ({ #x100 }:bv[16] - C_EMA_SLOW_ALPHA) * s_ema_slow[n-1]) / { #x100 }:bv[64].
+
+# Price momentum (current - previous)
+bv[64] s_momentum[n] := 
+    (i_price[n] > i_price_1[n]) ? (i_price[n] - i_price_1[n]) : { #x00 }:bv[64].
+
+bv[64] s_momentum_neg[n] := 
+    (i_price[n] < i_price_1[n]) ? (i_price_1[n] - i_price[n]) : { #x00 }:bv[64].
+
+# Running gain/loss averages for RSI
+bv[64] s_avg_gain[0] := { #x00 }:bv[64].
+bv[64] s_avg_gain[n] := 
+    (s_avg_gain[n-1] * { #x0D }:bv[64] + s_momentum[n]) / { #x0E }:bv[64].  # 14-period
+
+bv[64] s_avg_loss[0] := { #x00 }:bv[64].
+bv[64] s_avg_loss[n] := 
+    (s_avg_loss[n-1] * { #x0D }:bv[64] + s_momentum_neg[n]) / { #x0E }:bv[64].
+
+# =============================================================================
+# CORE CALCULATIONS - Technical Analysis
+# =============================================================================
+
+# EMA Crossover signal
+ema_bullish(fast, slow) := fast > slow.
+ema_bearish(fast, slow) := fast < slow.
+ema_cross_up(fast, slow, prev_fast, prev_slow) := (fast > slow) & (prev_fast <= prev_slow).
+ema_cross_down(fast, slow, prev_fast, prev_slow) := (fast < slow) & (prev_fast >= prev_slow).
+
+# RSI Calculation (0-100 scale)
+# RSI = 100 - (100 / (1 + RS)) where RS = AvgGain / AvgLoss
+calculate_rsi(avg_gain, avg_loss) :=
+    (avg_loss = { #x00 }:bv[64]) ? { #x64 }:bv[16] :  # 100 if no losses
+    (avg_gain = { #x00 }:bv[64]) ? { #x00 }:bv[16] :  # 0 if no gains
+    ({ #x64 }:bv[16] - ({ #x64 }:bv[16] * avg_loss / (avg_gain + avg_loss))) & { #xFFFF }:bv[16].
+
+# Volatility (simplified: max - min over window)
+calculate_volatility(p0, p1, p2, p3, p4, p5, p6, p7) :=
+    # Find max and min
+    max_price(p0, max_price(p1, max_price(p2, max_price(p3, max_price(p4, max_price(p5, max_price(p6, p7))))))) -
+    min_price(p0, min_price(p1, min_price(p2, min_price(p3, min_price(p4, min_price(p5, min_price(p6, p7))))))).
+
+max_price(a, b) := (a > b) ? a : b.
+min_price(a, b) := (a < b) ? a : b.
+
+# Bollinger Bands (simplified using volatility)
+bb_upper(sma, volatility, mult) := sma + (volatility * mult / { #x64 }:bv[64]).
+bb_lower(sma, volatility, mult) := 
+    (sma > (volatility * mult / { #x64 }:bv[64])) ? 
+    (sma - (volatility * mult / { #x64 }:bv[64])) : { #x00 }:bv[64].
+
+# =============================================================================
+# CORE CALCULATIONS - Supply Predictions
+# =============================================================================
+
+# Predict future supply using exponential decay
+# Supply[t+n] = Supply[t] × (1 - rate)^n
+predict_supply(current_supply, rate, periods) :=
+    # Approximation for (1-r)^n using fixed-point
+    # For small r: (1-r)^n ≈ 1 - n×r (first order Taylor)
+    # Better: use iterative calculation
+    current_supply - (current_supply * rate * periods / { #x2710 }:bv[256]).
+
+# Calculate scarcity index
+scarcity_index(current, initial) :=
+    (current > { #x00 }:bv[256]) ? 
+    (initial / current) : { #xFFFFFFFF }:bv[256].
+
+# Price-to-scarcity ratio (should be roughly linear in efficient market)
+price_scarcity_ratio(price, scarcity) :=
+    (scarcity > { #x00 }:bv[256]) ? 
+    (price / scarcity) : { #x00 }:bv[64].
+
+# =============================================================================
+# CORE CALCULATIONS - Price Predictions
+# =============================================================================
+
+# Predict price based on:
+# 1. Supply prediction (scarcity premium)
+# 2. Technical trend (EMA direction)
+# 3. Momentum
+predict_price(current_price, ema_fast, ema_slow, future_scarcity, current_scarcity) :=
+    # Base: adjust by scarcity change
+    # Price_future = Price_current × (Scarcity_future / Scarcity_current) × TrendFactor
+    (current_scarcity > { #x00 }:bv[256]) ?
+    (current_price * future_scarcity * trend_factor(ema_fast, ema_slow) / (current_scarcity * { #x64 }:bv[256])) :
+    current_price.
+
+# Trend factor based on EMA relationship
+trend_factor(fast, slow) :=
+    (fast > slow) ? { #x6E }:bv[16] :  # 110% if bullish
+    (fast < slow) ? { #x5A }:bv[16] :  # 90% if bearish
+    { #x64 }:bv[16].  # 100% if neutral
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+# Technical indicators
+bv[64] o_ema_fast = ofile("outputs/ema_fast.out").
+bv[64] o_ema_slow = ofile("outputs/ema_slow.out").
+bv[16] o_rsi = ofile("outputs/rsi.out").
+bv[64] o_bb_upper = ofile("outputs/bb_upper.out").
+bv[64] o_bb_lower = ofile("outputs/bb_lower.out").
+bv[64] o_volatility = ofile("outputs/volatility.out").
+
+# Signals
+sbf o_ema_bullish = ofile("outputs/ema_bullish.out").
+sbf o_ema_cross_up = ofile("outputs/ema_cross_up.out").
+sbf o_ema_cross_down = ofile("outputs/ema_cross_down.out").
+sbf o_rsi_oversold = ofile("outputs/rsi_oversold.out").
+sbf o_rsi_overbought = ofile("outputs/rsi_overbought.out").
+sbf o_bb_squeeze = ofile("outputs/bb_squeeze.out").
+
+# Supply predictions
+bv[256] o_supply_short = ofile("outputs/supply_short.out").
+bv[256] o_supply_med = ofile("outputs/supply_med.out").
+bv[256] o_supply_long = ofile("outputs/supply_long.out").
+
+# Price predictions
+bv[64] o_price_short = ofile("outputs/price_short.out").
+bv[64] o_price_med = ofile("outputs/price_med.out").
+bv[64] o_price_long = ofile("outputs/price_long.out").
+
+# Scarcity metrics
+bv[256] o_current_scarcity = ofile("outputs/current_scarcity.out").
+bv[256] o_future_scarcity_short = ofile("outputs/future_scarcity_short.out").
+bv[256] o_future_scarcity_long = ofile("outputs/future_scarcity_long.out").
+
+# Market regime
+bv[3] o_market_regime = ofile("outputs/market_regime.out").
+
+# Composite signal (-100 to +100 scale, but stored as 0-200)
+bv[8] o_composite_signal = ofile("outputs/composite_signal.out").
+
+# =============================================================================
+# RECURRENCE RELATIONS
+# =============================================================================
+
+o_ema_fast[t] := s_ema_fast[t].
+o_ema_slow[t] := s_ema_slow[t].
+o_rsi[t] := calculate_rsi(s_avg_gain[t], s_avg_loss[t]).
+
+bv[64] volatility_calc[t] := 
+    calculate_volatility(i_price[t], i_price_1[t], i_price_2[t], i_price_3[t],
+                        i_price_4[t], i_price_5[t], i_price_6[t], i_price_7[t]).
+
+bv[64] sma_calc[t] := 
+    (i_price[t] + i_price_1[t] + i_price_2[t] + i_price_3[t] + 
+     i_price_4[t] + i_price_5[t] + i_price_6[t] + i_price_7[t]) / { #x08 }:bv[64].
+
+o_volatility[t] := volatility_calc[t].
+o_bb_upper[t] := bb_upper(sma_calc[t], volatility_calc[t], C_BB_MULT).
+o_bb_lower[t] := bb_lower(sma_calc[t], volatility_calc[t], C_BB_MULT).
+
+# Signals
+o_ema_bullish[t] := ema_bullish(s_ema_fast[t], s_ema_slow[t]).
+o_ema_cross_up[t] := ema_cross_up(s_ema_fast[t], s_ema_slow[t], s_ema_fast[t-1], s_ema_slow[t-1]).
+o_ema_cross_down[t] := ema_cross_down(s_ema_fast[t], s_ema_slow[t], s_ema_fast[t-1], s_ema_slow[t-1]).
+o_rsi_oversold[t] := o_rsi[t] < C_RSI_OVERSOLD.
+o_rsi_overbought[t] := o_rsi[t] > C_RSI_OVERBOUGHT.
+o_bb_squeeze[t] := volatility_calc[t] < (sma_calc[t] / { #x14 }:bv[64]).  # Vol < 5% of price
+
+# Supply predictions
+o_supply_short[t] := predict_supply(i_current_supply[t], i_current_deflation_rate[t], C_SHORT_HORIZON).
+o_supply_med[t] := predict_supply(i_current_supply[t], i_current_deflation_rate[t], C_MED_HORIZON).
+o_supply_long[t] := predict_supply(i_current_supply[t], i_current_deflation_rate[t], C_LONG_HORIZON).
+
+# Scarcity
+o_current_scarcity[t] := scarcity_index(i_current_supply[t], i_initial_supply[t]).
+o_future_scarcity_short[t] := scarcity_index(o_supply_short[t], i_initial_supply[t]).
+o_future_scarcity_long[t] := scarcity_index(o_supply_long[t], i_initial_supply[t]).
+
+# Price predictions
+o_price_short[t] := predict_price(i_price[t], s_ema_fast[t], s_ema_slow[t], 
+                                  o_future_scarcity_short[t], o_current_scarcity[t]).
+o_price_med[t] := predict_price(i_price[t], s_ema_fast[t], s_ema_slow[t],
+                                scarcity_index(o_supply_med[t], i_initial_supply[t]), o_current_scarcity[t]).
+o_price_long[t] := predict_price(i_price[t], s_ema_fast[t], s_ema_slow[t],
+                                 o_future_scarcity_long[t], o_current_scarcity[t]).
+
+# Composite signal calculation
+bv[8] ema_component[t] := (o_ema_bullish[t]) ? { #x14 }:bv[8] : { #x00 }:bv[8].  # +20 if bullish
+bv[8] rsi_component[t] := 
+    (o_rsi_oversold[t]) ? { #x1E }:bv[8] :  # +30 if oversold (buy signal)
+    (o_rsi_overbought[t]) ? { #x00 }:bv[8] : # -30 would be for sell
+    { #x0F }:bv[8].  # +15 neutral
+
+bv[8] scarcity_component[t] := 
+    # Higher scarcity = more bullish
+    (o_current_scarcity[t] > { #x0A }:bv[256]) ? { #x28 }:bv[8] :  # +40 if 10x scarcity
+    (o_current_scarcity[t] > { #x05 }:bv[256]) ? { #x14 }:bv[8] :  # +20 if 5x scarcity
+    { #x0A }:bv[8].  # +10 base
+
+o_composite_signal[t] := 
+    ({ #x64 }:bv[8] + ema_component[t] + rsi_component[t] + scarcity_component[t]) & { #xFF }:bv[8].
+
+# =============================================================================
+# MARKET REGIME FSM
+# =============================================================================
+
+# Regimes:
+# ACCUMULATION (0): Low vol, sideways, oversold
+# MARKUP (1): Rising prices, bullish EMA
+# DISTRIBUTION (2): High vol, topping
+# MARKDOWN (3): Falling prices, bearish EMA
+# HIGH_VOL_BULL (4): Volatile but upward
+# HIGH_VOL_BEAR (5): Volatile and downward
+# SQUEEZE (6): Very low volatility (breakout pending)
+
+enum MarketRegime { ACCUMULATION, MARKUP, DISTRIBUTION, MARKDOWN, HIGH_VOL_BULL, HIGH_VOL_BEAR, SQUEEZE }.
+
+bv[3] s_regime[0] := { #b000 }:bv[3].  # ACCUMULATION
+
+bv[3] s_regime[n] :=
+    # Squeeze detection
+    (o_bb_squeeze[n]) ? MarketRegime.SQUEEZE :
+    # High volatility regimes
+    (volatility_calc[n] > sma_calc[n] / { #x05 }:bv[64]) ?
+        ((o_ema_bullish[n]) ? MarketRegime.HIGH_VOL_BULL : MarketRegime.HIGH_VOL_BEAR) :
+    # Normal regimes
+    (o_ema_cross_up[n]) ? MarketRegime.MARKUP :
+    (o_ema_cross_down[n]) ? MarketRegime.MARKDOWN :
+    (o_ema_bullish[n] & o_rsi[n] > { #x50 }:bv[16]) ? MarketRegime.DISTRIBUTION :
+    (~o_ema_bullish[n] & o_rsi[n] < { #x32 }:bv[16]) ? MarketRegime.ACCUMULATION :
+    s_regime[n-1].  # Stay in current regime
+
+o_market_regime[t] := s_regime[t].
+
+# =============================================================================
+# INVARIANTS
+# =============================================================================
+
+# RSI bounded 0-100
+always (o_rsi <= { #x64 }:bv[16]).
+
+# Supply predictions decrease over time (deflation)
+always (o_supply_short >= o_supply_med).
+always (o_supply_med >= o_supply_long).
+
+# Scarcity increases over time
+always (o_future_scarcity_short >= o_current_scarcity).
+always (o_future_scarcity_long >= o_future_scarcity_short).
+
+# Composite signal bounded
+always (o_composite_signal >= { #x00 }:bv[8]).
+always (o_composite_signal <= { #xFF }:bv[8]).
+

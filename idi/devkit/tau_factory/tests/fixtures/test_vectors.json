@@ -1,0 +1,114 @@
+{
+  "test_cases": [
+    {
+      "name": "momentum_basic",
+      "description": "Basic momentum strategy with Q-signals",
+      "schema": {
+        "name": "momentum_basic",
+        "strategy": "momentum",
+        "streams": [
+          {"name": "q_buy", "stream_type": "sbf", "is_input": true},
+          {"name": "q_sell", "stream_type": "sbf", "is_input": true},
+          {"name": "position", "stream_type": "sbf", "is_input": false},
+          {"name": "buy_signal", "stream_type": "sbf", "is_input": false},
+          {"name": "sell_signal", "stream_type": "sbf", "is_input": false}
+        ],
+        "logic_blocks": [
+          {"pattern": "fsm", "inputs": ["q_buy", "q_sell"], "output": "position"},
+          {"pattern": "passthrough", "inputs": ["q_buy"], "output": "buy_signal"},
+          {"pattern": "passthrough", "inputs": ["q_sell"], "output": "sell_signal"}
+        ],
+        "num_steps": 5,
+        "include_mirrors": true
+      },
+      "inputs": {
+        "q_buy": ["1", "0", "1", "0", "0"],
+        "q_sell": ["0", "0", "0", "1", "0"]
+      },
+      "expected_outputs": {
+        "position.out": ["0", "1", "1", "0", "0"],
+        "buy_signal.out": ["1", "0", "1", "0", "0"],
+        "sell_signal.out": ["0", "0", "0", "1", "0"]
+      },
+      "validation_checks": [
+        {"name": "position_binary", "should_pass": true},
+        {"name": "mutual_exclusion", "should_pass": true},
+        {"name": "output_lengths", "should_pass": true}
+      ]
+    },
+    {
+      "name": "mean_reversion_basic",
+      "description": "Mean reversion strategy",
+      "schema": {
+        "name": "mean_reversion_basic",
+        "strategy": "mean_reversion",
+        "streams": [
+          {"name": "price_up", "stream_type": "sbf", "is_input": true},
+          {"name": "price_down", "stream_type": "sbf", "is_input": true},
+          {"name": "position", "stream_type": "sbf", "is_input": false},
+          {"name": "buy_signal", "stream_type": "sbf", "is_input": false},
+          {"name": "sell_signal", "stream_type": "sbf", "is_input": false}
+        ],
+        "logic_blocks": [
+          {"pattern": "fsm", "inputs": ["price_up", "price_down"], "output": "position"},
+          {"pattern": "passthrough", "inputs": ["price_down"], "output": "buy_signal"},
+          {"pattern": "passthrough", "inputs": ["price_up"], "output": "sell_signal"}
+        ],
+        "num_steps": 5,
+        "include_mirrors": true
+      },
+      "inputs": {
+        "price_up": ["0", "0", "0", "1", "0"],
+        "price_down": ["1", "0", "0", "0", "0"]
+      },
+      "expected_outputs": {
+        "position.out": ["0", "1", "1", "0", "0"],
+        "buy_signal.out": ["1", "0", "0", "0", "0"],
+        "sell_signal.out": ["0", "0", "0", "1", "0"]
+      },
+      "validation_checks": [
+        {"name": "position_binary", "should_pass": true},
+        {"name": "mutual_exclusion", "should_pass": true}
+      ]
+    },
+    {
+      "name": "regime_aware_basic",
+      "description": "Regime-aware strategy with bitvector regime",
+      "schema": {
+        "name": "regime_aware_basic",
+        "strategy": "regime_aware",
+        "streams": [
+          {"name": "q_buy", "stream_type": "sbf", "is_input": true},
+          {"name": "q_sell", "stream_type": "sbf", "is_input": true},
+          {"name": "regime", "stream_type": "bv", "width": 5, "is_input": true},
+          {"name": "position", "stream_type": "sbf", "is_input": false},
+          {"name": "buy_signal", "stream_type": "sbf", "is_input": false},
+          {"name": "sell_signal", "stream_type": "sbf", "is_input": false}
+        ],
+        "logic_blocks": [
+          {"pattern": "fsm", "inputs": ["q_buy", "q_sell"], "output": "position"},
+          {"pattern": "passthrough", "inputs": ["q_buy"], "output": "buy_signal"},
+          {"pattern": "passthrough", "inputs": ["q_sell"], "output": "sell_signal"}
+        ],
+        "num_steps": 5,
+        "include_mirrors": true
+      },
+      "inputs": {
+        "q_buy": ["1", "0", "0", "0", "0"],
+        "q_sell": ["0", "0", "0", "1", "0"],
+        "regime": ["10", "12", "15", "8", "10"]
+      },
+      "expected_outputs": {
+        "position.out": ["0", "1", "1", "0", "0"],
+        "buy_signal.out": ["1", "0", "0", "0", "0"],
+        "sell_signal.out": ["0", "0", "0", "1", "0"]
+      },
+      "validation_checks": [
+        {"name": "position_binary", "should_pass": true},
+        {"name": "mutual_exclusion", "should_pass": true},
+        {"name": "bv_range_regime", "should_pass": true}
+      ]
+    }
+  ]
+}
+

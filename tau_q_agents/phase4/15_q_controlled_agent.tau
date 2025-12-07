@@ -1,0 +1,46 @@
+# Q-Table Controlled Agent
+# The daemon sends Q-selected actions, Tau validates and executes
+#
+# INPUTS (from daemon):
+#   i1 = price_up (market signal)
+#   i2 = price_down (market signal)
+#   i3 = action_bit0 (daemon's Q-selection)
+#   i4 = action_bit1 (daemon's Q-selection)
+#   Action encoding: 00=HOLD, 01=BUY, 10=SELL, 11=WAIT
+#
+# OUTPUTS (to daemon):
+#   o1 = executed_buy
+#   o2 = executed_sell
+#   o3 = executed_hold
+#   o4 = position (current state: 0=idle, 1=holding)
+#   o5 = action_valid (1 if action was legal)
+#   o6 = reward_signal (1 if profitable action)
+#
+# VALIDATION RULES:
+# - BUY only valid when NOT holding
+# - SELL only valid when holding
+# - HOLD always valid
+# - Reward when: sell after price went up, or hold during down
+
+sbf i1 = console
+sbf i2 = console
+sbf i3 = console
+sbf i4 = console
+sbf o1 = console
+sbf o2 = console
+sbf o3 = console
+sbf o4 = console
+sbf o5 = console
+sbf o6 = console
+
+# Action decode: BUY = i4'&i3, SELL = i4&i3', HOLD = i4'&i3'
+# Valid BUY: want_buy & not_holding
+# Valid SELL: want_sell & holding
+# Execute if valid
+# Position: set on buy, reset on sell
+# Reward: sold (any sell = took profit in simple model)
+
+r o1[t] = i3[t] & i4[t]' & o4[t-1]' && o2[t] = i4[t] & i3[t]' & o4[t-1] && o3[t] = i3[t]' & i4[t]' && o4[t] = o1[t] | (o4[t-1] & o2[t]') && o5[t] = o1[t] | o2[t] | o3[t] && o6[t] = o2[t]
+
+q
+

@@ -1,0 +1,307 @@
+# ==============================================================================
+# EARLY EXIT PENALTIES - HEX-Style Slash-to-Burn Mechanism
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - Core Primitive
+#
+# Key difference from HEX: ALL penalties go to BURN, not redistributed
+# This creates permanent deflation from every early unstake
+#
+# HEX-style penalty structure:
+# - Minimum 90-day penalty (regardless of lock length)
+# - Penalty = max(90, lock_duration/2) days worth of stake
+# - 100% of penalty amount is burned (not redistributed)
+#
+# This creates a cost for exiting commitments that directly
+# reduces supply, compounding the deflationary effect
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Exit Request Parameters
+# ------------------------------------------------------------------------------
+
+# Original lock amount (256-bit for max precision)
+bv[256] i_locked_amount = ifile("inputs/locked_amount.in").
+
+# Original lock duration in days (16-bit)
+bv[16] i_lock_duration = ifile("inputs/lock_duration.in").
+
+# Days remaining in lock (16-bit)
+bv[16] i_remaining_days = ifile("inputs/remaining_days.in").
+
+# Days already served (16-bit)
+bv[16] i_days_served = ifile("inputs/days_served.in").
+
+# Exit request signal
+sbf i_request_early_exit = ifile("inputs/request_early_exit.in").
+sbf i_confirm_exit = ifile("inputs/confirm_exit.in").
+
+# Emergency exit flag (for special circumstances)
+sbf i_emergency_exit = ifile("inputs/emergency_exit.in").
+
+# Current total supply (for deflation tracking)
+bv[256] i_total_supply = ifile("inputs/total_supply.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Penalty Calculations
+# ------------------------------------------------------------------------------
+
+# Calculated penalty amount (256-bit)
+bv[256] o_penalty_amount = ofile("outputs/penalty_amount.out").
+
+# Net return to user after penalty (256-bit)
+bv[256] o_user_return = ofile("outputs/user_return.out").
+
+# Penalty days applied (16-bit)
+bv[16] o_penalty_days = ofile("outputs/penalty_days.out").
+
+# Penalty percentage (basis points, 16-bit)
+bv[16] o_penalty_bps = ofile("outputs/penalty_bps.out").
+
+# Burn amount sent to burn address (256-bit)
+bv[256] o_burn_amount = ofile("outputs/burn_amount.out").
+
+# Exit state signals
+sbf o_exit_pending = ofile("outputs/exit_pending.out").
+sbf o_exit_executed = ofile("outputs/exit_executed.out").
+sbf o_penalty_applied = ofile("outputs/penalty_applied.out").
+
+# Cumulative penalties burned (256-bit)
+bv[256] o_cumulative_penalty_burns = ofile("outputs/cumulative_penalty_burns.out").
+
+# Deflation rate from this exit (basis points)
+bv[16] o_exit_deflation_bps = ofile("outputs/exit_deflation_bps.out").
+
+# ------------------------------------------------------------------------------
+# CONSTANTS (as bitvector representations)
+# ------------------------------------------------------------------------------
+
+# MINIMUM_PENALTY_DAYS = 90 days
+# { #x005A }:bv[16] = 90
+
+# PENALTY_DIVISOR = 2 (penalty_days = lock_duration / 2)
+# { #x0002 }:bv[16] = 2
+
+# EMERGENCY_PENALTY_MULTIPLIER = 50 (0.5x normal penalty for emergencies)
+# { #x0032 }:bv[8] = 50
+
+# BASIS_POINTS_FULL = 10000
+# { #x2710 }:bv[16] = 10000
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Penalty Calculations
+# ------------------------------------------------------------------------------
+
+# Calculate penalty days: max(90, lock_duration / 2)
+calc_penalty_days(duration) :=
+    ((duration >> { #x01 }:bv[16]) < { #x005A }:bv[16]) ?
+        { #x005A }:bv[16] :  # Minimum 90 days
+        (duration >> { #x01 }:bv[16]).  # duration / 2
+
+# Calculate penalty amount: locked_amount * (penalty_days / lock_duration)
+# Ensures we don't divide by zero
+calc_penalty_amount(amount, penalty_days, duration) :=
+    (duration = { #x0000 }:bv[16]) ? { #x00 }:bv[256] :
+    ((amount * penalty_days) / duration).
+
+# Calculate penalty in basis points
+calc_penalty_bps(penalty_days, duration) :=
+    (duration = { #x0000 }:bv[16]) ? { #x0000 }:bv[16] :
+    ((penalty_days * { #x2710 }:bv[16]) / duration).
+
+# Emergency penalty (50% of normal)
+calc_emergency_penalty(normal_penalty) :=
+    (normal_penalty * { #x32 }:bv[256]) / { #x64 }:bv[256].
+
+# Calculate user return (locked - penalty)
+calc_user_return(locked, penalty) :=
+    (locked >= penalty) ? (locked - penalty) : { #x00 }:bv[256].
+
+# Calculate deflation rate in basis points
+calc_deflation_bps(burn_amount, total_supply) :=
+    (total_supply = { #x00 }:bv[256]) ? { #x0000 }:bv[16] :
+    ((burn_amount * { #x2710 }:bv[256]) / total_supply).
+
+# ------------------------------------------------------------------------------
+# PENALTY TIERS (for gradual penalty reduction based on time served)
+# ------------------------------------------------------------------------------
+# If user has served > 75% of lock: penalty reduced by 25%
+# If user has served > 50% of lock: penalty reduced by 10%
+# Otherwise: full penalty
+
+time_served_ratio_256(served, duration) :=
+    (duration = { #x0000 }:bv[16]) ? { #x00 }:bv[8] :
+    ((served * { #x0100 }:bv[32]) / duration).  # Scaled to 256
+
+# Penalty reduction based on time served
+penalty_reduction_multiplier(served, duration) :=
+    # served >= 75%: multiplier = 75 (0.75x penalty = 25% reduction)
+    (time_served_ratio_256(served, duration) >= { #xC0 }:bv[8]) ? { #x4B }:bv[8] :
+    # served >= 50%: multiplier = 90 (0.90x penalty = 10% reduction)
+    (time_served_ratio_256(served, duration) >= { #x80 }:bv[8]) ? { #x5A }:bv[8] :
+    # otherwise: multiplier = 100 (1.00x full penalty)
+    { #x64 }:bv[8].
+
+# Apply penalty reduction
+apply_penalty_reduction(base_penalty, served, duration) :=
+    (base_penalty * penalty_reduction_multiplier(served, duration)) / { #x64 }:bv[256].
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+# States: LOCKED -> EXIT_PENDING -> EXIT_EXECUTED
+#
+# Transitions:
+# - LOCKED + request_early_exit -> EXIT_PENDING
+# - EXIT_PENDING + confirm_exit -> EXIT_EXECUTED
+# - EXIT_PENDING + cancel -> LOCKED (no penalty)
+
+state_locked := ~o_exit_pending & ~o_exit_executed.
+state_pending := o_exit_pending & ~o_exit_executed.
+state_executed := o_exit_executed.
+
+# Transition conditions
+can_request_exit := state_locked & i_request_early_exit & 
+                    (i_remaining_days > { #x0000 }:bv[16]).
+
+can_confirm_exit := state_pending & i_confirm_exit.
+
+can_emergency_exit := state_locked & i_emergency_exit &
+                      (i_remaining_days > { #x0000 }:bv[16]).
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS - State Updates
+# ------------------------------------------------------------------------------
+
+# Exit pending state
+o_exit_pending[0] := 0.
+o_exit_pending[t] :=
+    can_request_exit[t-1] ? 1 :
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ? 0 :
+    o_exit_pending[t-1].
+
+# Exit executed state
+o_exit_executed[0] := 0.
+o_exit_executed[t] :=
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ? 1 :
+    o_exit_executed[t-1].
+
+# Penalty days calculation
+o_penalty_days[0] := { #x0000 }:bv[16].
+o_penalty_days[t] :=
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ?
+        calc_penalty_days(i_lock_duration[t-1]) :
+    o_penalty_days[t-1].
+
+# Base penalty amount (before reductions)
+base_penalty_calc[t] :=
+    calc_penalty_amount(i_locked_amount[t-1], o_penalty_days[t], i_lock_duration[t-1]).
+
+# Final penalty amount (with time-served reduction)
+o_penalty_amount[0] := { #x00 }:bv[256].
+o_penalty_amount[t] :=
+    ~(can_confirm_exit[t-1] | can_emergency_exit[t-1]) ? { #x00 }:bv[256] :
+    can_emergency_exit[t-1] ?
+        calc_emergency_penalty(apply_penalty_reduction(base_penalty_calc[t], i_days_served[t-1], i_lock_duration[t-1])) :
+        apply_penalty_reduction(base_penalty_calc[t], i_days_served[t-1], i_lock_duration[t-1]).
+
+# User return (locked - penalty)
+o_user_return[0] := { #x00 }:bv[256].
+o_user_return[t] :=
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ?
+        calc_user_return(i_locked_amount[t-1], o_penalty_amount[t]) :
+    o_user_return[t-1].
+
+# Burn amount (100% of penalty goes to burn)
+o_burn_amount[0] := { #x00 }:bv[256].
+o_burn_amount[t] := o_penalty_amount[t].  # ALL penalty burned
+
+# Penalty applied flag
+o_penalty_applied[0] := 0.
+o_penalty_applied[t] := 
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ? 1 :
+    0.
+
+# Penalty basis points
+o_penalty_bps[0] := { #x0000 }:bv[16].
+o_penalty_bps[t] :=
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ?
+        calc_penalty_bps(o_penalty_days[t], i_lock_duration[t-1]) :
+    o_penalty_bps[t-1].
+
+# Cumulative penalty burns (monotonically increasing)
+o_cumulative_penalty_burns[0] := { #x00 }:bv[256].
+o_cumulative_penalty_burns[t] := o_cumulative_penalty_burns[t-1] + o_burn_amount[t].
+
+# Exit deflation rate
+o_exit_deflation_bps[0] := { #x0000 }:bv[16].
+o_exit_deflation_bps[t] :=
+    (can_confirm_exit[t-1] | can_emergency_exit[t-1]) ?
+        calc_deflation_bps(o_burn_amount[t], i_total_supply[t-1]) :
+    { #x0000 }:bv[16].
+
+# ------------------------------------------------------------------------------
+# INVARIANTS - Safety Properties
+# ------------------------------------------------------------------------------
+
+# Invariant 1: Penalty never exceeds locked amount
+inv_penalty_bounded := always (o_penalty_amount <= i_locked_amount).
+
+# Invariant 2: User return + penalty = locked amount (conservation)
+inv_conservation := always (
+    o_penalty_applied -> 
+    ((o_user_return + o_penalty_amount) = i_locked_amount)
+).
+
+# Invariant 3: Burn amount equals penalty amount (all penalty burned)
+inv_all_penalty_burned := always (o_burn_amount = o_penalty_amount).
+
+# Invariant 4: Cumulative burns monotonically increasing
+inv_burns_monotonic := always (o_cumulative_penalty_burns >= o_cumulative_penalty_burns').
+
+# Invariant 5: Penalty days >= 90 when penalty applied
+inv_min_penalty_days := always (
+    o_penalty_applied -> (o_penalty_days >= { #x005A }:bv[16])
+).
+
+# Invariant 6: State consistency
+inv_state_consistent := always ~(o_exit_pending & o_exit_executed).
+
+# Combined invariants
+o_invariants_hold := inv_penalty_bounded & inv_conservation & inv_all_penalty_burned &
+                     inv_burns_monotonic & inv_min_penalty_days & inv_state_consistent.
+
+# ------------------------------------------------------------------------------
+# OBSERVABLE PROPERTIES (for verification)
+# ------------------------------------------------------------------------------
+
+# Property: Early exit always incurs penalty (if remaining days > 0)
+prop_early_exit_penalty := always (
+    (i_request_early_exit & (i_remaining_days > { #x0000 }:bv[16]) & i_confirm_exit) ->
+    (o_penalty_amount' > { #x00 }:bv[256])
+).
+
+# Property: Longer remaining = higher penalty
+prop_longer_higher_penalty := always (
+    ((i_remaining_days > i_remaining_days') & 
+     (i_lock_duration = i_lock_duration') &
+     (i_locked_amount = i_locked_amount'))
+    -> (o_penalty_amount >= o_penalty_amount')
+).
+
+# Property: Emergency exit has lower penalty
+prop_emergency_discount := always (
+    i_emergency_exit ->
+    (o_penalty_amount <= base_penalty_calc)
+).
+
+# Property: Time served reduces penalty
+prop_time_served_reduction := always (
+    ((i_days_served > (i_lock_duration >> { #x01 }:bv[16])) &  # > 50% served
+     o_penalty_applied)
+    -> (o_penalty_amount < base_penalty_calc)
+).
+
+# ==============================================================================
+# END OF EARLY_EXIT_PENALTIES.TAU
+# ==============================================================================
+

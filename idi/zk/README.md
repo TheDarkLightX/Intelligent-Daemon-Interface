@@ -25,6 +25,20 @@ python -m idi.zk.run_stub_proofs --artifacts-root idi/artifacts
 ```
 This creates `proof_stub/` folders next to each artifact (regime layers, emotive layers, etc.) and verifies the receipts in one go.
 
+## Native Risc0 prover (alpha)
+
+- Workspace lives in `idi/zk/risc0/` (`cargo` workspace with `host/`, `methods/`, and generated guest code).
+- Build: `cargo run --release -p idi_risc0_host -- --help` (requires `rzup install` + the `riscv32im-risc0-zkvm-elf` toolchain).
+- Usage example:
+  ```
+  cargo run --release -p idi_risc0_host -- \
+      --manifest idi/artifacts/regime_macro/artifact_manifest.json \
+      --streams idi/artifacts/regime_macro/streams \
+      --proof idi/artifacts/regime_macro/proof_risc0/proof.bin \
+      --receipt idi/artifacts/regime_macro/proof_risc0/receipt.json
+  ```
+- The host consumes the manifest + streams, embeds them into the guest, proves via Risc0, checks the guest digest against a deterministic host hash, and writes both the binary proof and a JSON receipt (including the method ID and digest).
+
 ## Integrating Risc0 (example)
 ```
 export IDI_RISC0_CMD='risc0 prove --elf idi/risc0/idi_prover.elf --manifest {manifest} --streams {streams} --output {output}'

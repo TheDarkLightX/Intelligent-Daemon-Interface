@@ -1,0 +1,200 @@
+# Deflationary Agent V44 - RSI Momentum and Adaptive Timeout
+# Implements RSI indicator and volatility-based timeout adjustment
+# Copyright DarkLightX/Dana Edwards
+#
+# TECHNICAL INDICATORS:
+# 1. RSI (Relative Strength Index) - Momentum oscillator
+#    - RSI < 30: Oversold (buy opportunity)
+#    - RSI > 70: Overbought (sell opportunity)
+#
+# 2. Volatility-Adaptive Timeout
+#    - High volatility: Short timeout (2 ticks)
+#    - Medium volatility: Normal timeout (3 ticks)
+#    - Low volatility: Long timeout (4-6 ticks)
+#
+# RSI FORMULA (simplified for bitvector):
+#   gain = max(0, price - prev_price)
+#   loss = max(0, prev_price - price)
+#   avg_gain = SMA(gain, N)
+#   avg_loss = SMA(loss, N)
+#   RS = avg_gain / avg_loss
+#   RSI = 100 - 100/(1 + RS)
+#
+# SIMPLIFIED RSI (avoiding division):
+#   oversold = avg_gain * 30 < avg_loss * 70
+#   overbought = avg_gain * 70 > avg_loss * 30
+
+# === BITVECTOR INPUTS ===
+bv[16] i0 = ifile("inputs/price.in").
+bv[16] i5 = ifile("inputs/entry_threshold.in").
+bv[16] i6 = ifile("inputs/exit_threshold.in").
+
+# === BOOLEAN INPUTS ===
+sbf i1 = ifile("inputs/volume.in").
+sbf i2 = ifile("inputs/trend.in").
+sbf i3 = ifile("inputs/profit_guard.in").
+sbf i4 = ifile("inputs/failure_echo.in").
+
+# === HELPER PREDICATES ===
+# Timeout check for different thresholds
+timed_out_2(b1, b0) := b1 & b0'.     # Timer = 10 (2 ticks)
+timed_out_3(b1, b0) := b1 & b0.      # Timer = 11 (3 ticks)
+
+# === OUTPUT STREAMS ===
+sbf o0 = ofile("outputs/state.out").
+sbf o1 = ofile("outputs/holding.out").
+sbf o2 = ofile("outputs/buy_signal.out").
+sbf o3 = ofile("outputs/sell_signal.out").
+sbf o6 = ofile("outputs/timer_b0.out").
+sbf o7 = ofile("outputs/timer_b1.out").
+sbf o9 = ofile("outputs/nonce.out").
+sbf o11 = ofile("outputs/profit.out").
+sbf o13 = ofile("outputs/has_burned.out").
+
+# Bitvector outputs for tracking
+bv[16] o14 = ofile("outputs/entry_price.out").
+bv[16] o15 = ofile("outputs/prev_price.out").     # Previous price for momentum
+bv[16] o16 = ofile("outputs/avg_gain.out").       # Average gain (smoothed)
+bv[16] o17 = ofile("outputs/avg_loss.out").       # Average loss (smoothed)
+bv[16] o18 = ofile("outputs/volatility.out").     # Volatility measure
+
+# RSI signal outputs
+sbf o19 = ofile("outputs/rsi_oversold.out").      # RSI < 30
+sbf o20 = ofile("outputs/rsi_overbought.out").    # RSI > 70
+sbf o21 = ofile("outputs/high_volatility.out").   # Volatility flag
+
+# === V44 RSI + ADAPTIVE TIMEOUT SPECIFICATION ===
+r (
+    # === MOMENTUM CALCULATION ===
+    # Current gain/loss
+    # gain = (price > prev_price) ? (price - prev_price) : 0
+    # loss = (price < prev_price) ? (prev_price - price) : 0
+    
+    # Store previous price
+    (o15[t] = o15[t-1] = {0}:bv[16] ? i0[t] : i0[t-1]) &&
+    
+    # Smoothed average gain (EMA-style with α=0.25 = 64/256)
+    # If price went up, add to gain
+    (o16[t] = (i0[t] > o15[t]) ? 
+              ({64}:bv[16] * (i0[t] - o15[t]) + {192}:bv[16] * o16[t-1]) / {256}:bv[16] :
+              ({192}:bv[16] * o16[t-1]) / {256}:bv[16]) &&
+    
+    # Smoothed average loss
+    (o17[t] = (i0[t] < o15[t]) ?
+              ({64}:bv[16] * (o15[t] - i0[t]) + {192}:bv[16] * o17[t-1]) / {256}:bv[16] :
+              ({192}:bv[16] * o17[t-1]) / {256}:bv[16]) &&
+    
+    # === RSI SIGNALS (avoiding division) ===
+    # oversold: avg_gain / avg_loss < 30/70 = 3/7
+    # Equivalent: avg_gain * 7 < avg_loss * 3
+    # Simplified: avg_gain * 70 < avg_loss * 30 (scaled)
+    (o19[t] = ({70}:bv[16] * o16[t]) < ({30}:bv[16] * o17[t])) &&
+    
+    # overbought: avg_gain / avg_loss > 70/30 = 7/3
+    # Equivalent: avg_gain * 3 > avg_loss * 7
+    (o20[t] = ({30}:bv[16] * o16[t]) > ({70}:bv[16] * o17[t])) &&
+    
+    # === VOLATILITY CALCULATION ===
+    # Simple volatility = |price - prev_price|
+    # High volatility threshold = 50 (scaled)
+    (o18[t] = (i0[t] > o15[t]) ? (i0[t] - o15[t]) : (o15[t] - i0[t])) &&
+    (o21[t] = o18[t] > {50}:bv[16]) &&
+    
+    # === ADAPTIVE TIMEOUT STATE MACHINE ===
+    # Entry: RSI oversold (buy opportunity) + standard conditions
+    (o0[t] = (o0[t-1]' & 
+              o19[t] &                # RSI oversold
+              i1[t] &                 # Volume fresh
+              i2[t] &                 # Trend bullish
+              o1[t-1]' &              # Not holding
+              # No timeout check for entry (timer starts at 0)
+              o9[t-1]' & i4[t]') |
+             # Continue: not overbought AND not adaptive timeout
+             (o0[t-1] & 
+              o20[t]' &               # Not overbought yet
+              # Adaptive timeout:
+              # - High volatility: exit at timer=2
+              # - Normal: exit at timer=3
+              (o21[t] ? timed_out_2(o7[t-1], o6[t-1])' : timed_out_3(o7[t-1], o6[t-1])') &
+              i1[t] & i4[t]')) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === PROFIT ===
+    (o11[t] = o3[t] & (i0[t] > o14[t-1]) & i3[t]) &&
+    
+    # === BURNS ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === ENTRY PRICE ===
+    (o14[t] = (o2[t] ? i0[t] : o14[t-1]))
+)
+
+# === V44 RSI + ADAPTIVE TIMEOUT STRATEGY ===
+#
+# 1. RSI-BASED ENTRY
+#    - Entry only when RSI < 30 (oversold)
+#    - This catches bottoms and reversals
+#    - Avoids buying into overbought conditions
+#
+# 2. RSI-BASED EXIT
+#    - Exit when RSI > 70 (overbought)
+#    - Takes profits at momentum extremes
+#    - Doesn't wait for price target
+#
+# 3. ADAPTIVE TIMEOUT
+#    - High volatility (move > 50): Timeout at 2 ticks
+#    - Normal volatility: Timeout at 3 ticks
+#    - Quick exits in volatile markets protect capital
+#
+# 4. VOLATILITY MEASUREMENT
+#    - Simple |price - prev_price|
+#    - More sophisticated: ATR (Average True Range)
+#    - Threshold of 50 is tunable
+
+# === RSI CALCULATION NOTES ===
+#
+# Standard RSI:
+#   RS = Average Gain / Average Loss
+#   RSI = 100 - 100/(1+RS)
+#
+# Our approximation (avoiding division):
+#   oversold: gain * 70 < loss * 30
+#   This is equivalent to: gain/loss < 30/70 ≈ 0.43
+#   Which means RSI ≈ 100 - 100/(1+0.43) ≈ 30
+#
+#   overbought: gain * 30 > loss * 70  
+#   This is equivalent to: gain/loss > 70/30 ≈ 2.33
+#   Which means RSI ≈ 100 - 100/(1+2.33) ≈ 70
+
+# === PERFORMANCE NOTES ===
+# - 6 additional bitvector operations
+# - 2 comparisons for RSI signals
+# - 1 comparison for volatility
+# - Total clauses: 17
+# - SMT impact: ~30-40% slower
+
+# === MARKET SCENARIOS ===
+#
+# TRENDING MARKET:
+#   - RSI may not trigger oversold often
+#   - Timeout provides backup entry/exit
+#
+# RANGING MARKET:
+#   - RSI oscillates between oversold/overbought
+#   - Perfect for mean-reversion entries
+#
+# VOLATILE MARKET:
+#   - Adaptive timeout kicks in quickly
+#   - Protects from extended adverse moves
+

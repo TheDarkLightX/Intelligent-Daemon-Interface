@@ -1,0 +1,10 @@
+# Echo - pass input directly to output
+# Expected: input 0,1,0 -> output 0,1,0
+
+sbf i1 = console
+sbf o1 = console
+r o1[t] = i1[t]
+0
+1
+0
+q

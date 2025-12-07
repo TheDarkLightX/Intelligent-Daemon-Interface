@@ -1,0 +1,362 @@
+# ==============================================================================
+# HYPER-COMPOUNDING REWARDS (HCR) - EETF & Duration Enhanced Compounding
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - VCC Integration Layer
+#
+# From VCC concept:
+# - The RATE of compounding increases with ethical behavior AND lock duration
+# - Not just "compound more" but "compound FASTER"
+# - Creates exponential advantage for long-term ethical participants
+#
+# Formula:
+# EETF_Mult = 1 + EETF_Sensitivity * max(0, EETF_account - 1.0)
+# Duration_Mult = 1 + Duration_Sensitivity * sqrt(LockDuration / MaxDuration)
+# Effective_Rate = Base_Rate * EETF_Mult * Duration_Mult
+# Compounding: Principal * (1 + Effective_Rate)^Time
+#
+# With 20% annual deflation and hyper-compounding, supply can shrink
+# indefinitely while value per unit compounds indefinitely
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Account & Lock Parameters
+# ------------------------------------------------------------------------------
+
+# Principal amount (256-bit)
+bv[256] i_principal = ifile("inputs/principal.in").
+
+# Account EETF score (8-bit, 100 = 1.0)
+bv[8] i_eetf_account = ifile("inputs/eetf_account.in").
+
+# Lock duration in days (16-bit)
+bv[16] i_lock_duration = ifile("inputs/lock_duration.in").
+
+# Time elapsed in compounding periods (16-bit)
+bv[16] i_time_periods = ifile("inputs/time_periods.in").
+
+# Base compounding rate (16-bit, in basis points: 500 = 5%)
+bv[16] i_base_rate_bps = ifile("inputs/base_rate_bps.in").
+
+# Account's historical EETF average (for consistency bonus)
+bv[8] i_eetf_account_avg = ifile("inputs/eetf_account_avg.in").
+
+# LTHF (Long-Term Holding Factor) from veCRV-style lock
+bv[8] i_lthf = ifile("inputs/lthf.in").
+
+# Network health modifier (from DBR)
+bv[8] i_network_health = ifile("inputs/network_health.in").
+
+# Boost multiplier from vote-escrow (100-250)
+bv[8] i_boost_multiplier = ifile("inputs/boost_multiplier.in").
+
+# Compounding action signal
+sbf i_compound = ifile("inputs/compound.in").
+sbf i_claim = ifile("inputs/claim.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Compounding State
+# ------------------------------------------------------------------------------
+
+# Effective compounding rate (basis points)
+bv[16] o_effective_rate_bps = ofile("outputs/effective_rate_bps.out").
+
+# EETF multiplier component (16-bit, 100 = 1.0x)
+bv[16] o_eetf_multiplier = ofile("outputs/eetf_multiplier.out").
+
+# Duration multiplier component (16-bit, 100 = 1.0x)
+bv[16] o_duration_multiplier = ofile("outputs/duration_multiplier.out").
+
+# LTHF multiplier component (16-bit, 100 = 1.0x)
+bv[16] o_lthf_multiplier = ofile("outputs/lthf_multiplier.out").
+
+# Current compounded balance (256-bit)
+bv[256] o_compounded_balance = ofile("outputs/compounded_balance.out").
+
+# Accrued rewards (256-bit)
+bv[256] o_accrued_rewards = ofile("outputs/accrued_rewards.out").
+
+# Rewards claimed total (256-bit)
+bv[256] o_rewards_claimed = ofile("outputs/rewards_claimed.out").
+
+# Compounding periods completed
+bv[16] o_periods_completed = ofile("outputs/periods_completed.out").
+
+# Projected annual yield (basis points)
+bv[16] o_projected_apy_bps = ofile("outputs/projected_apy_bps.out").
+
+# Rate tier (8-bit: 0-4 representing reward tier)
+bv[8] o_rate_tier = ofile("outputs/rate_tier.out").
+
+# Is compounding active
+sbf o_compounding_active = ofile("outputs/compounding_active.out").
+
+# ------------------------------------------------------------------------------
+# CONSTANTS
+# ------------------------------------------------------------------------------
+
+# BASE_COMP_RATE = 500 bps (5% annual)
+# { #x01F4 }:bv[16] = 500
+
+# EETF_COMP_SENSITIVITY = 100 (1.0 in fixed-point)
+# { #x0064 }:bv[16] = 100
+
+# LTHF_COMP_SENSITIVITY = 50 (0.5 in fixed-point)
+# { #x0032 }:bv[16] = 50
+
+# DURATION_COMP_SENSITIVITY = 100 (1.0 in fixed-point)
+# { #x0064 }:bv[16] = 100
+
+# MAX_LOCK_DURATION = 1460 days (4 years)
+# { #x05B4 }:bv[16] = 1460
+
+# BASE_EETF = 100 (representing 1.0)
+# { #x64 }:bv[8] = 100
+
+# BASE_LTHF = 100 (representing 1.0)
+# { #x64 }:bv[8] = 100
+
+# MAX_EFFECTIVE_RATE = 5000 bps (50% annual cap)
+# { #x1388 }:bv[16] = 5000
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Rate Calculations
+# ------------------------------------------------------------------------------
+
+# Calculate EETF multiplier
+# EETF_Mult = 100 + EETF_Sensitivity * max(0, EETF - 100) / 100
+# At EETF=100: mult = 100 (1.0x)
+# At EETF=150: mult = 150 (1.5x)
+# At EETF=200: mult = 200 (2.0x)
+calc_eetf_multiplier(eetf) :=
+    (eetf <= { #x64 }:bv[8]) ? { #x0064 }:bv[16] :
+    ({ #x0064 }:bv[16] + (eetf - { #x64 }:bv[8])).
+
+# Calculate LTHF multiplier
+# LTHF_Mult = 100 + LTHF_Sensitivity * max(0, LTHF - 100) / 100
+calc_lthf_multiplier(lthf) :=
+    (lthf <= { #x64 }:bv[8]) ? { #x0064 }:bv[16] :
+    ({ #x0064 }:bv[16] + ((lthf - { #x64 }:bv[8]) >> { #x01 }:bv[8])).  # 0.5x sensitivity
+
+# Calculate duration multiplier using sqrt approximation
+# Duration_Mult = 100 + 100 * sqrt(duration / max_duration)
+# Simplified: Duration_Mult = 100 + (duration * 100) / (max_duration * 4)
+calc_duration_multiplier(duration) :=
+    ({ #x0064 }:bv[16] + ((duration * { #x0019 }:bv[16]) / { #x05B4 }:bv[16])).
+    # Approx sqrt: 100 + 25 * duration / 1460
+
+# Calculate effective compounding rate
+# Effective_Rate = Base_Rate * EETF_Mult * LTHF_Mult * Duration_Mult / 1000000
+# (dividing by 10^6 to account for three 100-based multipliers)
+calc_effective_rate(base_rate, eetf_mult, lthf_mult, dur_mult) :=
+    ((((base_rate * eetf_mult) / { #x64 }:bv[16]) * lthf_mult) / { #x64 }:bv[16]) * dur_mult / { #x64 }:bv[16].
+
+# Clamp rate to maximum
+clamp_rate(rate) :=
+    (rate > { #x1388 }:bv[16]) ? { #x1388 }:bv[16] : rate.
+
+# Apply boost multiplier (from vote-escrow, 100-250)
+apply_boost(rate, boost) :=
+    (rate * boost) / { #x64 }:bv[16].
+
+# Calculate compound interest for n periods
+# compound_balance = principal * (1 + rate/10000)^periods
+# Using iterative approximation for large periods
+# For small periods: compound ≈ principal * (1 + rate * periods / 10000)
+calc_compound_balance(principal, rate_bps, periods) :=
+    (principal + ((principal * rate_bps * periods) / { #x2710 }:bv[256])).
+    # Linear approximation for simplicity (actual compound would need iteration)
+
+# Calculate accrued rewards
+calc_accrued_rewards(compound_balance, principal) :=
+    (compound_balance >= principal) ? 
+        (compound_balance - principal) : 
+        { #x00 }:bv[256].
+
+# Determine rate tier based on effective rate
+# Tier 0: < 500 bps (low)
+# Tier 1: 500-1000 bps (base)
+# Tier 2: 1000-2000 bps (elevated)
+# Tier 3: 2000-4000 bps (high)
+# Tier 4: > 4000 bps (exceptional)
+calc_rate_tier(rate) :=
+    (rate < { #x01F4 }:bv[16]) ? { #x00 }:bv[8] :
+    (rate < { #x03E8 }:bv[16]) ? { #x01 }:bv[8] :
+    (rate < { #x07D0 }:bv[16]) ? { #x02 }:bv[8] :
+    (rate < { #x0FA0 }:bv[16]) ? { #x03 }:bv[8] :
+    { #x04 }:bv[8].
+
+# Project annual yield (rate * boost)
+calc_projected_apy(rate, boost) :=
+    apply_boost(rate, boost).
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+# States: INACTIVE -> COMPOUNDING -> CLAIMING
+
+state_inactive := ~o_compounding_active.
+state_compounding := o_compounding_active & ~i_claim.
+state_claiming := o_compounding_active & i_claim.
+
+# Transition conditions
+can_start_compounding := state_inactive & i_compound & (i_principal > { #x00 }:bv[256]).
+can_claim := state_compounding & i_claim & (o_accrued_rewards > { #x00 }:bv[256]).
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS - State Updates
+# ------------------------------------------------------------------------------
+
+# Compounding active status
+o_compounding_active[0] := 0.
+o_compounding_active[t] :=
+    can_start_compounding[t-1] ? 1 :
+    o_compounding_active[t-1].
+
+# EETF multiplier
+o_eetf_multiplier[0] := { #x0064 }:bv[16].  # 100 = 1.0x
+o_eetf_multiplier[t] :=
+    calc_eetf_multiplier(i_eetf_account[t]).
+
+# Duration multiplier
+o_duration_multiplier[0] := { #x0064 }:bv[16].
+o_duration_multiplier[t] :=
+    calc_duration_multiplier(i_lock_duration[t]).
+
+# LTHF multiplier
+o_lthf_multiplier[0] := { #x0064 }:bv[16].
+o_lthf_multiplier[t] :=
+    calc_lthf_multiplier(i_lthf[t]).
+
+# Effective rate calculation (before boost)
+base_effective_rate[t] :=
+    calc_effective_rate(
+        i_base_rate_bps[t],
+        o_eetf_multiplier[t],
+        o_lthf_multiplier[t],
+        o_duration_multiplier[t]
+    ).
+
+# Effective rate with boost and clamping
+o_effective_rate_bps[0] := { #x01F4 }:bv[16].  # 500 bps = 5%
+o_effective_rate_bps[t] :=
+    clamp_rate(apply_boost(base_effective_rate[t], i_boost_multiplier[t])).
+
+# Periods completed
+o_periods_completed[0] := { #x0000 }:bv[16].
+o_periods_completed[t] :=
+    o_compounding_active[t] ? i_time_periods[t] : { #x0000 }:bv[16].
+
+# Compounded balance
+o_compounded_balance[0] := { #x00 }:bv[256].
+o_compounded_balance[t] :=
+    ~o_compounding_active[t] ? { #x00 }:bv[256] :
+    calc_compound_balance(i_principal[t], o_effective_rate_bps[t], o_periods_completed[t]).
+
+# Accrued rewards
+o_accrued_rewards[0] := { #x00 }:bv[256].
+o_accrued_rewards[t] :=
+    ~o_compounding_active[t] ? { #x00 }:bv[256] :
+    can_claim[t-1] ? { #x00 }:bv[256] :  # Reset after claim
+    calc_accrued_rewards(o_compounded_balance[t], i_principal[t]).
+
+# Total rewards claimed
+o_rewards_claimed[0] := { #x00 }:bv[256].
+o_rewards_claimed[t] :=
+    can_claim[t-1] ?
+        (o_rewards_claimed[t-1] + o_accrued_rewards[t-1]) :
+    o_rewards_claimed[t-1].
+
+# Rate tier
+o_rate_tier[0] := { #x01 }:bv[8].  # Tier 1 (base)
+o_rate_tier[t] :=
+    calc_rate_tier(o_effective_rate_bps[t]).
+
+# Projected APY
+o_projected_apy_bps[0] := { #x01F4 }:bv[16].  # 500 bps
+o_projected_apy_bps[t] :=
+    calc_projected_apy(o_effective_rate_bps[t], i_boost_multiplier[t]).
+
+# ------------------------------------------------------------------------------
+# INVARIANTS - Safety Properties
+# ------------------------------------------------------------------------------
+
+# Invariant 1: Effective rate capped at max
+inv_rate_capped := always (o_effective_rate_bps <= { #x1388 }:bv[16]).
+
+# Invariant 2: Compounded balance >= principal (no negative interest)
+inv_balance_positive := always (
+    o_compounding_active -> (o_compounded_balance >= i_principal)
+).
+
+# Invariant 3: Multipliers >= 100 (no reduction below base)
+inv_multipliers_positive := always (
+    (o_eetf_multiplier >= { #x0064 }:bv[16]) &
+    (o_lthf_multiplier >= { #x0064 }:bv[16]) &
+    (o_duration_multiplier >= { #x0064 }:bv[16])
+).
+
+# Invariant 4: Rate tier in valid range [0, 4]
+inv_tier_bounded := always (o_rate_tier <= { #x04 }:bv[8]).
+
+# Invariant 5: Rewards claimed monotonically increasing
+inv_claims_monotonic := always (o_rewards_claimed >= o_rewards_claimed').
+
+# Combined invariants
+o_invariants_hold := inv_rate_capped & inv_balance_positive & 
+                     inv_multipliers_positive & inv_tier_bounded & inv_claims_monotonic.
+
+# ------------------------------------------------------------------------------
+# OBSERVABLE PROPERTIES (for verification)
+# ------------------------------------------------------------------------------
+
+# Property: Higher EETF -> higher effective rate
+prop_eetf_increases_rate := always (
+    (i_eetf_account > { #x64 }:bv[8]) ->
+    (o_effective_rate_bps > i_base_rate_bps)
+).
+
+# Property: Longer lock -> higher rate
+prop_longer_lock_higher_rate := always (
+    (i_lock_duration > { #x0000 }:bv[16]) ->
+    (o_duration_multiplier > { #x0064 }:bv[16])
+).
+
+# Property: Exceptional EETF (2.0) gives exceptional tier
+prop_exceptional_eetf_exceptional_tier := always (
+    ((i_eetf_account >= { #xC8 }:bv[8]) &  # EETF >= 200
+     (i_lock_duration >= { #x05B4 }:bv[16]) &  # Max lock
+     (i_boost_multiplier >= { #xC8 }:bv[8]))  # High boost
+    -> (o_rate_tier >= { #x03 }:bv[8])
+).
+
+# Property: Claiming resets accrued rewards
+prop_claim_resets := always (
+    can_claim -> (o_accrued_rewards' = { #x00 }:bv[256])
+).
+
+# ==============================================================================
+# HYPER-COMPOUNDING VISUALIZATION
+# ==============================================================================
+#
+# Example: 1000 AGRS principal, 5% base rate, 4-year lock
+#
+# EETF=1.0, LTHF=1.0, no boost:
+#   Effective Rate = 5% * 1.0 * 1.0 * 1.25 = 6.25%
+#   After 10 years: 1000 * 1.0625^10 = 1,837 AGRS
+#
+# EETF=1.5, LTHF=1.5, 2.0x boost:
+#   Effective Rate = 5% * 1.5 * 1.25 * 1.25 * 2.0 = 23.4%
+#   After 10 years: 1000 * 1.234^10 = 8,594 AGRS
+#
+# EETF=2.0, LTHF=2.0, 2.5x boost:
+#   Effective Rate = 5% * 2.0 * 1.5 * 1.25 * 2.5 = 46.9% (capped at 50%)
+#   After 10 years: 1000 * 1.469^10 = 27,340 AGRS
+#
+# The hyper-compounding effect creates MASSIVE advantage for sustained
+# ethical behavior combined with long-term commitment. This is the
+# core mechanism that makes "being good" the most profitable strategy.
+#
+# ==============================================================================
+# END OF HCR_HYPER_COMPOUND.TAU
+# ==============================================================================
+

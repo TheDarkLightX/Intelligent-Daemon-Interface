@@ -1,0 +1,145 @@
+# Deflationary Agent V40 Audit - Observable Invariants Module
+# Companion to V40 Core for debugging and verification
+# Copyright DarkLightX/Dana Edwards
+#
+# PURPOSE:
+# This module provides observable invariants and debugging outputs
+# that are NOT essential for trading but useful for:
+# - Debugging specification behavior
+# - Verifying safety properties hold
+# - Monitoring agent health
+# - Auditing trade execution
+#
+# USAGE:
+# - Development: Run V40_CORE + V40_AUDIT together
+# - Production: Run V40_CORE alone (maximum performance)
+# - Audit: Post-hoc analysis using V40_AUDIT formulas
+#
+# This file reads outputs from V40_CORE and computes derived observables.
+
+# === INPUT STREAMS (Same as V40 Core) ===
+sbf i0 = ifile("inputs/price.in").
+sbf i1 = ifile("inputs/volume.in").
+sbf i2 = ifile("inputs/trend.in").
+sbf i3 = ifile("inputs/profit_guard.in").
+sbf i4 = ifile("inputs/failure_echo.in").
+
+# === CORE OUTPUTS (Read from V40 Core) ===
+# These are inputs to the audit module, outputs from core
+sbf o0 = ofile("outputs/state.out").
+sbf o1 = ofile("outputs/holding.out").
+sbf o2 = ofile("outputs/buy_signal.out").
+sbf o3 = ofile("outputs/sell_signal.out").
+sbf o6 = ofile("outputs/timer_b0.out").
+sbf o7 = ofile("outputs/timer_b1.out").
+sbf o9 = ofile("outputs/nonce.out").
+sbf o10 = ofile("outputs/entry_price.out").
+sbf o11 = ofile("outputs/profit.out").
+sbf o13 = ofile("outputs/has_burned.out").
+
+# === DERIVED OUTPUTS (Computed from core for observability) ===
+sbf o4 = ofile("outputs/lock.out").               # Re-entrancy lock
+sbf o5 = ofile("outputs/oracle_fresh.out").       # Oracle freshness
+sbf o12 = ofile("outputs/burn_event.out").        # Burn trigger
+
+# === OBSERVABLE INVARIANTS (Safety property witnesses) ===
+sbf o14 = ofile("outputs/obs_action_excl.out").   # !(buy && sell)
+sbf o15 = ofile("outputs/obs_fresh_exec.out").    # executing -> fresh
+sbf o16 = ofile("outputs/obs_burn_profit.out").   # burn -> profit
+sbf o17 = ofile("outputs/obs_nonce_effect.out").  # nonce blocks repeats
+
+# === PROGRESS TRACKING ===
+sbf o18 = ofile("outputs/progress_flag.out").     # Activity detection
+
+# === AUDIT SPECIFICATION (6 clauses for derived values) ===
+r (
+    # === DERIVED VALUES (Always true by construction) ===
+    # Lock mirrors state
+    (o4[t] = o0[t]) &&
+    
+    # Fresh mirrors volume
+    (o5[t] = i1[t]) &&
+    
+    # Burn event mirrors profit
+    (o12[t] = o11[t]) &&
+    
+    # === OBSERVABLE INVARIANTS ===
+    # These should ALWAYS be 1 if specification is correct
+    # If any becomes 0, there's a bug in the core spec
+    
+    # Progress flag: activity detected
+    (o18[t] = o2[t] | o3[t] | (o7[t] & o6[t]) | (o0[t] & o0[t-1]')) &&
+    
+    # Action exclusivity: never buy AND sell
+    # Gated by progress to avoid t=0 artifacts
+    (o14[t] = o18[t]' | (o2[t] & o3[t])') &&
+    
+    # Fresh oracle: executing implies fresh
+    (o15[t] = o18[t]' | (o0[t]' | o5[t])) &&
+    
+    # Burn-profit coupling: burn implies profit
+    (o16[t] = o18[t]' | (o12[t]' | o11[t])) &&
+    
+    # Nonce effect: nonce blocks immediate re-entry
+    (o17[t] = o18[t]' | (o2[t]' | o9[t-1]'))
+)
+
+# === INVARIANT SEMANTICS ===
+#
+# All observable invariants (o14-o17) should be 1 at all times after t=0.
+# They are gated by progress flag to prevent spurious violations at startup.
+#
+# o14 = 1: Action exclusivity holds
+#   - It's impossible for o2=1 AND o3=1 simultaneously
+#   - Violation would indicate state machine bug
+#
+# o15 = 1: Fresh oracle invariant holds
+#   - Whenever executing (o0=1), oracle is fresh (o5=i1=1)
+#   - Violation would indicate entry/continuation without volume
+#
+# o16 = 1: Burn-profit coupling holds
+#   - Burn event only fires when profit is achieved
+#   - Since o12=o11, this is tautologically true
+#
+# o17 = 1: Nonce effect holds
+#   - Cannot buy (o2=1) when nonce is set (o9[t-1]=1)
+#   - Prevents rapid re-entry attacks
+
+# === USAGE MODES ===
+#
+# MODE 1: Combined Execution
+# Run both V40_CORE and V40_AUDIT specifications.
+# Core handles trading, Audit provides observability.
+# Overhead: ~60% additional BDD size
+#
+# MODE 2: Post-Hoc Analysis
+# Run V40_CORE in production.
+# Apply V40_AUDIT formulas to execution trace for verification.
+# Overhead: Zero at runtime
+#
+# MODE 3: Continuous Monitoring
+# Run V40_CORE in production.
+# Daemon computes invariants locally (simple Boolean checks).
+# Alert if any invariant fails.
+# Overhead: Minimal (daemon-side only)
+
+# === DAEMON MONITORING CODE (Pseudo-code) ===
+# 
+# def check_invariants(state):
+#     progress = state.buy or state.sell or state.timeout or state.entry
+#     if not progress:
+#         return True  # Skip check before first activity
+#     
+#     action_excl = not (state.buy and state.sell)
+#     fresh_exec = (not state.executing) or state.volume
+#     burn_profit = (not state.burn) or state.profit
+#     nonce_effect = (not state.buy) or (not state.prev_nonce)
+#     
+#     return action_excl and fresh_exec and burn_profit and nonce_effect
+
+# === PERFORMANCE IMPACT ===
+# Clause count: 8 (audit only)
+# Combined with core: 18 clauses (similar to V35)
+# BDD overhead: ~50-60% when combined
+# Recommended: Use post-hoc or daemon-side monitoring for production
+

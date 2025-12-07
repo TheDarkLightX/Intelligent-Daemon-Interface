@@ -1,0 +1,257 @@
+# Crypto Primitives in Tau Language
+# What CAN and CANNOT be implemented within 32-bit bitvector constraints
+# Copyright DarkLightX/Dana Edwards
+#
+# For Tau Testnet Alpha (https://github.com/IDNI/tau-testnet)
+#
+# ============================================================================
+# WHAT TAU *CAN* IMPLEMENT (32-bit bitvectors)
+# ============================================================================
+#
+# ✅ LFSR (Linear Feedback Shift Register) - PRNG
+# ✅ CRC (Cyclic Redundancy Check) - Checksums
+# ✅ Simple hash mixing functions
+# ✅ Merkle tree verification (given pre-computed hashes)
+# ✅ Commit-reveal schemes (given external hashing)
+# ✅ Time-lock puzzles (iteration counting)
+# ✅ Signature verification result acceptance (boolean)
+# ✅ Multi-party computation coordination
+# ✅ Threshold schemes (k-of-n logic)
+#
+# ============================================================================
+# WHAT TAU *CANNOT* IMPLEMENT (needs 256-bit / special ops)
+# ============================================================================
+#
+# ❌ SHA256, Keccak, Blake2 (256-bit state)
+# ❌ Elliptic curve operations (field arithmetic)
+# ❌ BLS signatures (pairing operations)
+# ❌ RSA (arbitrary precision modular exponentiation)
+# ❌ AES encryption (128-bit state, S-box)
+# ❌ zkSNARK/zkSTARK generation/verification
+#
+# ============================================================================
+# IMPLEMENTED PRIMITIVES
+# ============================================================================
+
+# === 1. GALOIS LFSR (16-bit PRNG) ===
+# Maximal period: 2^16 - 1 = 65535
+# Polynomial: x^16 + x^14 + x^13 + x^11 + 1 (0xB400)
+
+bv[16] i_lfsr_seed = ifile("inputs/crypto_lfsr_seed.in").
+sbf i_lfsr_advance = ifile("inputs/crypto_lfsr_advance.in").
+
+bv[16] o_lfsr_state = ofile("outputs/crypto_lfsr_state.out").
+bv[16] o_lfsr_output = ofile("outputs/crypto_lfsr_output.out").
+
+# LFSR step function
+lfsr_feedback(state) := (state & {1}:bv[16]) = {1}:bv[16].
+lfsr_next(state) := lfsr_feedback(state) ? 
+    ((state >> {1}:bv[16]) ^ {#xB400}:bv[16]) :
+    (state >> {1}:bv[16]).
+
+# === 2. CRC-16 CHECKSUM ===
+# Polynomial: CRC-16-CCITT (0x1021)
+
+bv[16] i_crc_data = ifile("inputs/crypto_crc_data.in").
+bv[16] i_crc_init = ifile("inputs/crypto_crc_init.in").
+sbf i_crc_compute = ifile("inputs/crypto_crc_compute.in").
+
+bv[16] o_crc_result = ofile("outputs/crypto_crc_result.out").
+
+# CRC step (one byte at a time, simplified)
+crc_poly := {#x1021}:bv[16].
+crc_step(crc, data) := 
+    ((crc ^ (data << {8}:bv[16])) & {#x8000}:bv[16]) = {#x8000}:bv[16] ?
+    ((crc << {1}:bv[16]) ^ crc_poly) :
+    (crc << {1}:bv[16]).
+
+# === 3. SIMPLE HASH MIXING ===
+# Jenkins one-at-a-time style (32-bit)
+# NOT cryptographically secure, but good for checksums
+
+bv[32] i_hash_input = ifile("inputs/crypto_hash_input.in").
+bv[32] i_hash_state = ifile("inputs/crypto_hash_state.in").
+sbf i_hash_mix = ifile("inputs/crypto_hash_mix.in").
+
+bv[32] o_hash_result = ofile("outputs/crypto_hash_result.out").
+
+# Mix function
+hash_mix(h, val) := 
+    ((h + val) ^ ((h + val) >> {10}:bv[32])) * {#x9E3779B9}:bv[32].
+
+# === 4. MERKLE PATH VERIFICATION ===
+# Given pre-computed hashes (from external system), verify path
+# This is the logic layer - actual hashing done externally
+
+bv[32] i_merkle_leaf = ifile("inputs/crypto_merkle_leaf.in").
+bv[32] i_merkle_sibling = ifile("inputs/crypto_merkle_sibling.in").
+bv[32] i_merkle_expected_root = ifile("inputs/crypto_merkle_root.in").
+sbf i_merkle_is_left = ifile("inputs/crypto_merkle_isleft.in").
+sbf i_merkle_verify = ifile("inputs/crypto_merkle_verify.in").
+
+# External hash input (daemon computes hash(left || right))
+bv[32] i_merkle_computed_hash = ifile("inputs/crypto_merkle_computed.in").
+
+bv[32] o_merkle_current = ofile("outputs/crypto_merkle_current.out").
+sbf o_merkle_valid = ofile("outputs/crypto_merkle_valid.out").
+
+# === 5. TIME-LOCK PUZZLE (Iteration Counting) ===
+# Require N iterations before unlocking
+# Each tick = one iteration
+
+bv[32] i_timelock_target = ifile("inputs/crypto_timelock_target.in").
+sbf i_timelock_start = ifile("inputs/crypto_timelock_start.in").
+
+bv[32] o_timelock_counter = ofile("outputs/crypto_timelock_counter.out").
+sbf o_timelock_complete = ofile("outputs/crypto_timelock_complete.out").
+sbf o_timelock_active = ofile("outputs/crypto_timelock_active.out").
+
+# === 6. THRESHOLD SIGNATURE COORDINATION (k-of-n) ===
+# Coordinate multi-party signing - actual signatures external
+
+bv[8] i_threshold_k = ifile("inputs/crypto_threshold_k.in").    # Required signers
+bv[8] i_threshold_n = ifile("inputs/crypto_threshold_n.in").    # Total signers
+sbf i_signer_1_ok = ifile("inputs/crypto_signer1.in").
+sbf i_signer_2_ok = ifile("inputs/crypto_signer2.in").
+sbf i_signer_3_ok = ifile("inputs/crypto_signer3.in").
+sbf i_signer_4_ok = ifile("inputs/crypto_signer4.in").
+sbf i_signer_5_ok = ifile("inputs/crypto_signer5.in").
+
+bv[8] o_signers_collected = ofile("outputs/crypto_signers_count.out").
+sbf o_threshold_met = ofile("outputs/crypto_threshold_met.out").
+
+# Count signers
+count_signers(s1, s2, s3, s4, s5) :=
+    (s1 ? {1}:bv[8] : {0}:bv[8]) +
+    (s2 ? {1}:bv[8] : {0}:bv[8]) +
+    (s3 ? {1}:bv[8] : {0}:bv[8]) +
+    (s4 ? {1}:bv[8] : {0}:bv[8]) +
+    (s5 ? {1}:bv[8] : {0}:bv[8]).
+
+# === 7. SEQUENCE NUMBER / NONCE TRACKING ===
+# For replay protection (Tau Testnet uses sequence_number)
+
+bv[32] i_expected_seq = ifile("inputs/crypto_expected_seq.in").
+bv[32] i_provided_seq = ifile("inputs/crypto_provided_seq.in").
+sbf i_seq_check = ifile("inputs/crypto_seq_check.in").
+
+sbf o_seq_valid = ofile("outputs/crypto_seq_valid.out").
+bv[32] o_next_expected_seq = ofile("outputs/crypto_next_seq.out").
+
+# === 8. BLS SIGNATURE VERIFICATION RESULT ===
+# Actual BLS verification done by py_ecc in Tau Testnet
+# Tau accepts the boolean result
+
+sbf i_bls_sig_valid = ifile("inputs/crypto_bls_valid.in").
+bv[16] i_bls_signer_id = ifile("inputs/crypto_bls_signer.in").
+
+sbf o_sig_accepted = ofile("outputs/crypto_sig_accepted.out").
+
+# ============================================================================
+# CRYPTO PRIMITIVES SPECIFICATION
+# ============================================================================
+r (
+    # === LFSR PRNG ===
+    (o_lfsr_state[t] = 
+        i_lfsr_advance[t] ?
+            lfsr_next(o_lfsr_state[t-1]) :
+            (o_lfsr_state[t-1] = {0}:bv[16] ? i_lfsr_seed[t] : o_lfsr_state[t-1])) &&
+    
+    (o_lfsr_output[t] = o_lfsr_state[t] & {#xFF}:bv[16]) &&  # Low 8 bits
+    
+    # === CRC-16 ===
+    (o_crc_result[t] = i_crc_compute[t] ?
+        crc_step(o_crc_result[t-1], i_crc_data[t]) :
+        (i_crc_init[t] != {0}:bv[16] ? i_crc_init[t] : o_crc_result[t-1])) &&
+    
+    # === HASH MIXING ===
+    (o_hash_result[t] = i_hash_mix[t] ?
+        hash_mix(o_hash_result[t-1], i_hash_input[t]) :
+        (i_hash_state[t] != {0}:bv[32] ? i_hash_state[t] : o_hash_result[t-1])) &&
+    
+    # === MERKLE PATH VERIFICATION ===
+    # Track current hash as we walk up the tree
+    (o_merkle_current[t] = i_merkle_verify[t] ?
+        i_merkle_computed_hash[t] :  # Daemon computes actual hash
+        (o_merkle_current[t-1] = {0}:bv[32] ? i_merkle_leaf[t] : o_merkle_current[t-1])) &&
+    
+    # Valid when we reach expected root
+    (o_merkle_valid[t] = o_merkle_current[t] = i_merkle_expected_root[t]) &&
+    
+    # === TIME-LOCK PUZZLE ===
+    (o_timelock_active[t] = i_timelock_start[t] | 
+        (o_timelock_active[t-1] & o_timelock_complete[t-1]')) &&
+    
+    (o_timelock_counter[t] = 
+        i_timelock_start[t] ? {0}:bv[32] :
+        (o_timelock_active[t-1] ? o_timelock_counter[t-1] + {1}:bv[32] : o_timelock_counter[t-1])) &&
+    
+    (o_timelock_complete[t] = o_timelock_counter[t] >= i_timelock_target[t]) &&
+    
+    # === THRESHOLD SIGNATURES ===
+    (o_signers_collected[t] = count_signers(
+        i_signer_1_ok[t], i_signer_2_ok[t], i_signer_3_ok[t],
+        i_signer_4_ok[t], i_signer_5_ok[t])) &&
+    
+    (o_threshold_met[t] = o_signers_collected[t] >= i_threshold_k[t]) &&
+    
+    # === SEQUENCE NUMBER VALIDATION ===
+    (o_seq_valid[t] = i_seq_check[t] & (i_provided_seq[t] = i_expected_seq[t])) &&
+    
+    (o_next_expected_seq[t] = o_seq_valid[t] ?
+        i_expected_seq[t] + {1}:bv[32] : i_expected_seq[t]) &&
+    
+    # === BLS SIGNATURE RESULT ===
+    (o_sig_accepted[t] = i_bls_sig_valid[t])
+)
+
+# ============================================================================
+# INTEGRATION WITH TAU TESTNET ALPHA
+# ============================================================================
+#
+# The Tau Testnet (https://github.com/IDNI/tau-testnet) uses:
+#
+# 1. BLS SIGNATURES (py_ecc)
+#    - Signature verification happens in Python (test_sendtx_crypto.py)
+#    - Result fed to Tau as boolean i_bls_sig_valid
+#
+# 2. SEQUENCE NUMBERS
+#    - Replay protection via sequence_number field
+#    - Tau tracks and validates: i_provided_seq = i_expected_seq
+#
+# 3. MERKLE ROOTS
+#    - Block header contains merkle_root of transactions
+#    - Tau can verify path given pre-computed hashes
+#
+# 4. GENESIS.TAU VALIDATION
+#    - Operations validated against Tau logic
+#    - Rules can be updated via pointwise revision
+
+# ============================================================================
+# CRYPTO PRIMITIVE SUMMARY
+# ============================================================================
+#
+# | Primitive         | Tau Impl | Notes                              |
+# |-------------------|----------|-------------------------------------|
+# | LFSR PRNG         | ✅ Full  | 16-bit, maximal period             |
+# | CRC-16            | ✅ Full  | Checksum verification              |
+# | Hash mixing       | ✅ Partial| 32-bit, not cryptographic         |
+# | Merkle verify     | ✅ Logic | Actual hashing external            |
+# | Time-lock         | ✅ Full  | Iteration counting                 |
+# | k-of-n threshold  | ✅ Full  | Coordination only                  |
+# | Sequence numbers  | ✅ Full  | Replay protection                  |
+# | BLS signatures    | ❌ External| Accept boolean result            |
+# | SHA256/Keccak     | ❌ N/A   | 256-bit state required             |
+# | Elliptic curves   | ❌ N/A   | Field arithmetic required          |
+# | AES encryption    | ❌ N/A   | 128-bit state, S-box required      |
+
+# ============================================================================
+# USING CRYPTO PRIMITIVES IN AGENTS
+# ============================================================================
+#
+# Example: Replay-protected deflationary transfer
+#
+#   valid_transfer := o_sig_accepted & o_seq_valid & amount_ok
+#   do_transfer := valid_transfer & o_threshold_met  # Multi-sig
+#   burn_amount := do_transfer ? calc_burn(amount) : 0
+

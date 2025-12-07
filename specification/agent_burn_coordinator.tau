@@ -1,0 +1,278 @@
+# ==============================================================================
+# AGENT BURN COORDINATOR - Optimal Burn Timing & Cascade Maximization
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - Specialized Agent
+#
+# Purpose: Coordinate burn timing across the ecosystem to maximize
+# deflationary impact while respecting circuit breakers
+#
+# Key Functions:
+# - Monitor EETF trends for cascade trigger optimization
+# - Batch burns for gas efficiency
+# - Coordinate with PRNG for lottery timing
+# - Implement gradual parameter adjustments
+# - Emergency circuit breaker management
+#
+# FSM States:
+# 0: MONITORING - Watching network metrics
+# 1: ACCUMULATING - Collecting fees for batch burn
+# 2: EXECUTING - Performing coordinated burn
+# 3: COOLDOWN - Post-burn waiting period
+# 4: EMERGENCY - Circuit breaker active
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Network Metrics
+# ------------------------------------------------------------------------------
+
+bv[8] i_eetf_current = ifile("inputs/eetf_current.in").
+bv[8] i_eetf_7d_avg = ifile("inputs/eetf_7d_avg.in").
+bv[8] i_eetf_trend = ifile("inputs/eetf_trend.in").  # 0=down, 100=stable, 200=up
+
+bv[256] i_pending_fees = ifile("inputs/pending_fees.in").
+bv[256] i_pending_penalties = ifile("inputs/pending_penalties.in").
+bv[256] i_treasury_balance = ifile("inputs/treasury_balance.in").
+
+bv[64] i_current_price = ifile("inputs/current_price.in").
+bv[64] i_price_7d_ago = ifile("inputs/price_7d_ago.in").
+bv[64] i_liquidity_depth = ifile("inputs/liquidity_depth.in").
+bv[64] i_min_liquidity = ifile("inputs/min_liquidity.in").
+
+bv[16] i_prng_seed = ifile("inputs/prng_seed.in").
+bv[32] i_block_number = ifile("inputs/block_number.in").
+
+sbf i_manual_trigger = ifile("inputs/manual_trigger.in").
+sbf i_emergency_halt = ifile("inputs/emergency_halt.in").
+
+# Batch parameters
+bv[8] i_min_batch_size_pct = ifile("inputs/min_batch_size_pct.in").  # Min % of treasury
+bv[8] i_max_consecutive_burns = ifile("inputs/max_consecutive_burns.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Coordinator State
+# ------------------------------------------------------------------------------
+
+bv[8] o_current_state = ofile("outputs/current_state.out").
+
+bv[256] o_accumulated_fees = ofile("outputs/accumulated_fees.out").
+bv[256] o_burn_amount = ofile("outputs/burn_amount.out").
+bv[256] o_cumulative_burns = ofile("outputs/cumulative_burns.out").
+
+bv[8] o_optimal_cascade = ofile("outputs/optimal_cascade.out").
+bv[8] o_current_cascade = ofile("outputs/current_cascade.out").
+bv[16] o_burn_multiplier = ofile("outputs/burn_multiplier.out").
+
+sbf o_burn_recommended = ofile("outputs/burn_recommended.out").
+sbf o_circuit_breaker_active = ofile("outputs/circuit_breaker_active.out").
+sbf o_lottery_eligible = ofile("outputs/lottery_eligible.out").
+sbf o_lottery_won = ofile("outputs/lottery_won.out").
+
+bv[8] o_consecutive_burn_days = ofile("outputs/consecutive_burn_days.out").
+bv[8] o_cooldown_remaining = ofile("outputs/cooldown_remaining.out").
+
+bv[16] o_efficiency_score = ofile("outputs/efficiency_score.out").  # Burns per EETF improvement
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Timing Optimization
+# ------------------------------------------------------------------------------
+
+# Check if EETF is trending up (good time to burn)
+eetf_trending_up(trend) := trend > { #x96 }:bv[8].  # > 150
+
+# Check if near cascade threshold
+near_cascade_threshold(eetf) :=
+    ((eetf > { #x73 }:bv[8]) & (eetf <= { #x78 }:bv[8])) |  # Near 1.2
+    ((eetf > { #x87 }:bv[8]) & (eetf <= { #x8C }:bv[8])) |  # Near 1.4
+    ((eetf > { #x9B }:bv[8]) & (eetf <= { #xA0 }:bv[8])) |  # Near 1.6
+    ((eetf > { #xAF }:bv[8]) & (eetf <= { #xB4 }:bv[8])).   # Near 1.8
+
+# Calculate optimal cascade (what we're aiming for)
+calc_optimal_cascade(eetf, trend) :=
+    (eetf_trending_up(trend) & near_cascade_threshold(eetf)) ?
+        ((eetf > { #xAF }:bv[8]) ? { #x04 }:bv[8] :
+         (eetf > { #x9B }:bv[8]) ? { #x03 }:bv[8] :
+         (eetf > { #x87 }:bv[8]) ? { #x02 }:bv[8] :
+         { #x01 }:bv[8]) :
+    calc_current_cascade(eetf).
+
+calc_current_cascade(eetf) :=
+    (eetf > { #xB4 }:bv[8]) ? { #x04 }:bv[8] :
+    (eetf > { #xA0 }:bv[8]) ? { #x03 }:bv[8] :
+    (eetf > { #x8C }:bv[8]) ? { #x02 }:bv[8] :
+    (eetf > { #x78 }:bv[8]) ? { #x01 }:bv[8] :
+    { #x00 }:bv[8].
+
+# Circuit breaker conditions
+price_safe(current, past) :=
+    (past = { #x00 }:bv[64]) ? 1 :
+    (current >= ((past * { #x46 }:bv[64]) / { #x64 }:bv[64])).  # >= 70%
+
+liquidity_safe(depth, min) :=
+    depth >= min.
+
+consecutive_safe(days, max) :=
+    days < max.
+
+circuit_breaker_ok(price_curr, price_past, liq_depth, min_liq, consec, max_consec) :=
+    price_safe(price_curr, price_past) &
+    liquidity_safe(liq_depth, min_liq) &
+    consecutive_safe(consec, max_consec).
+
+# Batch size check
+batch_ready(accumulated, treasury, min_pct) :=
+    (treasury = { #x00 }:bv[256]) ? 0 :
+    ((accumulated * { #x64 }:bv[256]) >= (treasury * min_pct)).
+
+# Lottery check
+is_lottery_winner(seed) :=
+    (seed & { #x00FF }:bv[16]) < { #x001A }:bv[16].
+
+# Burn recommendation
+should_burn(cascade_current, cascade_optimal, batch_ready, circuit_ok, trend_up) :=
+    circuit_ok &
+    batch_ready &
+    ((cascade_current >= cascade_optimal) | trend_up).
+
+# Burn multiplier (same as AEB)
+calc_burn_mult(eetf) :=
+    (eetf <= { #x64 }:bv[8]) ? { #x0064 }:bv[16] :
+    (((eetf * eetf) / { #x64 }:bv[16]) > { #x0190 }:bv[16]) ?
+        { #x0190 }:bv[16] :
+        ((eetf * eetf) / { #x64 }:bv[16]).
+
+# Efficiency score (burns per unit EETF improvement)
+calc_efficiency(burns, eetf_change) :=
+    (eetf_change = { #x00 }:bv[8]) ? { #x0000 }:bv[16] :
+    ((burns * { #x64 }:bv[256]) / eetf_change).
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+
+state_monitoring := o_current_state = { #x00 }:bv[8].
+state_accumulating := o_current_state = { #x01 }:bv[8].
+state_executing := o_current_state = { #x02 }:bv[8].
+state_cooldown := o_current_state = { #x03 }:bv[8].
+state_emergency := o_current_state = { #x04 }:bv[8].
+
+# Transitions
+can_start_accumulating := state_monitoring & 
+                          (i_pending_fees > { #x00 }:bv[256]) &
+                          ~o_circuit_breaker_active.
+
+can_execute := state_accumulating & o_burn_recommended.
+
+can_cooldown := state_executing.
+
+can_resume := state_cooldown & (o_cooldown_remaining = { #x00 }:bv[8]).
+
+can_emergency := ~i_emergency_halt -> ~o_circuit_breaker_active.
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS
+# ------------------------------------------------------------------------------
+
+# Circuit breaker
+o_circuit_breaker_active[0] := 0.
+o_circuit_breaker_active[t] :=
+    i_emergency_halt[t] ? 1 :
+    ~circuit_breaker_ok(i_current_price[t], i_price_7d_ago[t],
+                        i_liquidity_depth[t], i_min_liquidity[t],
+                        o_consecutive_burn_days[t], i_max_consecutive_burns[t]).
+
+# FSM State
+o_current_state[0] := { #x00 }:bv[8].
+o_current_state[t] :=
+    o_circuit_breaker_active[t] ? { #x04 }:bv[8] :  # EMERGENCY
+    can_start_accumulating[t-1] ? { #x01 }:bv[8] :  # ACCUMULATING
+    can_execute[t-1] ? { #x02 }:bv[8] :              # EXECUTING
+    can_cooldown[t-1] ? { #x03 }:bv[8] :             # COOLDOWN
+    can_resume[t-1] ? { #x00 }:bv[8] :               # MONITORING
+    o_current_state[t-1].
+
+# Cascade tracking
+o_current_cascade[0] := { #x00 }:bv[8].
+o_current_cascade[t] := calc_current_cascade(i_eetf_current[t]).
+
+o_optimal_cascade[0] := { #x00 }:bv[8].
+o_optimal_cascade[t] := calc_optimal_cascade(i_eetf_current[t], i_eetf_trend[t]).
+
+# Burn multiplier
+o_burn_multiplier[0] := { #x0064 }:bv[16].
+o_burn_multiplier[t] := calc_burn_mult(i_eetf_current[t]).
+
+# Accumulation
+o_accumulated_fees[0] := { #x00 }:bv[256].
+o_accumulated_fees[t] :=
+    state_executing[t-1] ? { #x00 }:bv[256] :  # Reset after burn
+    state_accumulating[t] ?
+        (o_accumulated_fees[t-1] + i_pending_fees[t] + i_pending_penalties[t]) :
+    o_accumulated_fees[t-1].
+
+# Burn recommendation
+o_burn_recommended[0] := 0.
+o_burn_recommended[t] :=
+    should_burn(o_current_cascade[t], o_optimal_cascade[t],
+                batch_ready(o_accumulated_fees[t], i_treasury_balance[t], i_min_batch_size_pct[t]),
+                ~o_circuit_breaker_active[t],
+                eetf_trending_up(i_eetf_trend[t])).
+
+# Lottery eligibility
+o_lottery_eligible[0] := 0.
+o_lottery_eligible[t] := o_current_cascade[t] >= { #x03 }:bv[8].
+
+o_lottery_won[0] := 0.
+o_lottery_won[t] := o_lottery_eligible[t] & is_lottery_winner(i_prng_seed[t]).
+
+# Burn amount
+o_burn_amount[0] := { #x00 }:bv[256].
+o_burn_amount[t] :=
+    ~state_executing[t] ? { #x00 }:bv[256] :
+    ((o_accumulated_fees[t-1] * o_burn_multiplier[t]) / { #x64 }:bv[256]) +
+    (o_lottery_won[t] ? o_accumulated_fees[t-1] : { #x00 }:bv[256]).
+
+# Cumulative burns
+o_cumulative_burns[0] := { #x00 }:bv[256].
+o_cumulative_burns[t] := o_cumulative_burns[t-1] + o_burn_amount[t].
+
+# Consecutive burn days
+o_consecutive_burn_days[0] := { #x00 }:bv[8].
+o_consecutive_burn_days[t] :=
+    state_executing[t] ? (o_consecutive_burn_days[t-1] + { #x01 }:bv[8]) :
+    state_cooldown[t] ? { #x00 }:bv[8] :
+    o_consecutive_burn_days[t-1].
+
+# Cooldown
+o_cooldown_remaining[0] := { #x00 }:bv[8].
+o_cooldown_remaining[t] :=
+    can_cooldown[t-1] ? { #x03 }:bv[8] :  # 3 period cooldown
+    (o_cooldown_remaining[t-1] > { #x00 }:bv[8]) ?
+        (o_cooldown_remaining[t-1] - { #x01 }:bv[8]) :
+    { #x00 }:bv[8].
+
+# Efficiency score
+o_efficiency_score[0] := { #x0000 }:bv[16].
+o_efficiency_score[t] :=
+    state_executing[t] ?
+        calc_efficiency(o_burn_amount[t], 
+                       (i_eetf_current[t] > i_eetf_7d_avg[t]) ? 
+                           (i_eetf_current[t] - i_eetf_7d_avg[t]) : 
+                           { #x00 }:bv[8]) :
+    o_efficiency_score[t-1].
+
+# ------------------------------------------------------------------------------
+# INVARIANTS
+# ------------------------------------------------------------------------------
+
+inv_state_valid := always (o_current_state <= { #x04 }:bv[8]).
+inv_burns_monotonic := always (o_cumulative_burns >= o_cumulative_burns').
+inv_emergency_stops := always (o_circuit_breaker_active -> (o_burn_amount = { #x00 }:bv[256])).
+inv_cooldown_bounded := always (o_cooldown_remaining <= { #x0A }:bv[8]).
+
+o_all_invariants := inv_state_valid & inv_burns_monotonic & 
+                    inv_emergency_stops & inv_cooldown_bounded.
+
+# ==============================================================================
+# END OF AGENT_BURN_COORDINATOR.TAU
+# ==============================================================================
+

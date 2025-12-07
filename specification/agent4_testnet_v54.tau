@@ -1,0 +1,287 @@
+# ============================================================================
+# AGENT V54: UNIFIED PREDICTOR AGENT
+# ============================================================================
+# Combines:
+# 1. Infinite Deflation Engine (V52)
+# 2. Ethical AI Alignment (V53)
+# 3. Chart Analysis Prediction (chart_predictor.tau)
+#
+# This is the most sophisticated agent, using:
+# - Technical analysis for market timing
+# - Supply predictions for scarcity anticipation
+# - EETF optimization for ethical alignment
+# - Multi-horizon predictions for strategic planning
+#
+# UNIQUE FEATURE: Predictive ethical optimization
+# The agent predicts future scarcity and pre-positions itself ethically
+# to maximize rewards when the predicted scarcity arrives.
+# ============================================================================
+
+# =============================================================================
+# IMPORTS (conceptual)
+# =============================================================================
+# import "libraries/infinite_deflation_engine.tau"
+# import "libraries/ethical_ai_alignment.tau"
+# import "libraries/chart_predictor.tau"
+
+# =============================================================================
+# INPUTS - Comprehensive
+# =============================================================================
+
+# Market data
+i_price : bv[64] = in file("inputs/price.in").
+i_price_1 : bv[64] = in file("inputs/price_1.in").
+i_price_2 : bv[64] = in file("inputs/price_2.in").
+i_price_3 : bv[64] = in file("inputs/price_3.in").
+i_price_4 : bv[64] = in file("inputs/price_4.in").
+
+# Volume
+i_volume : bv[128] = in file("inputs/volume.in").
+
+# Supply data
+i_current_supply : bv[256] = in file("inputs/current_supply.in").
+i_initial_supply : bv[256] = in file("inputs/initial_supply.in").
+i_deflation_rate : bv[16] = in file("inputs/deflation_rate.in").
+
+# EETF data
+i_agent_eetf : bv[16] = in file("inputs/agent_eetf.in").
+i_network_eetf : bv[16] = in file("inputs/network_eetf.in").
+i_agent_lthf : bv[16] = in file("inputs/agent_lthf.in").
+
+# Agent state
+i_agent_balance : bv[256] = in file("inputs/agent_balance.in").
+
+# Predictor outputs (from chart_predictor)
+i_predicted_price_short : bv[64] = in file("inputs/predicted_price_short.in").
+i_predicted_price_long : bv[64] = in file("inputs/predicted_price_long.in").
+i_predicted_scarcity_short : bv[256] = in file("inputs/predicted_scarcity_short.in").
+i_predicted_scarcity_long : bv[256] = in file("inputs/predicted_scarcity_long.in").
+i_rsi : bv[16] = in file("inputs/rsi.in").
+i_ema_bullish : sbf = in file("inputs/ema_bullish.in").
+i_market_regime : bv[3] = in file("inputs/market_regime.in").
+i_composite_signal : bv[8] = in file("inputs/composite_signal.in").
+
+# Circuit breaker
+i_circuit_ok : sbf = in file("inputs/circuit_ok.in").
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# =============================================================================
+# INTERNAL STATE
+# =============================================================================
+
+# Position state
+sbf s_in_position[0] := 0.
+sbf s_in_position[n] := 
+    (s_in_position[n-1] & ~o_exit_signal[n]) |
+    (~s_in_position[n-1] & o_entry_signal[n]).
+
+# Entry details
+bv[64] s_entry_price[0] := { #x00 }:bv[64].
+bv[64] s_entry_price[n] := 
+    (o_entry_signal[n]) ? i_price[n] : s_entry_price[n-1].
+
+bv[256] s_entry_scarcity[0] := { #x01 }:bv[256].
+bv[256] s_entry_scarcity[n] := 
+    (o_entry_signal[n]) ? o_current_scarcity[n] : s_entry_scarcity[n-1].
+
+# Prediction accuracy tracking
+bv[32] s_correct_predictions[0] := { #x00 }:bv[32].
+bv[32] s_correct_predictions[n] := 
+    (o_prediction_validated[n]) ? (s_correct_predictions[n-1] + { #x01 }:bv[32]) : s_correct_predictions[n-1].
+
+bv[32] s_total_predictions[0] := { #x00 }:bv[32].
+bv[32] s_total_predictions[n] := 
+    (o_prediction_made[n]) ? (s_total_predictions[n-1] + { #x01 }:bv[32]) : s_total_predictions[n-1].
+
+# Ethical optimization history
+# Use bv[32] for calculation to avoid overflow (300 * 256 > 65535)
+bv[16] s_eetf_ema[0] := { #x0064 }:bv[16].
+bv[32] ema_calc[n] := 
+    ((i_agent_eetf[n] & { #x0000FFFF }:bv[32]) * { #x33 }:bv[32] + 
+     (s_eetf_ema[n-1] & { #x0000FFFF }:bv[32]) * { #xCD }:bv[32]) / { #x100 }:bv[32].
+bv[16] s_eetf_ema[n] := ema_calc[n] & { #xFFFF }:bv[16].
+
+# =============================================================================
+# PREDICTION INTEGRATION
+# =============================================================================
+
+# Calculate current scarcity
+current_scarcity(current_supply, initial_supply) :=
+    (current_supply > { #x00 }:bv[256]) ?
+    (initial_supply / current_supply) : { #xFFFFFFFF }:bv[256].
+
+# Scarcity trend (positive = increasing scarcity = bullish for holders)
+scarcity_trend(predicted_scarcity, current_scarcity) :=
+    (predicted_scarcity > current_scarcity) ? { #b01 }:bv[2] :  # Increasing
+    (predicted_scarcity < current_scarcity) ? { #b10 }:bv[2] :  # Decreasing (impossible in deflation)
+    { #b00 }:bv[2].  # Stable
+
+# Combined prediction confidence
+prediction_confidence(composite_signal, scarcity_trend, ema_bullish) :=
+    (composite_signal > { #xAA }:bv[8] & scarcity_trend = { #b01 }:bv[2] & ema_bullish) ? { #b11 }:bv[2] :
+    (composite_signal > { #x8C }:bv[8] & ema_bullish) ? { #b10 }:bv[2] :
+    (composite_signal > { #x64 }:bv[8]) ? { #b01 }:bv[2] :
+    { #b00 }:bv[2].
+
+# Regime-adjusted EETF requirement
+regime_eetf_requirement(regime) :=
+    (regime = { #b011 }:bv[3]) ? { #x00C8 }:bv[16] :       # MARKDOWN
+    (regime = { #b100 }:bv[3]) ? { #x0096 }:bv[16] :       # HIGH_VOL_BULL
+    (regime = { #b101 }:bv[3]) ? { #x0096 }:bv[16] :       # HIGH_VOL_BEAR
+    { #x0064 }:bv[16].
+
+# =============================================================================
+# ENTRY/EXIT STRATEGY
+# =============================================================================
+
+# Predictive entry: enter when predictions are favorable AND EETF is sufficient
+valid_predictive_entry(confidence, eetf, regime_requirement, in_position, circuit) :=
+    circuit & ~in_position &
+    (confidence >= { #b10 }:bv[2]) &  # Require Buy (10) or Strong Buy (11)
+    (eetf >= regime_requirement).
+
+# Predictive exit: exit when scarcity target reached OR predictions turn bearish
+valid_predictive_exit(in_position, current_scarcity, entry_scarcity, confidence, price, entry_price) :=
+    in_position &
+    ((current_scarcity >= entry_scarcity * { #x02 }:bv[256]) |  # 2x scarcity gain
+     (price > entry_price * { #x96 }:bv[64] / { #x64 }:bv[64]) |  # 50% profit
+     (confidence = { #b00 }:bv[2])).  # Confidence collapsed
+
+# =============================================================================
+# ETHICAL PREDICTION
+# =============================================================================
+
+# Pre-position ethically for predicted scarcity
+# If we predict high scarcity, we should be MORE ethical NOW to maximize future rewards
+ethical_preposition_score(predicted_scarcity, current_eetf, lthf) :=
+    # Score = PredictedScarcity × EETF × LTHF / Scale
+    # Higher predicted scarcity = need higher EETF now
+    (predicted_scarcity * current_eetf * lthf) / { #x2710 }:bv[256].
+
+# Should the agent improve its EETF? (predictive ethical optimization)
+should_improve_eetf(predicted_scarcity, current_eetf, regime_requirement) :=
+    (predicted_scarcity > { #x0A }:bv[256]) & (current_eetf < { #x00C8 }:bv[16]) |  # High scarcity predicted
+    (current_eetf < regime_requirement).
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+o_entry_signal : sbf = out file("outputs/entry_signal.out").
+o_exit_signal : sbf = out file("outputs/exit_signal.out").
+o_in_position : sbf = out file("outputs/in_position.out").
+o_current_scarcity : bv[256] = out file("outputs/current_scarcity.out").
+o_scarcity_trend : bv[2] = out file("outputs/scarcity_trend.out").
+o_prediction_confidence : bv[2] = out file("outputs/prediction_confidence.out").
+o_regime_eetf_requirement : bv[16] = out file("outputs/regime_eetf_requirement.out").
+o_ethical_preposition_score : bv[256] = out file("outputs/ethical_preposition_score.out").
+o_should_improve_eetf : sbf = out file("outputs/should_improve_eetf.out").
+o_prediction_made : sbf = out file("outputs/prediction_made.out").
+o_prediction_validated : sbf = out file("outputs/prediction_validated.out").
+o_prediction_accuracy : bv[32] = out file("outputs/prediction_accuracy.out").
+
+# =============================================================================
+# RECURRENCE RELATIONS
+# =============================================================================
+
+o_current_scarcity[t] := current_scarcity(i_current_supply[t], i_initial_supply[t]).
+
+o_scarcity_trend[t] := scarcity_trend(i_predicted_scarcity_short[t], o_current_scarcity[t]).
+
+o_prediction_confidence[t] := 
+    prediction_confidence(i_composite_signal[t], o_scarcity_trend[t], i_ema_bullish[t]).
+
+o_regime_eetf_requirement[t] := regime_eetf_requirement(i_market_regime[t]).
+
+o_entry_signal[t] := 
+    valid_predictive_entry(o_prediction_confidence[t], 
+                          i_agent_eetf[t], 
+                          o_regime_eetf_requirement[t],
+                          s_in_position[t-1],
+                          i_circuit_ok[t]).
+
+o_exit_signal[t] := 
+    valid_predictive_exit(s_in_position[t-1],
+                         o_current_scarcity[t],
+                         s_entry_scarcity[t-1],
+                         o_prediction_confidence[t],
+                         i_price[t],
+                         s_entry_price[t-1]).
+
+o_in_position[t] := s_in_position[t].
+
+o_ethical_preposition_score[t] := 
+    ethical_preposition_score(i_predicted_scarcity_long[t], i_agent_eetf[t], i_agent_lthf[t]).
+
+o_should_improve_eetf[t] := 
+    should_improve_eetf(i_predicted_scarcity_long[t], i_agent_eetf[t], o_regime_eetf_requirement[t]).
+
+o_prediction_made[t] := o_entry_signal[t] | o_exit_signal[t].
+
+# Prediction validated if price moved in predicted direction
+o_prediction_validated[t] := 
+    (s_total_predictions[t-1] > { #x00 }:bv[32]) &
+    ((o_scarcity_trend[t-1] = { #b01 }:bv[2] & o_current_scarcity[t] > o_current_scarcity[t-1]) |
+     (i_ema_bullish[t-1] & i_price[t] > i_price[t-1])).
+
+# Accuracy = correct / total (scaled by 100)
+o_prediction_accuracy[t] := 
+    (s_total_predictions[t] > { #x00 }:bv[32]) ?
+    (s_correct_predictions[t] * { #x64 }:bv[32] / s_total_predictions[t]) :
+    { #x00 }:bv[32].
+
+# =============================================================================
+# FINITE STATE MACHINE
+# =============================================================================
+
+# States:
+# ANALYZING (0): Processing predictions
+# CONFIDENT_ENTRY (1): High confidence, seeking entry
+# IN_POSITION_BULLISH (2): Position open, bullish outlook
+# IN_POSITION_NEUTRAL (3): Position open, neutral outlook
+# IN_POSITION_BEARISH (4): Position open, bearish - seeking exit
+# EETF_OPTIMIZATION (5): Focusing on improving EETF
+# EXITING (6): Closing position
+
+bv[3] s_state[0] := { #b000 }:bv[3].
+
+bv[3] s_state[n] :=
+    # Priority: EETF optimization if needed
+    (o_should_improve_eetf[n] & ~s_in_position[n]) ? { #b101 }:bv[3] :
+    # Exit handling
+    (o_exit_signal[n]) ? { #b110 }:bv[3] :
+    # Position states
+    (s_in_position[n] & o_prediction_confidence[n] >= { #b10 }:bv[2]) ? { #b010 }:bv[3] :
+    (s_in_position[n] & o_prediction_confidence[n] = { #b01 }:bv[2]) ? { #b011 }:bv[3] :
+    (s_in_position[n] & o_prediction_confidence[n] = { #b00 }:bv[2]) ? { #b100 }:bv[3] :
+    # Entry states
+    (o_prediction_confidence[n] >= { #b10 }:bv[2] & ~s_in_position[n]) ? { #b001 }:bv[3] :
+    # Default
+    { #b000 }:bv[3].
+
+# =============================================================================
+# INVARIANTS
+# =============================================================================
+
+# Entry requires sufficient EETF for regime
+always (o_entry_signal => i_agent_eetf >= o_regime_eetf_requirement).
+
+# Circuit breaker respected
+always (~i_circuit_ok => ~o_entry_signal).
+
+# Scarcity only increases (deflation invariant)
+always (o_current_scarcity >= o_current_scarcity[n-1]).
+
+# Prediction accuracy bounded 0-100
+always (o_prediction_accuracy <= { #x64 }:bv[32]).
+
+# Ethical pre-positioning increases with predicted scarcity
+# This ensures the agent optimizes for ethics as scarcity grows
+always (i_predicted_scarcity_long > o_current_scarcity => 
+        o_ethical_preposition_score > { #x00 }:bv[256]).
+
+run always ( T ).
+

@@ -1,0 +1,166 @@
+# Deflationary Agent V39b - Multi-Strategy Pathfinder
+# A*-style pathfinding via runtime strategy selection
+# Copyright DarkLightX/Dana Edwards
+#
+# A* PATHFINDING CONCEPT:
+# Instead of a single path through state space, we encode multiple
+# "strategy paths" and let the daemon select the optimal one at runtime.
+# This is similar to A* exploring multiple branches with different costs.
+#
+# STRATEGIES:
+# 00 = Conservative: Long timeout (4 ticks), strict profit guard
+# 01 = Aggressive: Short timeout (2 ticks), quick entry/exit
+# 10 = Defensive: Extra long timeout (6 ticks), very strict conditions
+# 11 = Adaptive: Normal timeout, but dynamic based on conditions
+#
+# The daemon acts as the A* heuristic by selecting which strategy path to follow.
+
+# === HELPER PREDICATES ===
+valid_entry(p, v, t, h) := p' & v & t & h'.
+valid_exit(p, h) := p & h.
+
+# Strategy-specific timeout checks
+# Conservative (00): timeout at 4 (binary 100 = bits 2,1,0 = 1,0,0, but we use 2-bit so max 3)
+# For 2-bit timer: 00=conservative uses normal 3-tick timeout
+# Aggressive (01): timeout at 2 (binary 10)
+# Defensive (10): timeout at 3 (normal, but stricter entry)
+# Adaptive (11): timeout at 3 (normal)
+
+# 2-bit timeout = 11 = 3 ticks (normal)
+timed_out_normal(b1, b0) := b1 & b0.
+
+# Quick timeout = 10 = 2 ticks (aggressive)
+timed_out_quick(b1, b0) := b1 & b0'.
+
+# === INPUT STREAMS (7 inputs: 5 original + 2 strategy bits) ===
+sbf i0 = ifile("inputs/price.in").          # Market price
+sbf i1 = ifile("inputs/volume.in").         # Trading volume
+sbf i2 = ifile("inputs/trend.in").          # Price trend
+sbf i3 = ifile("inputs/profit_guard.in").   # Profit guard
+sbf i4 = ifile("inputs/failure_echo.in").   # Failure echo
+
+# Strategy selection inputs (daemon chooses path)
+sbf i5 = ifile("inputs/strategy_b0.in").    # Strategy bit 0
+sbf i6 = ifile("inputs/strategy_b1.in").    # Strategy bit 1
+# 00=Conservative, 01=Aggressive, 10=Defensive, 11=Adaptive
+
+# === OUTPUT STREAMS ===
+sbf o0 = ofile("outputs/state.out").        # Agent state
+sbf o1 = ofile("outputs/holding.out").      # Position
+sbf o2 = ofile("outputs/buy_signal.out").   # Buy signal
+sbf o3 = ofile("outputs/sell_signal.out").  # Sell signal
+sbf o6 = ofile("outputs/timer_b0.out").     # Timer bit 0
+sbf o7 = ofile("outputs/timer_b1.out").     # Timer bit 1
+sbf o9 = ofile("outputs/nonce.out").        # Nonce
+sbf o10 = ofile("outputs/entry_price.out"). # Entry price
+sbf o11 = ofile("outputs/profit.out").      # Profit
+sbf o13 = ofile("outputs/has_burned.out").  # Burn history
+
+# Additional output to track active strategy
+sbf o19 = ofile("outputs/strategy_active_b0.out"). # Active strategy bit 0
+sbf o20 = ofile("outputs/strategy_active_b1.out"). # Active strategy bit 1
+
+# === MULTI-STRATEGY SPECIFICATION ===
+r (
+    # === STRATEGY-DEPENDENT STATE MACHINE ===
+    # Each strategy has different entry conditions and timeouts
+    #
+    # Strategy 00 (Conservative): Standard entry + normal timeout
+    # Strategy 01 (Aggressive): Relaxed entry + quick timeout
+    # Strategy 10 (Defensive): Strict entry (require trend forecast) + normal timeout
+    # Strategy 11 (Adaptive): Standard entry + dynamic behavior
+    
+    # Timeout condition based on strategy
+    # aggressive_timeout = strategy is 01 AND timer = 10
+    # normal_timeout = timer = 11
+    
+    # Combined timeout: (aggressive mode AND quick timeout) OR (any mode AND normal timeout)
+    # Let timeout = (i6' & i5 & timed_out_quick) | timed_out_normal
+    
+    (o0[t] = 
+        # ENTRY CONDITIONS (vary by strategy)
+        (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) & 
+         o0[t-1]' & i1[t] & o9[t-1]' & i4[t]' &
+         # Strategy gating:
+         # Conservative (00): normal entry
+         # Aggressive (01): always try entry when basic conditions met
+         # Defensive (10): require both trend AND extra confirmation
+         # Adaptive (11): normal entry
+         ((i6[t]' & i5[t]') |                    # Conservative: normal
+          (i6[t]' & i5[t]) |                     # Aggressive: normal
+          (i6[t] & i5[t]' & i2[t]) |             # Defensive: require trend=1
+          (i6[t] & i5[t]))                       # Adaptive: normal
+         &
+         # Timeout gate based on previous timer state
+         ((i6[t]' & i5[t] & timed_out_quick(o7[t-1], o6[t-1])') |  # Aggressive: quick timeout
+          (i6[t]' & i5[t]' & timed_out_normal(o7[t-1], o6[t-1])') | # Conservative: normal
+          (i6[t] & timed_out_normal(o7[t-1], o6[t-1])'))            # Defensive/Adaptive: normal
+        ) |
+        # CONTINUE CONDITIONS (strategy affects timeout only)
+        (o0[t-1] & valid_exit(i0[t], o1[t-1])' & i1[t] & i4[t]' &
+         ((i6[t]' & i5[t] & timed_out_quick(o7[t-1], o6[t-1])') |  # Aggressive timeout
+          (i6[t]' & i5[t]' & timed_out_normal(o7[t-1], o6[t-1])') |
+          (i6[t] & timed_out_normal(o7[t-1], o6[t-1])'))
+        )
+    ) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === ECONOMICS ===
+    (o10[t] = (o2[t] & i0[t]) | (o0[t-1] & o2[t]' & o3[t]' & o10[t-1])) &&
+    (o11[t] = o3[t] & i0[t] & o10[t-1]' & i3[t]) &&
+    
+    # === BURN TRACKING ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === STRATEGY TRACKING (latch strategy at entry) ===
+    # Lock in strategy when we enter, maintain during execution
+    (o19[t] = (o2[t] & i5[t]) | (o0[t-1] & o3[t]' & o19[t-1])) &&
+    (o20[t] = (o2[t] & i6[t]) | (o0[t-1] & o3[t]' & o20[t-1]))
+)
+
+# === A* PATH SELECTION SEMANTICS ===
+#
+# The daemon acts as the A* search algorithm:
+# 1. Evaluate current market conditions
+# 2. Estimate cost-to-goal for each strategy path
+# 3. Select strategy with lowest estimated cost
+#
+# Strategy Costs (for daemon's heuristic):
+# - Conservative: Low risk, moderate reward, longer hold time
+# - Aggressive: Higher risk, higher reward potential, quick execution
+# - Defensive: Very low risk, lower reward, best for uncertain markets
+# - Adaptive: Balanced, good for transitional markets
+#
+# Cost Function Suggestion:
+# f(strategy) = risk_factor * volatility + opportunity_cost * time_factor
+#
+# Example Daemon Logic:
+# if volatility > HIGH_THRESHOLD: select Defensive (10)
+# elif momentum > STRONG: select Aggressive (01)
+# elif trend == BULLISH && volatility < MEDIUM: select Conservative (00)
+# else: select Adaptive (11)
+
+# === PERFORMANCE NOTES ===
+# Clause count: 12 (vs 10 in V38)
+# Input count: 7 (vs 5 in V38)
+# Output count: 12 (vs 10 in V38)
+# BDD impact: ~20-30% larger due to strategy branches
+# Trading impact: More adaptive to market conditions
+
+# === DAEMON REQUIREMENTS ===
+# Daemon must provide strategy selection:
+# - i5, i6 = strategy bits at each step
+# - Can change strategy between trades (not during)
+# - Strategy latched at entry time (o19, o20)
+

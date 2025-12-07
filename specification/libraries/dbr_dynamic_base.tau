@@ -1,0 +1,317 @@
+# ==============================================================================
+# DYNAMIC BASE REWARD (DBR+) - EETF-Scaling Network-Wide Rewards
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - VCC Integration Layer
+#
+# From VCC concept:
+# - Base reward multiplier adjusts based on network's average EETF
+# - Higher collective ethics -> higher base rewards for EVERYONE
+# - Creates positive feedback loop: good behavior rewards all
+#
+# Formula:
+# BR_Multiplier = 1 + DBR_Sensitivity * (EETF_avg - EETF_target)
+# Enhanced_Sensitivity = DBR_Sensitivity * (1 + Network_Feedback * max(0, EETF_avg - 1.0))
+#
+# Clamped between 0.5x (MIN_BR_FACTOR) and 3.0x (MAX_BR_FACTOR)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Network EETF Metrics
+# ------------------------------------------------------------------------------
+
+# Network average EETF (8-bit, scaled: 100 = 1.0)
+bv[8] i_eetf_network_avg = ifile("inputs/eetf_network_avg.in").
+
+# EETF target (8-bit, typically 100 = 1.0)
+bv[8] i_eetf_target = ifile("inputs/eetf_target.in").
+
+# Number of active accounts contributing to EETF (32-bit)
+bv[32] i_active_accounts = ifile("inputs/active_accounts.in").
+
+# Total transactions this period (32-bit)
+bv[32] i_total_transactions = ifile("inputs/total_transactions.in").
+
+# Base reward pool for this period (256-bit)
+bv[256] i_reward_pool = ifile("inputs/reward_pool.in").
+
+# Historical EETF averages for smoothing (7-day EMA)
+bv[8] i_eetf_7d_avg = ifile("inputs/eetf_7d_avg.in").
+
+# Governance override (if any)
+sbf i_governance_override = ifile("inputs/governance_override.in").
+bv[8] i_override_multiplier = ifile("inputs/override_multiplier.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Reward Calculations
+# ------------------------------------------------------------------------------
+
+# Current base reward multiplier (16-bit: 50-300 representing 0.5x-3.0x)
+bv[16] o_br_multiplier = ofile("outputs/br_multiplier.out").
+
+# Enhanced sensitivity factor (16-bit)
+bv[16] o_sensitivity = ofile("outputs/sensitivity.out").
+
+# Effective reward pool after multiplier (256-bit)
+bv[256] o_effective_reward_pool = ofile("outputs/effective_reward_pool.out").
+
+# Per-account base reward (256-bit)
+bv[256] o_per_account_reward = ofile("outputs/per_account_reward.out").
+
+# EETF delta from target (signed as 16-bit: positive = above target)
+bv[16] o_eetf_delta = ofile("outputs/eetf_delta.out").
+
+# Network health indicator (8-bit percentage)
+bv[8] o_network_health = ofile("outputs/network_health.out").
+
+# Reward tier (8-bit: 0=low, 1=base, 2=elevated, 3=high, 4=exceptional)
+bv[8] o_reward_tier = ofile("outputs/reward_tier.out").
+
+# Smoothed multiplier (using EMA for stability)
+bv[16] o_smoothed_multiplier = ofile("outputs/smoothed_multiplier.out").
+
+# Multiplier trend (sbf: 1 = increasing, 0 = decreasing)
+sbf o_multiplier_trending_up = ofile("outputs/multiplier_trending_up.out").
+
+# ------------------------------------------------------------------------------
+# CONSTANTS
+# ------------------------------------------------------------------------------
+
+# DBR_SENSITIVITY = 200 (scaled to avoid fractions: 2.0 in fixed-point)
+# { #x00C8 }:bv[16] = 200
+
+# NETWORK_FEEDBACK_FACTOR = 50 (0.5 in fixed-point with 100 base)
+# { #x0032 }:bv[16] = 50
+
+# MIN_BR_FACTOR = 50 (0.5x)
+# { #x0032 }:bv[16] = 50
+
+# MAX_BR_FACTOR = 300 (3.0x)
+# { #x012C }:bv[16] = 300
+
+# BASE_BR = 100 (1.0x)
+# { #x0064 }:bv[16] = 100
+
+# EETF_BASE = 100 (representing 1.0)
+# { #x64 }:bv[8] = 100
+
+# EMA_ALPHA = 20 (20% weight to new value, 80% to old)
+# { #x14 }:bv[8] = 20
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Multiplier Calculations
+# ------------------------------------------------------------------------------
+
+# Calculate EETF delta from target (can be positive or negative)
+# Using signed representation: if eetf > target, delta is positive
+calc_eetf_delta(eetf, target) :=
+    (eetf >= target) ? 
+        (eetf - target) :  # Positive delta
+        ({ #x0000 }:bv[16] - (target - eetf)).  # Negative delta (two's complement)
+
+# Calculate raw BR multiplier before clamping
+# BR = BASE + SENSITIVITY * (EETF - TARGET) / 100
+calc_raw_multiplier(eetf, target, sensitivity) :=
+    (eetf >= target) ?
+        ({ #x0064 }:bv[16] + ((sensitivity * (eetf - target)) / { #x64 }:bv[16])) :
+        ({ #x0064 }:bv[16] - ((sensitivity * (target - eetf)) / { #x64 }:bv[16])).
+
+# Clamp multiplier to valid range [50, 300]
+clamp_multiplier(raw) :=
+    (raw < { #x0032 }:bv[16]) ? { #x0032 }:bv[16] :  # Min 50 (0.5x)
+    (raw > { #x012C }:bv[16]) ? { #x012C }:bv[16] :  # Max 300 (3.0x)
+    raw.
+
+# Calculate enhanced sensitivity (feedback loop)
+# Enhanced = Base * (1 + Feedback * max(0, EETF - 1.0))
+calc_enhanced_sensitivity(base_sens, eetf) :=
+    (eetf <= { #x64 }:bv[8]) ? base_sens :  # No enhancement below 1.0
+    (base_sens + ((base_sens * { #x32 }:bv[16] * (eetf - { #x64 }:bv[8])) / { #x2710 }:bv[16])).
+    # base + base * 0.5 * (eetf - 100) / 100
+
+# Calculate EMA for smoothing
+# smoothed = (alpha * new + (100 - alpha) * old) / 100
+calc_ema(new_val, old_val, alpha) :=
+    (((alpha * new_val) + (({ #x64 }:bv[8] - alpha) * old_val)) / { #x64 }:bv[16]).
+
+# Determine reward tier based on multiplier
+# Tier 0: < 75 (low)
+# Tier 1: 75-125 (base)
+# Tier 2: 125-175 (elevated)
+# Tier 3: 175-250 (high)
+# Tier 4: > 250 (exceptional)
+calc_reward_tier(mult) :=
+    (mult < { #x004B }:bv[16]) ? { #x00 }:bv[8] :  # < 75
+    (mult < { #x007D }:bv[16]) ? { #x01 }:bv[8] :  # < 125
+    (mult < { #x00AF }:bv[16]) ? { #x02 }:bv[8] :  # < 175
+    (mult < { #x00FA }:bv[16]) ? { #x03 }:bv[8] :  # < 250
+    { #x04 }:bv[8].  # >= 250
+
+# Calculate network health indicator
+# health = (eetf_avg / 2) clamped to 100
+calc_network_health(eetf) :=
+    (eetf >= { #xC8 }:bv[8]) ? { #x64 }:bv[8] :  # >= 200 -> 100%
+    (eetf >> { #x01 }:bv[8]).  # eetf / 2
+
+# Calculate per-account reward
+# per_account = effective_pool / active_accounts
+calc_per_account(pool, accounts) :=
+    (accounts = { #x00 }:bv[32]) ? { #x00 }:bv[256] :
+    (pool / accounts).
+
+# Apply multiplier to reward pool
+# effective = pool * multiplier / 100
+apply_multiplier(pool, mult) :=
+    (pool * mult) / { #x64 }:bv[256].
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+# This module is mostly stateless calculation, but tracks trends
+
+state_calculating := 1.  # Always in calculation state
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS - State Updates
+# ------------------------------------------------------------------------------
+
+# Enhanced sensitivity calculation
+o_sensitivity[0] := { #x00C8 }:bv[16].  # Base sensitivity 200
+o_sensitivity[t] :=
+    calc_enhanced_sensitivity({ #x00C8 }:bv[16], i_eetf_network_avg[t]).
+
+# EETF delta from target
+o_eetf_delta[0] := { #x0000 }:bv[16].
+o_eetf_delta[t] :=
+    calc_eetf_delta(i_eetf_network_avg[t], i_eetf_target[t]).
+
+# Raw BR multiplier (before smoothing and clamping)
+raw_multiplier[t] :=
+    calc_raw_multiplier(i_eetf_network_avg[t], i_eetf_target[t], o_sensitivity[t]).
+
+# Clamped multiplier
+clamped_multiplier[t] :=
+    i_governance_override[t] ? i_override_multiplier[t] :
+    clamp_multiplier(raw_multiplier[t]).
+
+# Smoothed multiplier (EMA with previous value)
+o_smoothed_multiplier[0] := { #x0064 }:bv[16].  # Start at 1.0x
+o_smoothed_multiplier[t] :=
+    calc_ema(clamped_multiplier[t], o_smoothed_multiplier[t-1], { #x14 }:bv[8]).
+
+# Final BR multiplier (use smoothed for stability)
+o_br_multiplier[0] := { #x0064 }:bv[16].  # 100 = 1.0x
+o_br_multiplier[t] := o_smoothed_multiplier[t].
+
+# Effective reward pool
+o_effective_reward_pool[0] := { #x00 }:bv[256].
+o_effective_reward_pool[t] :=
+    apply_multiplier(i_reward_pool[t], o_br_multiplier[t]).
+
+# Per-account base reward
+o_per_account_reward[0] := { #x00 }:bv[256].
+o_per_account_reward[t] :=
+    calc_per_account(o_effective_reward_pool[t], i_active_accounts[t]).
+
+# Network health indicator
+o_network_health[0] := { #x32 }:bv[8].  # 50% default
+o_network_health[t] :=
+    calc_network_health(i_eetf_network_avg[t]).
+
+# Reward tier
+o_reward_tier[0] := { #x01 }:bv[8].  # Tier 1 (base)
+o_reward_tier[t] :=
+    calc_reward_tier(o_br_multiplier[t]).
+
+# Multiplier trend
+o_multiplier_trending_up[0] := 0.
+o_multiplier_trending_up[t] :=
+    o_br_multiplier[t] > o_br_multiplier[t-1].
+
+# ------------------------------------------------------------------------------
+# INVARIANTS - Safety Properties
+# ------------------------------------------------------------------------------
+
+# Invariant 1: Multiplier in valid range [50, 300]
+inv_multiplier_bounded := always (
+    (o_br_multiplier >= { #x0032 }:bv[16]) & 
+    (o_br_multiplier <= { #x012C }:bv[16])
+).
+
+# Invariant 2: Effective pool <= 3x original pool (at max multiplier)
+inv_effective_bounded := always (
+    o_effective_reward_pool <= ((i_reward_pool * { #x03 }:bv[256]))
+).
+
+# Invariant 3: Network health in [0, 100]
+inv_health_bounded := always (o_network_health <= { #x64 }:bv[8]).
+
+# Invariant 4: Reward tier in [0, 4]
+inv_tier_bounded := always (o_reward_tier <= { #x04 }:bv[8]).
+
+# Invariant 5: Sensitivity is positive
+inv_sensitivity_positive := always (o_sensitivity > { #x0000 }:bv[16]).
+
+# Combined invariants
+o_invariants_hold := inv_multiplier_bounded & inv_effective_bounded & 
+                     inv_health_bounded & inv_tier_bounded & inv_sensitivity_positive.
+
+# ------------------------------------------------------------------------------
+# OBSERVABLE PROPERTIES (for verification)
+# ------------------------------------------------------------------------------
+
+# Property: Higher EETF -> higher multiplier (above target)
+prop_eetf_increases_mult := always (
+    (i_eetf_network_avg > i_eetf_target) -> 
+    (o_br_multiplier > { #x0064 }:bv[16])  # > 1.0x
+).
+
+# Property: Lower EETF -> lower multiplier (below target)
+prop_eetf_decreases_mult := always (
+    (i_eetf_network_avg < i_eetf_target) -> 
+    (o_br_multiplier < { #x0064 }:bv[16])  # < 1.0x
+).
+
+# Property: Exceptional tier requires high multiplier
+prop_exceptional_requires_high := always (
+    (o_reward_tier = { #x04 }:bv[8]) -> 
+    (o_br_multiplier >= { #x00FA }:bv[16])  # >= 250
+).
+
+# Property: Smoothed multiplier changes gradually
+# (Difference between consecutive values is bounded)
+prop_smooth_changes := always (
+    ((o_smoothed_multiplier > o_smoothed_multiplier') ?
+        (o_smoothed_multiplier - o_smoothed_multiplier') :
+        (o_smoothed_multiplier' - o_smoothed_multiplier))
+    <= { #x0032 }:bv[16]  # Max change of 50 per period
+).
+
+# Property: Governance override is respected
+prop_governance_override := always (
+    i_governance_override -> 
+    (clamped_multiplier = i_override_multiplier)
+).
+
+# ==============================================================================
+# VCC FEEDBACK VISUALIZATION
+# ==============================================================================
+# 
+# EETF_avg  |  BR_Mult  |  Effect
+# ----------|-----------|------------------
+#   0.5     |   0.5x    |  Reduced rewards (penalty for low ethics)
+#   0.8     |   0.6x    |  Below target
+#   1.0     |   1.0x    |  Target baseline
+#   1.2     |   1.4x    |  Above target
+#   1.5     |   2.0x    |  High ethics bonus
+#   2.0     |   3.0x    |  Maximum (capped)
+#
+# This creates a NETWORK-WIDE incentive: when the collective EETF is high,
+# EVERYONE benefits from higher base rewards. This encourages:
+# 1. Individual ethical behavior (to contribute to avg)
+# 2. Community standards enforcement (social pressure for ethics)
+# 3. Positive feedback loop (high ethics -> high rewards -> more ethics)
+#
+# ==============================================================================
+# END OF DBR_DYNAMIC_BASE.TAU
+# ==============================================================================
+

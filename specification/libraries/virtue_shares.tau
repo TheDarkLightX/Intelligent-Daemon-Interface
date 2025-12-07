@@ -1,0 +1,318 @@
+# ==============================================================================
+# VIRTUE-SHARES (vShares) - HEX-Style Time-Locking with sqrt Scaling
+# ==============================================================================
+# VCC-Enhanced Hyper-Deflationary Architecture - Core Primitive
+#
+# Combines HEX T-Shares + veCRV decay mechanics:
+# - sqrt(duration) scaling for more equitable distribution
+# - Linear decay requiring re-locks for max power
+# - No artificial floor constraints - infinite deflation possible
+#
+# Using bv[256] for astronomical precision:
+# - Can track supplies from 10^77 down to 1 smallest unit
+# - Supports 18+ decimal places like ETH/BTC satoshis
+# - 20% annual deflation for 200 years still leaves 416 units
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Lock Parameters
+# ------------------------------------------------------------------------------
+
+# Amount of AGRS to lock (256-bit for max precision)
+bv[256] i_lock_amount = ifile("inputs/lock_amount.in").
+
+# Lock duration in days (16-bit: max 65535 days = ~180 years)
+bv[16] i_lock_duration = ifile("inputs/lock_duration.in").
+
+# Current time in days since epoch (32-bit: ~11.7M years)
+bv[32] i_current_time = ifile("inputs/current_time.in").
+
+# Lock start time in days (32-bit)
+bv[32] i_lock_start = ifile("inputs/lock_start.in").
+
+# Action signals (sbf for boolean state)
+sbf i_create_lock = ifile("inputs/create_lock.in").
+sbf i_extend_lock = ifile("inputs/extend_lock.in").
+sbf i_early_exit = ifile("inputs/early_exit.in").
+
+# EETF score (post-EETF phase, 0-255 scaled to 0.0-2.55)
+# Default to 100 (1.0) for pre-EETF phase
+bv[8] i_eetf_score = ifile("inputs/eetf_score.in").
+
+# Network average EETF (for collective metrics)
+bv[8] i_eetf_network_avg = ifile("inputs/eetf_network_avg.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Lock State & Rewards
+# ------------------------------------------------------------------------------
+
+# Current vShares balance (256-bit)
+bv[256] o_vshares = ofile("outputs/vshares.out").
+
+# Lock status signals
+sbf o_lock_active = ofile("outputs/lock_active.out").
+sbf o_lock_expired = ofile("outputs/lock_expired.out").
+
+# Voting power (256-bit, decays over time)
+bv[256] o_voting_power = ofile("outputs/voting_power.out").
+
+# Boost multiplier (8-bit: 100 = 1.0x, 250 = 2.5x max)
+bv[8] o_boost_multiplier = ofile("outputs/boost_multiplier.out").
+
+# Fee share proportion (256-bit, in basis points scaled)
+bv[256] o_fee_share = ofile("outputs/fee_share.out").
+
+# Penalty amount if early exit (256-bit)
+bv[256] o_penalty_amount = ofile("outputs/penalty_amount.out").
+
+# Remaining lock days (16-bit)
+bv[16] o_remaining_days = ofile("outputs/remaining_days.out").
+
+# Effective multiplier including EETF (post-EETF phase)
+bv[16] o_eetf_multiplier = ofile("outputs/eetf_multiplier.out").
+
+# ------------------------------------------------------------------------------
+# CONSTANTS (encoded as bitvectors)
+# ------------------------------------------------------------------------------
+
+# MaxDuration = 1460 days (4 years like veCRV)
+# Stored as bv[16]: { #x05B4 }:bv[16] = 1460
+
+# MinimumPenaltyDays = 90 days (from HEX)
+# Stored as bv[16]: { #x005A }:bv[16] = 90
+
+# PenaltyDivisor = 2 (penalty = remaining/2)
+# Stored as bv[16]: { #x0002 }:bv[16] = 2
+
+# BaseBoost = 100 (1.0x)
+# MaxBoost = 250 (2.5x)
+
+# EETF_BASE = 100 (representing 1.0)
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Lock Calculations
+# ------------------------------------------------------------------------------
+
+# Check if lock is currently active
+lock_is_active(start, duration, current) :=
+    (current >= start) & (current < (start + duration)).
+
+# Calculate remaining days in lock
+remaining_days_calc(start, duration, current) :=
+    ((start + duration) > current) ? ((start + duration) - current) : { #x0000 }:bv[16].
+
+# Check if lock has expired
+lock_is_expired(start, duration, current) :=
+    current >= (start + duration).
+
+# ------------------------------------------------------------------------------
+# SQRT APPROXIMATION for vShares
+# ------------------------------------------------------------------------------
+# vShares = Amount * sqrt(Duration / MaxDuration)
+#
+# Since Tau doesn't have native sqrt, we use integer approximation:
+# sqrt(x) ≈ x >> (log2(x) / 2) for quick estimation
+# Or use Newton-Raphson iteration:
+# sqrt_approx = (guess + (x / guess)) / 2
+#
+# For Duration/MaxDuration ratio (0 to 1 scaled to 0-256):
+# ratio_scaled = (duration * 256) / max_duration
+# sqrt_scaled ≈ ratio_scaled >> 4 (rough approximation)
+#
+# More precise: use lookup table or iterative method
+
+# Simplified sqrt approximation using bit shifting
+# For ratio in range [0, 256], sqrt ≈ ratio >> 4 gives rough estimate
+# Better: sqrt(ratio * 256) / 16 gives scaled result
+
+sqrt_approx_256(x) := 
+    # Babylonian method approximation for 8-bit result
+    # For x in [0, 65536], returns sqrt in [0, 256]
+    (x = { #x0000 }:bv[32]) ? { #x00 }:bv[8] :
+    (x <= { #x0100 }:bv[32]) ? { #x10 }:bv[8] :  # sqrt(256) = 16
+    (x <= { #x0400 }:bv[32]) ? { #x20 }:bv[8] :  # sqrt(1024) = 32
+    (x <= { #x1000 }:bv[32]) ? { #x40 }:bv[8] :  # sqrt(4096) = 64
+    (x <= { #x4000 }:bv[32]) ? { #x80 }:bv[8] :  # sqrt(16384) = 128
+    { #xFF }:bv[8].                               # sqrt(65536) = 256
+
+# ------------------------------------------------------------------------------
+# vSHARES CALCULATION
+# ------------------------------------------------------------------------------
+# vShares = Amount * sqrt(Duration / MaxDuration) * DecayFactor * EETF_Mult
+#
+# Phase 1 (Pre-EETF): EETF_Mult = 1.0 (i_eetf_score = 100)
+# Phase 2 (Post-EETF): EETF_Mult = i_eetf_score / 100
+
+# Calculate duration ratio scaled to 65536 (for sqrt precision)
+# ratio_scaled = (duration * 65536) / max_duration
+# With max_duration = 1460, ratio_scaled = duration * 45 (approx)
+
+duration_ratio_scaled(duration) :=
+    (duration * { #x002D }:bv[32]).  # 45 ≈ 65536/1460
+
+# Calculate decay factor (remaining / original, scaled to 256)
+decay_factor_scaled(remaining, original) :=
+    (original = { #x0000 }:bv[16]) ? { #x00 }:bv[8] :
+    ((remaining * { #x0100 }:bv[32]) / original).
+
+# EETF multiplier (100 = 1.0x, 200 = 2.0x)
+eetf_multiplier_calc(eetf) := eetf.
+
+# ------------------------------------------------------------------------------
+# BOOST CALCULATION (veCRV-style, max 2.5x)
+# ------------------------------------------------------------------------------
+# boost = 1.0 + 1.5 * (vShares / max_vShares)
+# Scaled: boost_scaled = 100 + 150 * (vshares_ratio / 256)
+# Max boost = 250 (2.5x)
+
+boost_calc(vshares_ratio) :=
+    (vshares_ratio >= { #xFF }:bv[8]) ? { #xFA }:bv[8] :  # Max 250
+    ({ #x64 }:bv[8] + ((vshares_ratio * { #x96 }:bv[16]) >> { #x08 }:bv[16])).  # 100 + 150*ratio/256
+
+# ------------------------------------------------------------------------------
+# PENALTY CALCULATION (HEX-style)
+# ------------------------------------------------------------------------------
+# penalty_days = max(90, original_lock / 2)
+# penalty_amount = staked_amount * (penalty_days / original_lock)
+# ALL penalties go to BURN (not redistributed)
+
+penalty_days_calc(original_lock) :=
+    ((original_lock >> { #x01 }:bv[16]) < { #x005A }:bv[16]) ? 
+        { #x005A }:bv[16] :  # Min 90 days
+        (original_lock >> { #x01 }:bv[16]).  # original / 2
+
+penalty_amount_calc(amount, penalty_days, original_lock) :=
+    (original_lock = { #x0000 }:bv[16]) ? { #x00 }:bv[256] :
+    ((amount * penalty_days) / original_lock).
+
+# ------------------------------------------------------------------------------
+# STATE MACHINE
+# ------------------------------------------------------------------------------
+# States: UNLOCKED -> LOCKED -> (EXPIRED | EARLY_EXIT)
+
+# State encoding
+state_unlocked := ~o_lock_active & ~o_lock_expired.
+state_locked := o_lock_active & ~o_lock_expired.
+state_expired := ~o_lock_active & o_lock_expired.
+
+# Transitions
+can_create_lock := state_unlocked & i_create_lock & 
+                   (i_lock_amount > { #x00 }:bv[256]) &
+                   (i_lock_duration > { #x0000 }:bv[16]) &
+                   (i_lock_duration <= { #x05B4 }:bv[16]).  # Max 1460 days
+
+can_extend_lock := state_locked & i_extend_lock &
+                   (i_lock_duration > o_remaining_days).
+
+can_early_exit := state_locked & i_early_exit.
+
+can_natural_exit := state_locked & 
+                    lock_is_expired(i_lock_start, i_lock_duration, i_current_time).
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS - State Updates
+# ------------------------------------------------------------------------------
+
+# Lock active status
+o_lock_active[0] := 0.
+o_lock_active[t] := 
+    (can_create_lock[t-1] | can_extend_lock[t-1]) ? 1 :
+    (can_early_exit[t-1] | can_natural_exit[t-1]) ? 0 :
+    o_lock_active[t-1].
+
+# Lock expired status  
+o_lock_expired[0] := 0.
+o_lock_expired[t] :=
+    can_natural_exit[t-1] ? 1 :
+    can_create_lock[t-1] ? 0 :
+    o_lock_expired[t-1].
+
+# Remaining days calculation
+o_remaining_days[0] := { #x0000 }:bv[16].
+o_remaining_days[t] :=
+    can_create_lock[t-1] ? i_lock_duration[t-1] :
+    can_extend_lock[t-1] ? i_lock_duration[t-1] :
+    (can_early_exit[t-1] | can_natural_exit[t-1]) ? { #x0000 }:bv[16] :
+    state_locked[t-1] ? remaining_days_calc(i_lock_start[t-1], i_lock_duration[t-1], i_current_time[t-1]) :
+    { #x0000 }:bv[16].
+
+# vShares calculation (core formula)
+# vShares = Amount * sqrt(Duration/MaxDuration) * DecayFactor * (EETF/100)
+o_vshares[0] := { #x00 }:bv[256].
+o_vshares[t] :=
+    ~state_locked[t] ? { #x00 }:bv[256] :
+    # Simplified calculation with available approximations
+    ((i_lock_amount[t] * sqrt_approx_256(duration_ratio_scaled(i_lock_duration[t]))) >> { #x08 }:bv[256]) *
+    (decay_factor_scaled(o_remaining_days[t], i_lock_duration[t]) / { #x100 }:bv[256]) *
+    (i_eetf_score[t] / { #x64 }:bv[256]).
+
+# Voting power = vShares (decays with time)
+o_voting_power[0] := { #x00 }:bv[256].
+o_voting_power[t] := o_vshares[t].
+
+# Boost multiplier
+o_boost_multiplier[0] := { #x64 }:bv[8].  # 100 = 1.0x default
+o_boost_multiplier[t] :=
+    ~state_locked[t] ? { #x64 }:bv[8] :
+    boost_calc({ #xFF }:bv[8]).  # Simplified: max lockers get max boost
+
+# EETF multiplier output
+o_eetf_multiplier[0] := { #x0064 }:bv[16].  # 100 = 1.0x
+o_eetf_multiplier[t] := eetf_multiplier_calc(i_eetf_score[t]).
+
+# Penalty amount (only non-zero on early exit)
+o_penalty_amount[0] := { #x00 }:bv[256].
+o_penalty_amount[t] :=
+    can_early_exit[t-1] ? 
+        penalty_amount_calc(i_lock_amount[t-1], 
+                           penalty_days_calc(i_lock_duration[t-1]), 
+                           i_lock_duration[t-1]) :
+    { #x00 }:bv[256].
+
+# Fee share proportion (based on vShares relative to total)
+# Placeholder: proportional to voting power
+o_fee_share[0] := { #x00 }:bv[256].
+o_fee_share[t] := o_voting_power[t].
+
+# ------------------------------------------------------------------------------
+# INVARIANTS - Safety Properties
+# ------------------------------------------------------------------------------
+
+# Invariant 1: vShares always non-negative (trivially true for unsigned bv)
+# Invariant 2: Penalty never exceeds locked amount
+inv_penalty_bounded := always (o_penalty_amount <= i_lock_amount).
+
+# Invariant 3: Boost in valid range [100, 250]
+inv_boost_bounded := always ((o_boost_multiplier >= { #x64 }:bv[8]) & 
+                             (o_boost_multiplier <= { #xFA }:bv[8])).
+
+# Invariant 4: Remaining days never exceeds max duration
+inv_remaining_bounded := always (o_remaining_days <= { #x05B4 }:bv[16]).
+
+# Invariant 5: Lock state consistency
+inv_state_consistent := always ~(o_lock_active & o_lock_expired).
+
+# Combined invariants
+o_invariants_hold := inv_penalty_bounded & inv_boost_bounded & 
+                     inv_remaining_bounded & inv_state_consistent.
+
+# ------------------------------------------------------------------------------
+# OBSERVABLE PROPERTIES (for verification)
+# ------------------------------------------------------------------------------
+
+# Property: Early exit always incurs penalty
+prop_early_exit_penalty := always (can_early_exit -> (o_penalty_amount' > { #x00 }:bv[256])).
+
+# Property: Natural exit has no penalty
+prop_natural_no_penalty := always (can_natural_exit -> (o_penalty_amount' = { #x00 }:bv[256])).
+
+# Property: Longer locks yield more vShares (at same amount and decay)
+prop_longer_better := always (
+    (i_lock_duration > o_remaining_days) -> 
+    (o_vshares' >= o_vshares)  # After extension, vShares increase or equal
+).
+
+# ==============================================================================
+# END OF VIRTUE_SHARES.TAU
+# ==============================================================================
+

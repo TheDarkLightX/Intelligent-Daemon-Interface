@@ -1,0 +1,164 @@
+# Deflationary Agent V39c - LTL Temporal Lookahead
+# A*-style pathfinding using Linear Temporal Logic constraints
+# Copyright DarkLightX/Dana Edwards
+#
+# A* PATHFINDING VIA TEMPORAL LOGIC:
+# Traditional A* explores paths toward a goal state.
+# In temporal logic, we express the goal as a property that must eventually hold.
+#
+# KEY INSIGHT:
+# Tau-lang's `always` and `sometimes` operators enable specifying:
+# - "eventually reach profitable exit" = goal reachability
+# - "always maintain safety" = constraint satisfaction
+# - "if entered, then eventually profit" = path guarantee
+#
+# This is more expressive than single-step heuristics (V39a/b) because
+# it encodes the ENTIRE path property, not just one-step estimates.
+#
+# CAUTION: LTL increases specification complexity and may impact performance.
+# This version is experimental - benchmark against V38/V39a/V39b.
+
+# === HELPER PREDICATES ===
+valid_entry(p, v, t, h) := p' & v & t & h'.
+valid_exit(p, h) := p & h.
+timed_out(b1, b0) := b1 & b0.
+
+# === INPUT STREAMS (5 inputs, standard) ===
+sbf i0 = ifile("inputs/price.in").          # Market price
+sbf i1 = ifile("inputs/volume.in").         # Trading volume
+sbf i2 = ifile("inputs/trend.in").          # Price trend
+sbf i3 = ifile("inputs/profit_guard.in").   # Profit guard
+sbf i4 = ifile("inputs/failure_echo.in").   # Failure echo
+
+# === OUTPUT STREAMS ===
+sbf o0 = ofile("outputs/state.out").        # Agent state
+sbf o1 = ofile("outputs/holding.out").      # Position
+sbf o2 = ofile("outputs/buy_signal.out").   # Buy signal
+sbf o3 = ofile("outputs/sell_signal.out").  # Sell signal
+sbf o6 = ofile("outputs/timer_b0.out").     # Timer bit 0
+sbf o7 = ofile("outputs/timer_b1.out").     # Timer bit 1
+sbf o9 = ofile("outputs/nonce.out").        # Nonce
+sbf o10 = ofile("outputs/entry_price.out"). # Entry price
+sbf o11 = ofile("outputs/profit.out").      # Profit
+sbf o13 = ofile("outputs/has_burned.out").  # Burn history
+
+# Goal tracking output
+sbf o21 = ofile("outputs/goal_reached.out"). # Tracks if goal (profit) was reached
+
+# === CORE SPECIFICATION WITH LTL CONSTRAINTS ===
+#
+# The main specification uses standard recurrence relations.
+# LTL properties are expressed as constraints that MUST be satisfiable.
+#
+# NOTE: Full LTL integration in tau-lang is via always/sometimes around the spec.
+# For this version, we encode lookahead as a "goal reachability" constraint:
+# - Entry is allowed only if the specification remains satisfiable
+# - The daemon's profit_guard (i3) implicitly encodes goal reachability
+
+r (
+    # === STATE MACHINE ===
+    # Standard state machine from V38, but with goal-oriented interpretation
+    (o0[t] = (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) & 
+              o0[t-1]' & i1[t] & timed_out(o7[t-1], o6[t-1])' & o9[t-1]' & i4[t]') |
+             (o0[t-1] & valid_exit(i0[t], o1[t-1])' & 
+              timed_out(o7[t-1], o6[t-1])' & i1[t] & i4[t]')) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
+    
+    # === TIMER ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === ECONOMICS ===
+    (o10[t] = (o2[t] & i0[t]) | (o0[t-1] & o2[t]' & o3[t]' & o10[t-1])) &&
+    (o11[t] = o3[t] & i0[t] & o10[t-1]' & i3[t]) &&
+    
+    # === BURN TRACKING ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === GOAL TRACKING (for LTL verification) ===
+    # Goal is reached when we have a profitable exit
+    # This is monotonic - once reached, stays true
+    (o21[t] = o21[t-1] | o11[t])
+)
+
+# === LTL TEMPORAL PROPERTIES ===
+#
+# The following are DESIRED PROPERTIES that the specification should satisfy.
+# In tau-lang, these would be expressed as constraints on the overall spec.
+#
+# PROPERTY 1: Eventually Profit (Goal Reachability)
+# "If we enter a trade, we will eventually reach a profitable exit OR timeout"
+# LTL: [] (o2 -> <> (o11 | timed_out(o7, o6)))
+#
+# PROPERTY 2: No Infinite Holding
+# "We never hold a position forever"
+# LTL: [] (o1 -> <> o1')
+# This is guaranteed by timeout mechanism.
+#
+# PROPERTY 3: Safety Maintained
+# "We never buy and sell simultaneously"
+# LTL: [] !(o2 & o3)
+#
+# PROPERTY 4: Progress
+# "If conditions are favorable, we eventually trade"
+# LTL: []<> (valid_entry -> <> o2) -- assuming persistent favorable conditions
+
+# === A* INTERPRETATION ===
+#
+# Path = sequence of (state, action) pairs from entry to exit
+# Goal = profitable exit (o11 = 1)
+# Cost = holding time + risk exposure
+#
+# LTL Property "eventually profit" corresponds to:
+# - A* reaching goal state
+# - All explored paths lead to goal (or terminate safely via timeout)
+#
+# The specification is satisfiable IFF there EXISTS a path to goal.
+# Tau-lang's solver finds such a path during normalization.
+#
+# Key difference from V39a/V39b:
+# - V39a: Uses heuristic inputs to GUIDE path selection
+# - V39b: Lets daemon SELECT from predefined strategy paths
+# - V39c: Specification ENCODES goal reachability as a property
+#
+# V39c doesn't need extra inputs - the goal is BUILT INTO the spec.
+# However, it may be more computationally expensive to verify.
+
+# === DAEMON REQUIREMENTS ===
+#
+# The daemon should:
+# 1. Check satisfiability of spec before execution
+# 2. Verify goal reachability from current state
+# 3. Use profit_guard (i3) to signal when goal IS reachable
+#
+# profit_guard = 1 means "daemon has verified profitable exit is possible"
+# This is the daemon's COMMITMENT that the LTL property holds.
+
+# === PERFORMANCE NOTES ===
+#
+# Clause count: 11 (similar to V38)
+# Temporal complexity: Higher due to implicit LTL reasoning
+# BDD impact: Depends on tau-lang's handling of temporal properties
+#
+# Expected behavior:
+# - Satisfiability checking may be slower
+# - But execution should be similar to V38
+# - Goal tracking (o21) adds observability
+
+# === EXPERIMENTAL STATUS ===
+# This version is EXPERIMENTAL.
+# The LTL properties are documented but not explicitly enforced in the r() block.
+# Full LTL would require:
+# - Wrapping spec in always/sometimes operators
+# - Using tau-lang's temporal quantifiers
+#
+# For benchmarking purposes, this version behaves like V38 with goal tracking.
+# The LTL properties are DESIGN CONSTRAINTS that the daemon should verify.
+

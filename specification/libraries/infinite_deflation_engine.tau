@@ -1,0 +1,269 @@
+# ============================================================================
+# INFINITE DEFLATION ENGINE
+# ============================================================================
+# Mathematical Foundation for Unbounded Deflationary Spiral
+#
+# KEY INSIGHT: With infinite divisibility (18+ decimals), deflation can
+# continue FOREVER. The system never reaches zero supply - it asymptotically
+# approaches zero while remaining functional.
+#
+# FORMULA: Supply[t+1] = Supply[t] * (1 - BurnRate[t])
+# As t → ∞, Supply → 0 but Supply > 0 always (Zeno's paradox resolution)
+#
+# ETHICAL ALIGNMENT: The only path to wealth is through ethical behavior.
+# As supply decreases infinitely, scarcity premium increases infinitely,
+# but ONLY for those with high EETF scores.
+# ============================================================================
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+# Current supply in smallest units (wei-equivalent)
+bv[256] i_current_supply = in file("inputs/current_supply.in").
+
+# Network-wide average EETF (scaled: 100 = 1.0)
+bv[16] i_eetf_network = in file("inputs/eetf_network.in").
+
+# Transaction volume this period
+bv[256] i_tx_volume = in file("inputs/tx_volume.in").
+
+# Time since genesis (in periods)
+bv[32] i_time_period = in file("inputs/time_period.in").
+
+# External price oracle (for adaptive rate)
+bv[64] i_price_usd = in file("inputs/price_usd.in").
+
+# Circuit breaker status from reflexivity_guard
+sbf i_circuit_ok = in file("inputs/circuit_ok.in").
+
+# =============================================================================
+# CONSTANTS (Configurable via governance)
+# =============================================================================
+
+# Base annual deflation rate: 20% (scaled: 2000 = 20%)
+bv[16] C_BASE_DEFLATION = { #x07D0 }:bv[16].  # 2000 = 20%
+
+# Maximum deflation rate: 50% annual (scaled: 5000 = 50%)
+bv[16] C_MAX_DEFLATION = { #x1388 }:bv[16].   # 5000 = 50%
+
+# Minimum deflation rate: 1% annual (scaled: 100 = 1%)
+bv[16] C_MIN_DEFLATION = { #x0064 }:bv[16].   # 100 = 1%
+
+# EETF target threshold (scaled: 100 = 1.0)
+bv[16] C_EETF_TARGET = { #x0064 }:bv[16].     # 100 = 1.0
+
+# Power law exponent for burn acceleration (scaled: 200 = 2.0)
+bv[16] C_POWER_EXPONENT = { #x00C8 }:bv[16].  # 200 = 2.0
+
+# Halving period in time units (like Bitcoin's 4-year halving)
+bv[32] C_HALVING_PERIOD = { #x00034BC0 }:bv[32].  # ~216,000 periods (~4 years at 10min blocks)
+
+# Decimal places (18 like ETH)
+bv[8] C_DECIMALS = { #x12 }:bv[8].  # 18
+
+# =============================================================================
+# INTERNAL STATE
+# =============================================================================
+
+# Running total of all tokens burned
+bv[256] s_total_burned[0] := { #x00 }:bv[256].
+bv[256] s_total_burned[n] := s_total_burned[n-1] + o_burn_amount[n].
+
+# Current deflation era (like Bitcoin's halving eras)
+bv[8] s_deflation_era[0] := { #x00 }:bv[8].
+bv[8] s_deflation_era[n] := 
+    (i_time_period[n] / C_HALVING_PERIOD) & { #xFF }:bv[8].
+
+# Supply checkpoint for each era
+bv[256] s_era_start_supply[0] := i_current_supply[0].
+bv[256] s_era_start_supply[n] := 
+    (s_deflation_era[n] > s_deflation_era[n-1]) ? 
+    i_current_supply[n] : s_era_start_supply[n-1].
+
+# Consecutive high-EETF periods (for momentum)
+bv[16] s_ethical_streak[0] := { #x00 }:bv[16].
+bv[16] s_ethical_streak[n] := 
+    (i_eetf_network[n] > C_EETF_TARGET) ? 
+    (s_ethical_streak[n-1] + { #x01 }:bv[16]) : { #x00 }:bv[16].
+
+# =============================================================================
+# CORE CALCULATIONS
+# =============================================================================
+
+# Calculate EETF multiplier using power law
+# burn_mult = (1 + max(0, EETF - 1.0))^power
+eetf_excess(eetf, target) := 
+    (eetf > target) ? (eetf - target) : { #x00 }:bv[16].
+
+power_mult(excess, power) :=
+    # Approximation: (1 + x)^2 ≈ 1 + 2x + x^2 for small x
+    # Scaled calculation: base 100, excess scaled by 100
+    ({ #x0064 }:bv[16] + excess) * ({ #x0064 }:bv[16] + excess) / { #x0064 }:bv[16].
+
+# Era-based rate reduction (like Bitcoin halving)
+# Rate reduces by half each era
+era_adjusted_rate(base_rate, era) :=
+    (era = { #x00 }:bv[8]) ? base_rate :
+    (era = { #x01 }:bv[8]) ? (base_rate / { #x02 }:bv[16]) :
+    (era = { #x02 }:bv[8]) ? (base_rate / { #x04 }:bv[16]) :
+    (era = { #x03 }:bv[8]) ? (base_rate / { #x08 }:bv[16]) :
+    (era = { #x04 }:bv[8]) ? (base_rate / { #x10 }:bv[16]) :
+    (base_rate / { #x20 }:bv[16]).  # Era 5+: 1/32 of base
+
+# Streak bonus: consecutive ethical periods boost burn
+streak_bonus(streak) :=
+    (streak > { #x0064 }:bv[16]) ? { #x012C }:bv[16] :  # 100+ periods: 3x
+    (streak > { #x0032 }:bv[16]) ? { #x00C8 }:bv[16] :  # 50+ periods: 2x
+    (streak > { #x000A }:bv[16]) ? { #x0096 }:bv[16] :  # 10+ periods: 1.5x
+    { #x0064 }:bv[16].  # Default: 1x
+
+# Volume-adjusted burn (higher volume = more burn)
+volume_factor(volume, supply) :=
+    # Volume as percentage of supply, capped at 200%
+    (volume > supply) ? { #x00C8 }:bv[16] :  # Cap at 2x
+    (volume * { #x0064 }:bv[256] / supply) & { #xFFFF }:bv[16].
+
+# MAIN CALCULATION: Effective deflation rate
+# Combines: base rate × era adjustment × EETF power × streak × volume
+effective_deflation_rate(base, era, eetf_mult, streak_mult, vol_mult) :=
+    (base * era * eetf_mult * streak_mult * vol_mult) / { #x5F5E100 }:bv[256].  # Scale down
+
+# Calculate actual burn amount
+calculate_burn(supply, rate) :=
+    (supply * rate) / { #x2710 }:bv[256].  # rate is scaled by 10000
+
+# Clamp rate to bounds (generic)
+clamp_rate(rate, min_rate, max_rate) :=
+    (rate < min_rate) ? min_rate :
+    (rate > max_rate) ? max_rate :
+    rate.
+
+# Clamp rate to bounds (using bv[256] to prevent overflow before cast)
+clamp_rate_256(rate, min_rate, max_rate) :=
+    (rate < min_rate) ? min_rate :
+    (rate > max_rate) ? max_rate :
+    rate.
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+bv[256] o_burn_amount = ofile("outputs/burn_amount.out").
+bv[256] o_new_supply = ofile("outputs/new_supply.out").
+bv[256] o_total_burned = ofile("outputs/total_burned.out").
+bv[16] o_effective_rate = ofile("outputs/effective_rate.out").
+bv[8] o_current_era = ofile("outputs/current_era.out").
+bv[16] o_ethical_streak = ofile("outputs/ethical_streak.out").
+bv[256] o_scarcity_multiplier = ofile("outputs/scarcity_multiplier.out").
+sbf o_burn_executed = ofile("outputs/burn_executed.out").
+
+# =============================================================================
+# RECURRENCE RELATIONS
+# =============================================================================
+
+# Intermediate calculations
+bv[16] eetf_mult_calc[t] := 
+    power_mult(eetf_excess(i_eetf_network[t], C_EETF_TARGET), C_POWER_EXPONENT).
+
+bv[16] era_rate[t] := 
+    era_adjusted_rate(C_BASE_DEFLATION, s_deflation_era[t]).
+
+bv[16] streak_mult[t] := 
+    streak_bonus(s_ethical_streak[t]).
+
+bv[16] vol_mult[t] := 
+    volume_factor(i_tx_volume[t], i_current_supply[t]) + { #x0064 }:bv[16].  # Base 1x
+
+bv[256] raw_rate[t] := 
+    (era_rate[t] * eetf_mult_calc[t] * streak_mult[t] * vol_mult[t]) / { #x5F5E100 }:bv[256].
+
+# Clamp using bv[256] logic to handle overflows safely
+bv[256] clamped_rate_256[t] := 
+    clamp_rate_256(raw_rate[t], 
+                   { #x0064 }:bv[256],   # C_MIN_DEFLATION
+                   { #x1388 }:bv[256]).  # C_MAX_DEFLATION
+
+bv[16] clamped_rate[t] := clamped_rate_256[t] & { #xFFFF }:bv[16].
+
+# Main outputs
+o_effective_rate[t] := clamped_rate[t].
+
+o_burn_amount[t] := 
+    (i_circuit_ok[t]) ? 
+    calculate_burn(i_current_supply[t], clamped_rate[t]) : 
+    { #x00 }:bv[256].
+
+o_new_supply[t] := i_current_supply[t] - o_burn_amount[t].
+
+o_total_burned[t] := s_total_burned[t].
+
+o_current_era[t] := s_deflation_era[t].
+
+o_ethical_streak[t] := s_ethical_streak[t].
+
+# Scarcity multiplier: Initial_Supply / Current_Supply
+# This increases infinitely as supply approaches zero
+o_scarcity_multiplier[t] := 
+    (o_new_supply[t] > { #x00 }:bv[256]) ?
+    (s_era_start_supply[0] / o_new_supply[t]) :
+    { #xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF }:bv[256].  # Max on zero
+
+o_burn_executed[t] := i_circuit_ok[t] & (o_burn_amount[t] > { #x00 }:bv[256]).
+
+# =============================================================================
+# FINITE STATE MACHINE
+# =============================================================================
+
+# States:
+# GENESIS (0): Initial state, first era
+# ACTIVE (1): Normal deflation operation
+# ACCELERATING (2): High EETF causing accelerated deflation
+# HALVING (3): Era transition (halving event)
+# PAUSED (4): Circuit breaker active
+# TERMINAL (5): Supply below minimum threshold (theoretical)
+
+bv[3] ST_GENESIS = { #b000 }:bv[3].
+bv[3] ST_ACTIVE = { #b001 }:bv[3].
+bv[3] ST_ACCELERATING = { #b010 }:bv[3].
+bv[3] ST_HALVING = { #b011 }:bv[3].
+bv[3] ST_PAUSED = { #b100 }:bv[3].
+bv[3] ST_TERMINAL = { #b101 }:bv[3].
+
+bv[3] s_state[0] := ST_GENESIS.
+
+bv[3] s_state[n] :=
+    # Check for circuit breaker
+    (~i_circuit_ok[n]) ? ST_PAUSED :
+    # Check for era transition
+    (s_deflation_era[n] > s_deflation_era[n-1]) ? ST_HALVING :
+    # Check for high EETF (accelerating)
+    (i_eetf_network[n] > { #x00C8 }:bv[16]) ? ST_ACCELERATING :  # > 2.0
+    # Check for terminal (theoretical minimum)
+    (o_new_supply[n] < { #x01 }:bv[256]) ? ST_TERMINAL :
+    # Default: ACTIVE
+    ST_ACTIVE.
+
+# =============================================================================
+# INVARIANTS
+# =============================================================================
+
+# Supply can decrease but never go negative
+always (o_new_supply >= { #x00 }:bv[256]).
+
+# Burn amount bounded by current supply
+always (o_burn_amount <= i_current_supply).
+
+# Rate always within bounds
+always (o_effective_rate >= C_MIN_DEFLATION).
+always (o_effective_rate <= C_MAX_DEFLATION).
+
+# Total burned monotonically increases
+always (o_total_burned >= s_total_burned[n-1]).
+
+# Circuit breaker respected
+always (~i_circuit_ok => o_burn_amount = { #x00 }:bv[256}).
+
+# Scarcity multiplier only increases (deflation is unidirectional)
+always (o_scarcity_multiplier >= { #x01 }:bv[256]).
+

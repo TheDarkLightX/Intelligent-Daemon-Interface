@@ -1,0 +1,28 @@
+{
+  "fsm": {
+    "description": "Finite State Machine for position tracking",
+    "template": "(o{output_idx}[t] = i{buy_idx}[t] | (o{output_idx}[t-1] & i{sell_idx}[t]'))",
+    "requires": ["buy_input", "sell_input", "output"]
+  },
+  "counter": {
+    "description": "Toggle counter on event",
+    "template": "(o{output_idx}[t] = (i{event_idx}[t] & o{output_idx}[t-1]') | (i{event_idx}[t]' & o{output_idx}[t-1]))",
+    "requires": ["event_input", "output"]
+  },
+  "accumulator": {
+    "description": "Accumulate values over time",
+    "template": "(o{output_idx}[t] = o{output_idx}[t-1] + i{input_idx}[t]) && (o{output_idx}[0] = {{0}}:bv[{width}])",
+    "requires": ["input", "output", "width"]
+  },
+  "vote": {
+    "description": "Weighted voting from multiple signals",
+    "template": "(o{output_idx}[t] = i{input1_idx}[t] | i{input2_idx}[t] | i{input3_idx}[t])",
+    "requires": ["inputs", "output"]
+  },
+  "passthrough": {
+    "description": "Pass input directly to output",
+    "template": "(o{output_idx}[t] = i{input_idx}[t])",
+    "requires": ["input", "output"]
+  }
+}
+

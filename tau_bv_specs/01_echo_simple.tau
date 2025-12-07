@@ -1,0 +1,11 @@
+# Tau Language Experiment 01: Simple Echo
+# The most basic spec - output equals input at each time step
+# Tests: basic I/O, type inference, execution
+
+# Define streams with type sbf (simple Boolean function)
+i1 : sbf = in console.
+o1 : sbf = out console.
+
+# Spec: output always equals input
+o1[t] = i1[t].
+

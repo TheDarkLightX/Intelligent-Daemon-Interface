@@ -1,0 +1,156 @@
+# Deflationary Agent V42 - Bitvector Price Thresholds
+# First truly intelligent agent using native bv[16] arithmetic
+# Copyright DarkLightX/Dana Edwards
+#
+# MAJOR UPGRADE: Native Bitvector Intelligence
+# - Actual 16-bit price values instead of binary high/low
+# - Numeric threshold comparisons for entry/exit
+# - Hybrid architecture: sbf for state machine, bv for prices
+#
+# WHY BITVECTORS:
+# - Previous versions used 1-bit price (0=low, 1=high)
+# - This version uses 16-bit price (0-65535 range)
+# - Enables precise entry/exit points, not just "above/below average"
+# - SMT solver (cvc5) handles bitvector arithmetic efficiently
+
+# === BITVECTOR PRICE INPUTS ===
+# These are the first true numeric inputs in the agent series
+bv[16] i0 = ifile("inputs/price.in").           # Actual market price (0-65535)
+bv[16] i5 = ifile("inputs/entry_threshold.in"). # Entry threshold (buy when price < this)
+bv[16] i6 = ifile("inputs/exit_threshold.in").  # Exit threshold (sell when price > this)
+
+# === BOOLEAN SIGNAL INPUTS (unchanged from V35) ===
+sbf i1 = ifile("inputs/volume.in").             # Volume signal: 0=low, 1=high
+sbf i2 = ifile("inputs/trend.in").              # Trend signal: 0=bearish, 1=bullish
+sbf i3 = ifile("inputs/profit_guard.in").       # Daemon profit guard
+sbf i4 = ifile("inputs/failure_echo.in").       # Daemon failure echo
+
+# === BITVECTOR HELPER PREDICATES ===
+# Entry: price is below entry threshold (buying opportunity)
+price_entry_ok(price, threshold) := price < threshold.
+
+# Exit: price is above exit threshold (profit target reached)
+price_exit_ok(price, threshold) := price > threshold.
+
+# === BOOLEAN HELPER PREDICATES (from V35) ===
+# Volume and trend still use boolean logic
+valid_entry_signals(v, t, h) := v & t & h'.
+timed_out(b1, b0) := b1 & b0.
+
+# === OUTPUT STREAMS (sbf for state machine efficiency) ===
+sbf o0 = ofile("outputs/state.out").            # Executing state
+sbf o1 = ofile("outputs/holding.out").          # Position held
+sbf o2 = ofile("outputs/buy_signal.out").       # Buy trigger
+sbf o3 = ofile("outputs/sell_signal.out").      # Sell trigger
+sbf o6 = ofile("outputs/timer_b0.out").         # Timer bit 0
+sbf o7 = ofile("outputs/timer_b1.out").         # Timer bit 1
+sbf o9 = ofile("outputs/nonce.out").            # Replay protection
+sbf o11 = ofile("outputs/profit.out").          # Profit achieved
+sbf o13 = ofile("outputs/has_burned.out").      # Burn history
+
+# Bitvector outputs for tracking
+bv[16] o14 = ofile("outputs/entry_price.out").  # Captured entry price (actual value)
+bv[16] o15 = ofile("outputs/current_price.out").# Current price echo for debugging
+
+# === INTELLIGENT SPECIFICATION WITH BITVECTOR THRESHOLDS ===
+r (
+    # === BITVECTOR ENTRY CONDITION ===
+    # Entry when:
+    # - Price is below entry threshold (i0 < i5)
+    # - Volume is fresh (i1 = 1)
+    # - Trend is bullish (i2 = 1)
+    # - Not already holding (o1[t-1] = 0)
+    # - Not executing (o0[t-1] = 0)
+    # - Timer not expired (not timed out)
+    # - No nonce (o9[t-1] = 0)
+    # - No failure (i4 = 0)
+    (o0[t] = (o0[t-1]' & 
+              price_entry_ok(i0[t], i5[t]) &
+              valid_entry_signals(i1[t], i2[t], o1[t-1]) &
+              i1[t] & timed_out(o7[t-1], o6[t-1])' & o9[t-1]' & i4[t]') |
+             # Continue condition: executing AND not exit condition
+             (o0[t-1] & 
+              price_exit_ok(i0[t], i6[t])' &  # Price hasn't hit exit target
+              timed_out(o7[t-1], o6[t-1])' & i1[t] & i4[t]')) &&
+    
+    # === BITVECTOR EXIT CONDITION ===
+    # Sell signal when:
+    # - Was executing (o0[t-1] = 1)
+    # - Now not executing (o0[t] = 0)
+    # - Was holding (o1[t-1] = 1)
+    (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
+    
+    # === TRADING SIGNALS ===
+    (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&  # Buy on entry
+    (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&   # Position tracking
+    
+    # === TIMER (unchanged) ===
+    (o6[t] = o0[t] & o6[t-1]') &&
+    (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
+    
+    # === NONCE (unchanged) ===
+    (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
+    
+    # === PROFIT CALCULATION ===
+    # Profit when selling above entry price AND profit guard active
+    # Using bitvector comparison: current price > entry price
+    (o11[t] = o3[t] & (i0[t] > o14[t-1]) & i3[t]) &&
+    
+    # === BURN TRACKING (unchanged) ===
+    (o13[t] = o13[t-1] | o11[t]) &&
+    
+    # === BITVECTOR STATE TRACKING ===
+    # Capture entry price when buying
+    (o14[t] = (o2[t] ? i0[t] : o14[t-1])) &&
+    
+    # Echo current price for debugging
+    (o15[t] = i0[t])
+)
+
+# === V42 INTELLIGENCE FEATURES ===
+#
+# 1. NUMERIC PRICE THRESHOLDS
+#    - Entry threshold: Buy when price < i5
+#    - Exit threshold: Sell when price > i6
+#    - Daemon sets thresholds based on market analysis
+#
+# 2. PRECISE PROFIT CALCULATION
+#    - Tracks actual entry price in o14 (bv[16])
+#    - Profit = current_price > entry_price
+#    - No longer binary "high/low" comparison
+#
+# 3. HYBRID ARCHITECTURE
+#    - State machine: sbf (BDD-optimized, fast)
+#    - Price comparisons: bv[16] (SMT-optimized, precise)
+#    - Best of both worlds
+#
+# DAEMON REQUIREMENTS:
+# - Provide actual price in i0 (0-65535 scale)
+# - Provide entry threshold in i5 (e.g., support level)
+# - Provide exit threshold in i6 (e.g., resistance level)
+# - Other inputs (i1-i4) unchanged from V35
+
+# === EXAMPLE THRESHOLD STRATEGY ===
+#
+# Daemon computes:
+#   i5 = moving_average - (2 * stddev)  # Entry below lower band
+#   i6 = moving_average + (2 * stddev)  # Exit above upper band
+#
+# This implements a Bollinger Band style strategy where:
+# - Buy when price dips below lower band
+# - Sell when price rises above upper band
+
+# === PERFORMANCE NOTES ===
+# Clause count: 11 (similar to V38)
+# New features: 2 bitvector inputs, 2 bitvector outputs
+# SMT impact: Minor (~10-20% slower) due to bv comparisons
+# Trade-off: Much smarter decisions for modest performance cost
+
+# === SAFETY GUARANTEES (Preserved) ===
+# 1. Action exclusivity: Buy requires !holding, Sell requires holding
+# 2. Fresh oracle: Entry/continuation require i1=1
+# 3. Nonce blocking: Entry requires o9[t-1]=0
+# 4. Timeout: Timer=3 forces exit
+# 5. Burn coupling: Profit requires price gain + guard
+# 6. Monotonic burns: o13 never decreases
+

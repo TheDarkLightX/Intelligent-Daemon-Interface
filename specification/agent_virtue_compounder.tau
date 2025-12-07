@@ -1,0 +1,459 @@
+# ==============================================================================
+# AGENT VIRTUE COMPOUNDER (VCC) - Main VCC Trading & Ecosystem Agent
+# ==============================================================================
+# The Ultimate VCC-Enhanced Hyper-Deflationary Agent for Tau Testnet Alpha
+#
+# Integrates ALL VCC primitives:
+# - Virtue-Shares (time-locking with sqrt scaling)
+# - Benevolent Burn Engine (autonomous treasury)
+# - Early Exit Penalties (HEX-style slash-to-burn)
+# - Vote-Escrow Governance (veCRV-style)
+# - Dynamic Base Reward (DBR+)
+# - Hyper-Compounding Rewards (HCR)
+# - Aggressive Ethical Burn (AEB)
+#
+# FSM States:
+# 0: IDLE - Awaiting actions
+# 1: LOCKING - Processing new lock
+# 2: COMPOUNDING - Active compounding period
+# 3: BURNING - Executing burns
+# 4: CLAIMING - Processing reward claim
+# 5: EXITING - Processing early exit
+# 6: VOTING - Casting governance vote
+# 7: EXTENDING - Extending lock duration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# INPUTS - Account Parameters
+# ------------------------------------------------------------------------------
+
+# Account token balance (256-bit)
+bv[256] i_balance = ifile("inputs/balance.in").
+
+# Amount to lock (256-bit)
+bv[256] i_lock_amount = ifile("inputs/lock_amount.in").
+
+# Lock duration in days (16-bit)
+bv[16] i_lock_duration = ifile("inputs/lock_duration.in").
+
+# Current time in days (32-bit)
+bv[32] i_current_time = ifile("inputs/current_time.in").
+
+# Account EETF score (8-bit, 100 = 1.0)
+bv[8] i_eetf_account = ifile("inputs/eetf_account.in").
+
+# Network average EETF (8-bit, 100 = 1.0)
+bv[8] i_eetf_network_avg = ifile("inputs/eetf_network_avg.in").
+
+# ------------------------------------------------------------------------------
+# INPUTS - Network Metrics
+# ------------------------------------------------------------------------------
+
+# Total supply (256-bit)
+bv[256] i_total_supply = ifile("inputs/total_supply.in").
+
+# Transaction fees this period (256-bit)
+bv[256] i_fees_collected = ifile("inputs/fees_collected.in").
+
+# Total vTokens in network (256-bit)
+bv[256] i_total_vtokens = ifile("inputs/total_vtokens.in").
+
+# Validator count (32-bit)
+bv[32] i_validator_count = ifile("inputs/validator_count.in").
+
+# PRNG seed from commit-reveal (16-bit)
+bv[16] i_prng_seed = ifile("inputs/prng_seed.in").
+
+# Base rates (16-bit basis points)
+bv[16] i_base_comp_rate = ifile("inputs/base_comp_rate.in").
+bv[16] i_base_burn_rate = ifile("inputs/base_burn_rate.in").
+
+# ------------------------------------------------------------------------------
+# INPUTS - Action Signals
+# ------------------------------------------------------------------------------
+
+sbf i_action_lock = ifile("inputs/action_lock.in").
+sbf i_action_extend = ifile("inputs/action_extend.in").
+sbf i_action_compound = ifile("inputs/action_compound.in").
+sbf i_action_claim = ifile("inputs/action_claim.in").
+sbf i_action_exit = ifile("inputs/action_exit.in").
+sbf i_action_vote = ifile("inputs/action_vote.in").
+sbf i_action_burn = ifile("inputs/action_burn.in").
+
+# Vote parameters
+bv[32] i_proposal_id = ifile("inputs/proposal_id.in").
+sbf i_vote_direction = ifile("inputs/vote_direction.in").
+
+# Emergency override
+sbf i_emergency_halt = ifile("inputs/emergency_halt.in").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Account State
+# ------------------------------------------------------------------------------
+
+# Current vShares (256-bit)
+bv[256] o_vshares = ofile("outputs/vshares.out").
+
+# Voting power (256-bit)
+bv[256] o_voting_power = ofile("outputs/voting_power.out").
+
+# Compounded balance (256-bit)
+bv[256] o_compounded_balance = ofile("outputs/compounded_balance.out").
+
+# Accrued rewards (256-bit)
+bv[256] o_accrued_rewards = ofile("outputs/accrued_rewards.out").
+
+# Cumulative rewards claimed (256-bit)
+bv[256] o_rewards_claimed = ofile("outputs/rewards_claimed.out").
+
+# Lock remaining days (16-bit)
+bv[16] o_remaining_days = ofile("outputs/remaining_days.out").
+
+# Boost multiplier (8-bit, 100-250)
+bv[8] o_boost_multiplier = ofile("outputs/boost_multiplier.out").
+
+# Fee share this period (256-bit)
+bv[256] o_fee_share = ofile("outputs/fee_share.out").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Effective Rates
+# ------------------------------------------------------------------------------
+
+# Effective compounding rate (16-bit bps)
+bv[16] o_effective_comp_rate = ofile("outputs/effective_comp_rate.out").
+
+# Base reward multiplier (16-bit, 50-300)
+bv[16] o_br_multiplier = ofile("outputs/br_multiplier.out").
+
+# Burn multiplier (16-bit, 100-400)
+bv[16] o_burn_multiplier = ofile("outputs/burn_multiplier.out").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - Burn Metrics
+# ------------------------------------------------------------------------------
+
+# Burn amount this period (256-bit)
+bv[256] o_burn_amount = ofile("outputs/burn_amount.out").
+
+# Cumulative burns (256-bit)
+bv[256] o_cumulative_burns = ofile("outputs/cumulative_burns.out").
+
+# Cascade level (8-bit, 0-4)
+bv[8] o_cascade_level = ofile("outputs/cascade_level.out").
+
+# Deflation rate (16-bit bps)
+bv[16] o_deflation_rate = ofile("outputs/deflation_rate.out").
+
+# ------------------------------------------------------------------------------
+# OUTPUTS - FSM State
+# ------------------------------------------------------------------------------
+
+# Current state (8-bit, 0-7)
+bv[8] o_current_state = ofile("outputs/current_state.out").
+
+# State flags
+sbf o_lock_active = ofile("outputs/lock_active.out").
+sbf o_compounding_active = ofile("outputs/compounding_active.out").
+sbf o_vote_cast = ofile("outputs/vote_cast.out").
+
+# Penalty amount if exiting early (256-bit)
+bv[256] o_penalty_amount = ofile("outputs/penalty_amount.out").
+
+# Net return on exit (256-bit)
+bv[256] o_exit_return = ofile("outputs/exit_return.out").
+
+# Overall health score (8-bit percentage)
+bv[8] o_health_score = ofile("outputs/health_score.out").
+
+# ------------------------------------------------------------------------------
+# CONSTANTS (State Encoding)
+# ------------------------------------------------------------------------------
+# STATE_IDLE = 0
+# STATE_LOCKING = 1
+# STATE_COMPOUNDING = 2
+# STATE_BURNING = 3
+# STATE_CLAIMING = 4
+# STATE_EXITING = 5
+# STATE_VOTING = 6
+# STATE_EXTENDING = 7
+
+# ------------------------------------------------------------------------------
+# HELPER PREDICATES - Integrated Calculations
+# ------------------------------------------------------------------------------
+
+# Import calculations from library modules (conceptually)
+# In practice, these are inlined here
+
+# vShares calculation (from virtue_shares.tau)
+calc_vshares(amount, duration, eetf) :=
+    (amount * sqrt_approx(duration) * eetf) / { #x6400 }:bv[256].
+
+sqrt_approx(x) :=
+    (x <= { #x0100 }:bv[16]) ? { #x10 }:bv[16] :
+    (x <= { #x0400 }:bv[16]) ? { #x20 }:bv[16] :
+    (x <= { #x1000 }:bv[16]) ? { #x40 }:bv[16] :
+    { #x80 }:bv[16].
+
+# Decay factor (from vote_escrow_governance.tau)
+calc_decay(remaining, original) :=
+    (original = { #x0000 }:bv[16]) ? { #x00 }:bv[8] :
+    ((remaining * { #xFF }:bv[32]) / original).
+
+# Remaining days
+calc_remaining(start, duration, current) :=
+    ((start + duration) > current) ? ((start + duration) - current) : { #x0000 }:bv[16].
+
+# Boost multiplier (from virtue_shares.tau)
+calc_boost(decay) :=
+    ({ #x64 }:bv[8] + ((decay * { #x96 }:bv[16]) >> { #x08 }:bv[16])).
+
+# EETF multiplier for compounding (from hcr_hyper_compound.tau)
+calc_eetf_mult(eetf) :=
+    (eetf <= { #x64 }:bv[8]) ? { #x0064 }:bv[16] :
+    ({ #x0064 }:bv[16] + (eetf - { #x64 }:bv[8])).
+
+# Duration multiplier (from hcr_hyper_compound.tau)
+calc_dur_mult(duration) :=
+    ({ #x0064 }:bv[16] + ((duration * { #x19 }:bv[16]) / { #x05B4 }:bv[16])).
+
+# Effective comp rate (from hcr_hyper_compound.tau)
+calc_effective_rate(base, eetf_mult, dur_mult, boost) :=
+    clamp_rate(((((base * eetf_mult) / { #x64 }:bv[16]) * dur_mult) / { #x64 }:bv[16]) * boost / { #x64 }:bv[16]).
+
+clamp_rate(rate) :=
+    (rate > { #x1388 }:bv[16]) ? { #x1388 }:bv[16] : rate.
+
+# BR multiplier (from dbr_dynamic_base.tau)
+calc_br_mult(eetf_avg) :=
+    (eetf_avg >= { #x64 }:bv[8]) ?
+        ({ #x0064 }:bv[16] + ((eetf_avg - { #x64 }:bv[8]) * { #x02 }:bv[16])) :
+        ({ #x0064 }:bv[16] - ((({ #x64 }:bv[8] - eetf_avg) * { #x02 }:bv[16]))).
+
+# Burn multiplier (from aeb_ethical_burn.tau)
+calc_burn_mult(eetf_avg) :=
+    (eetf_avg <= { #x64 }:bv[8]) ? { #x0064 }:bv[16] :
+    (((eetf_avg * eetf_avg) / { #x64 }:bv[16]) > { #x0190 }:bv[16]) ?
+        { #x0190 }:bv[16] :
+        ((eetf_avg * eetf_avg) / { #x64 }:bv[16]).
+
+# Cascade level (from aeb_ethical_burn.tau)
+calc_cascade(eetf_avg) :=
+    (eetf_avg > { #xB4 }:bv[8]) ? { #x04 }:bv[8] :
+    (eetf_avg > { #xA0 }:bv[8]) ? { #x03 }:bv[8] :
+    (eetf_avg > { #x8C }:bv[8]) ? { #x02 }:bv[8] :
+    (eetf_avg > { #x78 }:bv[8]) ? { #x01 }:bv[8] :
+    { #x00 }:bv[8].
+
+# Penalty calculation (from early_exit_penalties.tau)
+calc_penalty_days(duration) :=
+    ((duration >> { #x01 }:bv[16]) < { #x005A }:bv[16]) ?
+        { #x005A }:bv[16] : (duration >> { #x01 }:bv[16]).
+
+calc_penalty_amount(amount, penalty_days, duration) :=
+    (duration = { #x0000 }:bv[16]) ? { #x00 }:bv[256] :
+    ((amount * penalty_days) / duration).
+
+# Health score calculation
+calc_health(eetf_account, eetf_network, remaining, duration) :=
+    (((eetf_account + eetf_network) / { #x02 }:bv[8]) *
+     calc_decay(remaining, duration)) / { #xFF }:bv[8].
+
+# ------------------------------------------------------------------------------
+# FSM STATE TRANSITIONS
+# ------------------------------------------------------------------------------
+
+# Current state
+state_idle := o_current_state = { #x00 }:bv[8].
+state_locking := o_current_state = { #x01 }:bv[8].
+state_compounding := o_current_state = { #x02 }:bv[8].
+state_burning := o_current_state = { #x03 }:bv[8].
+state_claiming := o_current_state = { #x04 }:bv[8].
+state_exiting := o_current_state = { #x05 }:bv[8].
+state_voting := o_current_state = { #x06 }:bv[8].
+state_extending := o_current_state = { #x07 }:bv[8].
+
+# Transition conditions
+can_lock := state_idle & i_action_lock & (i_lock_amount > { #x00 }:bv[256]) &
+            (i_lock_duration > { #x0000 }:bv[16]) & (i_lock_duration <= { #x05B4 }:bv[16]).
+
+can_extend := o_lock_active & i_action_extend & (i_lock_duration > o_remaining_days).
+
+can_compound := o_lock_active & i_action_compound.
+
+can_claim := o_lock_active & i_action_claim & (o_accrued_rewards > { #x00 }:bv[256]).
+
+can_exit := o_lock_active & i_action_exit & (o_remaining_days > { #x0000 }:bv[16]).
+
+can_vote := o_lock_active & i_action_vote & (i_proposal_id != { #x00 }:bv[32]).
+
+can_burn := i_action_burn & ~i_emergency_halt.
+
+# ------------------------------------------------------------------------------
+# RECURRENCE RELATIONS - State Updates
+# ------------------------------------------------------------------------------
+
+# FSM state
+o_current_state[0] := { #x00 }:bv[8].  # IDLE
+o_current_state[t] :=
+    i_emergency_halt[t] ? { #x00 }:bv[8] :
+    can_lock[t-1] ? { #x01 }:bv[8] :
+    can_extend[t-1] ? { #x07 }:bv[8] :
+    can_compound[t-1] ? { #x02 }:bv[8] :
+    can_burn[t-1] ? { #x03 }:bv[8] :
+    can_claim[t-1] ? { #x04 }:bv[8] :
+    can_exit[t-1] ? { #x05 }:bv[8] :
+    can_vote[t-1] ? { #x06 }:bv[8] :
+    { #x00 }:bv[8].  # Return to IDLE
+
+# Lock active
+o_lock_active[0] := 0.
+o_lock_active[t] :=
+    can_lock[t-1] ? 1 :
+    can_exit[t-1] ? 0 :
+    (o_remaining_days[t] = { #x0000 }:bv[16]) ? 0 :
+    o_lock_active[t-1].
+
+# Remaining days
+o_remaining_days[0] := { #x0000 }:bv[16].
+o_remaining_days[t] :=
+    can_lock[t-1] ? i_lock_duration[t-1] :
+    can_extend[t-1] ? i_lock_duration[t-1] :
+    can_exit[t-1] ? { #x0000 }:bv[16] :
+    o_lock_active[t] ? 
+        (o_remaining_days[t-1] > { #x0000 }:bv[16] ? 
+            (o_remaining_days[t-1] - { #x0001 }:bv[16]) : 
+            { #x0000 }:bv[16]) :
+    { #x0000 }:bv[16].
+
+# vShares
+o_vshares[0] := { #x00 }:bv[256].
+o_vshares[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    calc_vshares(i_lock_amount[t], o_remaining_days[t], i_eetf_account[t]).
+
+# Voting power (decays with vShares)
+o_voting_power[0] := { #x00 }:bv[256].
+o_voting_power[t] := o_vshares[t].
+
+# Boost multiplier
+o_boost_multiplier[0] := { #x64 }:bv[8].
+o_boost_multiplier[t] :=
+    ~o_lock_active[t] ? { #x64 }:bv[8] :
+    calc_boost(calc_decay(o_remaining_days[t], i_lock_duration[t])).
+
+# Effective rates
+o_effective_comp_rate[0] := { #x01F4 }:bv[16].  # 500 bps = 5%
+o_effective_comp_rate[t] :=
+    calc_effective_rate(
+        i_base_comp_rate[t],
+        calc_eetf_mult(i_eetf_account[t]),
+        calc_dur_mult(i_lock_duration[t]),
+        o_boost_multiplier[t]
+    ).
+
+o_br_multiplier[0] := { #x0064 }:bv[16].  # 100 = 1.0x
+o_br_multiplier[t] :=
+    calc_br_mult(i_eetf_network_avg[t]).
+
+o_burn_multiplier[0] := { #x0064 }:bv[16].
+o_burn_multiplier[t] :=
+    calc_burn_mult(i_eetf_network_avg[t]).
+
+# Cascade level
+o_cascade_level[0] := { #x00 }:bv[8].
+o_cascade_level[t] :=
+    calc_cascade(i_eetf_network_avg[t]).
+
+# Compounding
+o_compounding_active[0] := 0.
+o_compounding_active[t] :=
+    can_compound[t-1] ? 1 : 0.
+
+o_compounded_balance[0] := { #x00 }:bv[256].
+o_compounded_balance[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    (i_lock_amount[t] + ((i_lock_amount[t] * o_effective_comp_rate[t]) / { #x2710 }:bv[256])).
+
+o_accrued_rewards[0] := { #x00 }:bv[256].
+o_accrued_rewards[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    can_claim[t-1] ? { #x00 }:bv[256] :
+    (o_compounded_balance[t] >= i_lock_amount[t]) ?
+        (o_compounded_balance[t] - i_lock_amount[t]) :
+        { #x00 }:bv[256].
+
+o_rewards_claimed[0] := { #x00 }:bv[256].
+o_rewards_claimed[t] :=
+    can_claim[t-1] ?
+        (o_rewards_claimed[t-1] + o_accrued_rewards[t-1]) :
+    o_rewards_claimed[t-1].
+
+# Fee share
+o_fee_share[0] := { #x00 }:bv[256].
+o_fee_share[t] :=
+    ~o_lock_active[t] ? { #x00 }:bv[256] :
+    (i_total_vtokens[t] = { #x00 }:bv[256]) ? { #x00 }:bv[256] :
+    ((o_vshares[t] * i_fees_collected[t]) / i_total_vtokens[t]).
+
+# Burns
+o_burn_amount[0] := { #x00 }:bv[256].
+o_burn_amount[t] :=
+    ~can_burn[t-1] ? { #x00 }:bv[256] :
+    ((i_fees_collected[t] * i_base_burn_rate[t] * o_burn_multiplier[t]) / 
+     ({ #x2710 }:bv[256] * { #x64 }:bv[256])).
+
+o_cumulative_burns[0] := { #x00 }:bv[256].
+o_cumulative_burns[t] := o_cumulative_burns[t-1] + o_burn_amount[t].
+
+o_deflation_rate[0] := { #x0000 }:bv[16].
+o_deflation_rate[t] :=
+    (i_total_supply[t] = { #x00 }:bv[256]) ? { #x0000 }:bv[16] :
+    ((o_burn_amount[t] * { #x2710 }:bv[256]) / i_total_supply[t]).
+
+# Early exit penalty
+o_penalty_amount[0] := { #x00 }:bv[256].
+o_penalty_amount[t] :=
+    can_exit[t-1] ?
+        calc_penalty_amount(i_lock_amount[t-1], 
+                           calc_penalty_days(i_lock_duration[t-1]),
+                           i_lock_duration[t-1]) :
+    { #x00 }:bv[256].
+
+o_exit_return[0] := { #x00 }:bv[256].
+o_exit_return[t] :=
+    can_exit[t-1] ?
+        ((i_lock_amount[t-1] >= o_penalty_amount[t]) ?
+            (i_lock_amount[t-1] - o_penalty_amount[t]) :
+            { #x00 }:bv[256]) :
+    { #x00 }:bv[256].
+
+# Vote status
+o_vote_cast[0] := 0.
+o_vote_cast[t] := can_vote[t-1].
+
+# Health score
+o_health_score[0] := { #x32 }:bv[8].  # 50%
+o_health_score[t] :=
+    calc_health(i_eetf_account[t], i_eetf_network_avg[t], 
+                o_remaining_days[t], i_lock_duration[t]).
+
+# ------------------------------------------------------------------------------
+# INVARIANTS - Safety Properties
+# ------------------------------------------------------------------------------
+
+# All library invariants combined
+inv_vshares_bounded := always (o_vshares <= (i_lock_amount * { #x03 }:bv[256])).
+inv_boost_bounded := always ((o_boost_multiplier >= { #x64 }:bv[8]) & 
+                             (o_boost_multiplier <= { #xFA }:bv[8])).
+inv_rate_capped := always (o_effective_comp_rate <= { #x1388 }:bv[16]).
+inv_burns_monotonic := always (o_cumulative_burns >= o_cumulative_burns').
+inv_penalty_bounded := always (o_penalty_amount <= i_lock_amount).
+inv_state_valid := always (o_current_state <= { #x07 }:bv[8]).
+
+o_all_invariants := inv_vshares_bounded & inv_boost_bounded & inv_rate_capped &
+                    inv_burns_monotonic & inv_penalty_bounded & inv_state_valid.
+
+# ==============================================================================
+# END OF AGENT_VIRTUE_COMPOUNDER.TAU
+# ==============================================================================
+

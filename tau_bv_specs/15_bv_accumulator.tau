@@ -1,0 +1,11 @@
+# Tau Language Experiment 15: BitVector Accumulator
+# Running sum - output accumulates input values
+# Tests: BitVector state with addition
+
+# Define streams
+i1 : bv[8] = in console.
+o1 : bv[8] = out console.
+
+# Spec: accumulator - adds input to running total
+o1[t] = o1[t-1] + i1[t].
+

@@ -1,0 +1,13 @@
+{
+  "total": 55,
+  "passed": 54,
+  "failed": 1,
+  "failures": [
+    {
+      "test": "nonce_blocks_reentry",
+      "errors": [
+        "Re-entry should be blocked or not produce buy signal"
+      ]
+    }
+  ]
+}

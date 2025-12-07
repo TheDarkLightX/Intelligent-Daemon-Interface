@@ -1,0 +1,18 @@
+# Tau Language Experiment 20: Trading Signals
+# Generate buy/sell signals based on price movements
+# Tests: BitVector comparisons, signal generation
+
+# Define streams - price is 8-bit (0-255 range)
+price : bv[8] = in console.
+buy_signal : sbf = out console.
+sell_signal : sbf = out console.
+
+# Function: detect price increase
+# Buy when price drops below 64 (low price)
+# Sell when price rises above 192 (high price)
+
+(price[t] < {64}:bv[8] -> buy_signal[t] = 1) &&
+(price[t] !< {64}:bv[8] -> buy_signal[t] = 0) &&
+(price[t] > {192}:bv[8] -> sell_signal[t] = 1) &&
+(price[t] !> {192}:bv[8] -> sell_signal[t] = 0).
+
