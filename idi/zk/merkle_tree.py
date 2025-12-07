@@ -38,9 +38,9 @@ def _hash_pair(left: bytes, right: bytes) -> bytes:
 
 def _compute_level_hashes(
     level: List[bytes],
-    level_keys: List[str],
+    level_keys: List[List[str]],
     proofs: Dict[str, List[Tuple[bytes, bool]]],
-) -> Tuple[List[bytes], List[str]]:
+) -> Tuple[List[bytes], List[List[str]]]:
     """Compute parent level hashes from current level.
     
     Builds parent level by hashing pairs of children.
@@ -56,7 +56,7 @@ def _compute_level_hashes(
         Tuple of (next_level_hashes, next_level_keys)
     """
     next_level: List[bytes] = []
-    next_keys: List[str] = []
+    next_keys: List[List[str]] = []
     
     for i in range(0, len(level), 2):
         left_child = level[i]
@@ -67,18 +67,24 @@ def _compute_level_hashes(
         parent_hash = _hash_pair(left_child, right_child)
         next_level.append(parent_hash)
         
-        # Use left child's key for parent (arbitrary but consistent)
-        parent_key = level_keys[i]
-        next_keys.append(parent_key)
-        
-        # Accumulate proof paths: left child's proof includes right sibling
-        left_key = level_keys[i]
-        proofs[left_key].append((right_child, True))  # Right sibling
-        
-        # Right child's proof includes left sibling (if exists)
-        if i + 1 < len(level_keys):
-            right_key = level_keys[i + 1]
-            proofs[right_key].append((left_child, False))  # Left sibling
+        # Collect descendant leaf keys for both children
+        left_keys = level_keys[i]
+        right_keys = level_keys[i + 1] if i + 1 < len(level_keys) else level_keys[i]
+
+        # Normalize in case of accidental flattening
+        if isinstance(left_keys, str):
+            left_keys = [left_keys]
+        if isinstance(right_keys, str):
+            right_keys = [right_keys]
+
+        parent_keys = left_keys + right_keys
+        next_keys.append(parent_keys)
+
+        # Accumulate proof paths for all leaves under each subtree
+        for key in left_keys:
+            proofs[key].append((right_child, True))  # Right sibling
+        for key in right_keys:
+            proofs[key].append((left_child, False))  # Left sibling
     
     return next_level, next_keys
 
@@ -130,7 +136,7 @@ class MerkleTreeBuilder:
         
         # Build tree bottom-up, accumulating proofs at each level
         level = leaf_hashes.copy()
-        level_keys = keys.copy()
+        level_keys: List[List[str]] = [[k] for k in keys]
         
         while len(level) > 1:
             level, level_keys = _compute_level_hashes(level, level_keys, proofs)
@@ -196,4 +202,3 @@ class MerkleTreeBuilder:
         
         # Constant-time comparison (Python's == is constant-time for fixed-size bytes)
         return current_hash == root_hash
-

@@ -66,6 +66,7 @@ class LookupPolicy:
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     def export_trace(
+    """Export policy execution trace for debugging."""
         self,
         episodes: Iterable[Sequence[Dict[str, int]]],
         target_dir: Path,
