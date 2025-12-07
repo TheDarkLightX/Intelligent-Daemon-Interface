@@ -188,7 +188,7 @@ See [LICENSE](LICENSE) for details.
 
 ## 📊 Current Status
 
-### Pattern Implementation: 20/26 (77%)
+### Pattern Implementation: 21/26 (81%)
 - ✅ **Basic Patterns** (5): FSM, Counter, Accumulator, Passthrough, Vote
 - ✅ **Composite Patterns** (4): Majority, Unanimous, Custom, Quorum
 - ✅ **Hierarchical Patterns** (1): Supervisor-Worker

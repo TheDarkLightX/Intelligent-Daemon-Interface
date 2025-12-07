@@ -1284,6 +1284,103 @@ def _generate_orthogonal_regions_logic(block: LogicBlock, streams: tuple[StreamC
     return " &&\n    ".join(logic_parts)
 
 
+def _generate_state_aggregation_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate state aggregation pattern logic.
+    
+    Combines multiple FSM states into a superstate using aggregation methods.
+    Common aggregation methods: majority, unanimous, custom expression, or mode selection.
+    """
+    if len(block.inputs) < 2:
+        raise ValueError("State aggregation pattern requires at least 2 inputs (FSM states)")
+    
+    # Get aggregation method from params
+    aggregation_method = block.params.get("method", "majority")
+    valid_methods = ["majority", "unanimous", "custom", "mode"]
+    
+    if aggregation_method not in valid_methods:
+        raise ValueError(f"Aggregation method must be one of {valid_methods}, got {aggregation_method}")
+    
+    # Get output
+    output_idx = _get_stream_index(block.output, streams, is_input=False)
+    output_stream = next(s for s in streams if s.name == block.output and not s.is_input)
+    
+    # Get input indices (these are FSM state outputs)
+    input_refs = []
+    for inp_name in block.inputs:
+        inp_idx, inp_is_input = _get_stream_index_any(inp_name, streams)
+        inp_ref = f"i{inp_idx}[t]" if inp_is_input else f"o{inp_idx}[t]"
+        input_refs.append(inp_ref)
+    
+    # Generate aggregation logic based on method
+    if aggregation_method == "majority":
+        # Majority: output is true if majority of inputs are true
+        threshold = block.params.get("threshold", (len(block.inputs) + 1) // 2)
+        total = len(block.inputs)
+        
+        # Generate majority expression: count true inputs >= threshold
+        # For boolean aggregation: (a & b) | (a & c) | (b & c) for 2-of-3
+        if threshold == total:
+            # Unanimous: all must be true
+            agg_expr = " & ".join(input_refs)
+        elif threshold == 1:
+            # Any: at least one true
+            agg_expr = " | ".join(input_refs)
+        else:
+            # N-of-M: generate combinations
+            from itertools import combinations
+            combinations_list = list(combinations(range(len(input_refs)), threshold))
+            terms = []
+            for combo in combinations_list:
+                term_parts = [input_refs[i] for i in combo]
+                terms.append("(" + " & ".join(term_parts) + ")")
+            agg_expr = " | ".join(terms)
+        
+        aggregation_logic = f"(o{output_idx}[t] = {agg_expr})"
+    
+    elif aggregation_method == "unanimous":
+        # Unanimous: all inputs must agree
+        agg_expr = " & ".join(input_refs)
+        aggregation_logic = f"(o{output_idx}[t] = {agg_expr})"
+    
+    elif aggregation_method == "custom":
+        # Custom: use provided expression
+        expression = block.params.get("expression", "")
+        if not expression:
+            raise ValueError("Custom aggregation method requires 'expression' parameter")
+        
+        # Replace input names with references
+        for i, inp_name in enumerate(block.inputs):
+            expression = expression.replace(f"{inp_name}[t]", input_refs[i])
+            expression = expression.replace(f"{{{inp_name}}}", input_refs[i])
+        
+        aggregation_logic = f"(o{output_idx}[t] = {expression})"
+    
+    elif aggregation_method == "mode":
+        # Mode: select mode based on which input is active
+        # Output is the index of the first active input, or 0 if none
+        # This is more complex - for now, use first active input
+        
+        # Build mode selection: (input0 ? 0 : (input1 ? 1 : (input2 ? 2 : 0)))
+        mode_conditions = []
+        for i, inp_ref in enumerate(input_refs):
+            mode_conditions.append(f"({inp_ref} ? {{{i}}}:bv[{output_stream.width if output_stream.width else 2}] : {{999}}:bv[{output_stream.width if output_stream.width else 2}])")
+        
+        if mode_conditions:
+            mode_expr = " : ".join(mode_conditions) + f" : {{0}}:bv[{output_stream.width if output_stream.width else 2}]"
+            aggregation_logic = f"(o{output_idx}[t] = {mode_expr})"
+        else:
+            aggregation_logic = f"(o{output_idx}[t] = {{0}}:bv[{output_stream.width if output_stream.width else 2}])"
+    
+    # Initial condition
+    if output_stream.stream_type == "sbf":
+        init_logic = f" && (o{output_idx}[0] = 0)"
+    else:
+        initial_value = block.params.get("initial_value", 0)
+        init_logic = f" && (o{output_idx}[0] = {{{initial_value}}}:bv[{output_stream.width if output_stream.width else 2}])"
+    
+    return aggregation_logic + init_logic
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
