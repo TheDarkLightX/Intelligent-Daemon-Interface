@@ -1200,6 +1200,90 @@ def _generate_entry_exit_fsm_logic(block: LogicBlock, streams: tuple[StreamConfi
     return " &&\n    ".join(logic_parts) + init_logic
 
 
+def _generate_orthogonal_regions_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate orthogonal regions pattern logic.
+    
+    Implements parallel independent FSMs (orthogonal regions).
+    Each region operates independently and can be in different states simultaneously.
+    Example: execution region, risk region, connectivity region all running in parallel.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("Orthogonal regions pattern requires at least 1 input")
+    
+    # Get regions configuration from params
+    regions_config = block.params.get("regions", [])
+    
+    if not regions_config:
+        raise ValueError("Orthogonal regions pattern requires 'regions' parameter with region definitions")
+    
+    # Get output streams for each region
+    region_outputs = block.params.get("region_outputs", [])
+    
+    if len(region_outputs) != len(regions_config):
+        raise ValueError(f"Number of region_outputs ({len(region_outputs)}) must match number of regions ({len(regions_config)})")
+    
+    # Generate FSM logic for each region
+    logic_parts = []
+    
+    for i, region in enumerate(regions_config):
+        if not isinstance(region, dict):
+            raise ValueError(f"Region {i} must be a dictionary")
+        
+        region_name = region.get("name", f"region_{i}")
+        region_inputs = region.get("inputs", [])
+        region_states = region.get("states", ["FLAT", "LONG"])
+        
+        if not region_inputs:
+            raise ValueError(f"Region {region_name} must have at least one input")
+        
+        if len(region_states) < 2:
+            raise ValueError(f"Region {region_name} must have at least 2 states")
+        
+        # Get output stream for this region
+        region_output_name = region_outputs[i]
+        region_output_idx = _get_stream_index(region_output_name, streams, is_input=False)
+        region_output_stream = next(s for s in streams if s.name == region_output_name and not s.is_input)
+        
+        # Determine state width
+        import math
+        state_width = max(1, math.ceil(math.log2(len(region_states))))
+        
+        # Get input indices for this region
+        # For FSM, we need buy/sell signals (or equivalent)
+        # If region has 2 inputs, treat as buy/sell
+        # If region has 1 input, treat as toggle
+        
+        if len(region_inputs) >= 2:
+            # Standard FSM: buy/sell inputs
+            buy_input_name = region_inputs[0]
+            sell_input_name = region_inputs[1]
+            
+            buy_idx, buy_is_input = _get_stream_index_any(buy_input_name, streams)
+            sell_idx, sell_is_input = _get_stream_index_any(sell_input_name, streams)
+            
+            buy_ref = f"i{buy_idx}[t]" if buy_is_input else f"o{buy_idx}[t]"
+            sell_ref = f"i{sell_idx}[t]" if sell_is_input else f"o{sell_idx}[t]"
+            
+            # Generate FSM logic: state[t] = buy | (state[t-1] & sell')
+            region_logic = f"(o{region_output_idx}[t] = {buy_ref} | (o{region_output_idx}[t-1] & {sell_ref}'))"
+        else:
+            # Single input: toggle FSM
+            toggle_input_name = region_inputs[0]
+            toggle_idx, toggle_is_input = _get_stream_index_any(toggle_input_name, streams)
+            toggle_ref = f"i{toggle_idx}[t]" if toggle_is_input else f"o{toggle_idx}[t]"
+            
+            # Toggle between first two states
+            region_logic = f"(o{region_output_idx}[t] = ({toggle_ref} ? {{1}}:bv[{state_width}] : {{0}}:bv[{state_width}]))"
+        
+        # Initial condition
+        initial_state = region.get("initial_state", 0)
+        init_logic = f" && (o{region_output_idx}[0] = {{{initial_state}}}:bv[{state_width}])"
+        
+        logic_parts.append(region_logic + init_logic)
+    
+    return " &&\n    ".join(logic_parts)
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
@@ -1333,6 +1417,8 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_risk_fsm_logic(block, schema.streams))
         elif block.pattern == "entry_exit_fsm":
             logic_lines.append(_generate_entry_exit_fsm_logic(block, schema.streams))
+        elif block.pattern == "orthogonal_regions":
+            logic_lines.append(_generate_orthogonal_regions_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     
