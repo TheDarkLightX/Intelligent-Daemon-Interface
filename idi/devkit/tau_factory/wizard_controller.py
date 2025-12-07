@@ -23,12 +23,17 @@ class WizardStep(Enum):
 class WizardData:
     """Data collected through wizard steps."""
     name: str = ""
-    strategy: Literal["momentum", "mean_reversion", "regime_aware", "custom"] = "momentum"
+    strategy: Literal["momentum", "mean_reversion", "regime_aware", "custom", "ensemble"] = "momentum"
     selected_inputs: Dict[str, bool] = field(default_factory=dict)
     num_layers: int = 1
     include_safety: bool = True
     include_communication: bool = False
     num_steps: int = 10
+    # Ensemble pattern options
+    ensemble_pattern: Optional[str] = None  # "majority", "unanimous", "custom"
+    ensemble_threshold: Optional[int] = None  # For majority: N-of-M
+    ensemble_total: Optional[int] = None  # For majority: total agents
+    custom_expression: Optional[str] = None  # For custom pattern
 
 
 class WizardController:
@@ -124,9 +129,25 @@ class WizardController:
             if "strategy" not in data:
                 self._validation_errors["strategy"] = "Strategy is required"
                 return False
-            if data["strategy"] not in ("momentum", "mean_reversion", "regime_aware", "custom"):
+            if data["strategy"] not in ("momentum", "mean_reversion", "regime_aware", "custom", "ensemble"):
                 self._validation_errors["strategy"] = "Invalid strategy"
                 return False
+            # Validate ensemble-specific data if ensemble strategy
+            if data.get("strategy") == "ensemble":
+                if "ensemble_pattern" not in data or not data["ensemble_pattern"]:
+                    self._validation_errors["ensemble_pattern"] = "Ensemble pattern is required"
+                    return False
+                if data["ensemble_pattern"] == "majority":
+                    if "ensemble_threshold" not in data or data["ensemble_threshold"] < 1:
+                        self._validation_errors["ensemble_threshold"] = "Majority threshold must be >= 1"
+                        return False
+                    if "ensemble_total" not in data or data["ensemble_total"] < data["ensemble_threshold"]:
+                        self._validation_errors["ensemble_total"] = "Total must be >= threshold"
+                        return False
+                elif data["ensemble_pattern"] == "custom":
+                    if "custom_expression" not in data or not data["custom_expression"].strip():
+                        self._validation_errors["custom_expression"] = "Custom expression is required"
+                        return False
         
         elif step == WizardStep.INPUTS:
             if "name" not in data or not data["name"].strip():
@@ -162,6 +183,14 @@ class WizardController:
             self.data.include_communication = step_data["include_communication"]
         if "num_steps" in step_data:
             self.data.num_steps = step_data["num_steps"]
+        if "ensemble_pattern" in step_data:
+            self.data.ensemble_pattern = step_data["ensemble_pattern"]
+        if "ensemble_threshold" in step_data:
+            self.data.ensemble_threshold = step_data["ensemble_threshold"]
+        if "ensemble_total" in step_data:
+            self.data.ensemble_total = step_data["ensemble_total"]
+        if "custom_expression" in step_data:
+            self.data.custom_expression = step_data["custom_expression"]
     
     def get_validation_errors(self) -> Dict[str, str]:
         """Get current validation errors."""
@@ -193,6 +222,17 @@ class WizardController:
             if selected and input_name in input_options:
                 streams.append(input_options[input_name])
         
+        # Determine buy/sell inputs for FSM
+        # Check if inputs are selected (dict lookup with default False)
+        buy_input = "q_buy" if self.data.selected_inputs.get("q_buy", False) else "price_up"
+        sell_input = "q_sell" if self.data.selected_inputs.get("q_sell", False) else "price_down"
+        
+        # Ensure fallback inputs are added if not already selected
+        if buy_input not in [s.name for s in streams] and buy_input in input_options:
+            streams.append(input_options[buy_input])
+        if sell_input not in [s.name for s in streams] and sell_input in input_options:
+            streams.append(input_options[sell_input])
+        
         # Add required outputs
         streams.append(StreamConfig(name="position", stream_type="sbf", is_input=False))
         streams.append(StreamConfig(name="buy_signal", stream_type="sbf", is_input=False))
@@ -201,34 +241,101 @@ class WizardController:
         # Build logic blocks
         logic_blocks = []
         
-        # FSM for position
-        buy_input = "q_buy" if "q_buy" in self.data.selected_inputs else "price_up"
-        sell_input = "q_sell" if "q_sell" in self.data.selected_inputs else "price_down"
-        
-        logic_blocks.append(
-            LogicBlock(
-                pattern="fsm",
-                inputs=(buy_input, sell_input),
-                output="position",
+        # Handle ensemble strategy
+        if self.data.strategy == "ensemble":
+            # Get agent inputs (at least 2 required for ensemble)
+            agent_inputs = []
+            for input_name, selected in self.data.selected_inputs.items():
+                if selected and input_name in input_options:
+                    agent_inputs.append(input_name)
+            
+            # Ensure at least 2 agents for ensemble
+            if len(agent_inputs) < 2:
+                # Add fallback agents
+                if "agent1" not in [s.name for s in streams]:
+                    streams.append(StreamConfig(name="agent1", stream_type="sbf"))
+                    agent_inputs.append("agent1")
+                if "agent2" not in [s.name for s in streams]:
+                    streams.append(StreamConfig(name="agent2", stream_type="sbf"))
+                    agent_inputs.append("agent2")
+                if len(agent_inputs) < 3 and "agent3" not in [s.name for s in streams]:
+                    streams.append(StreamConfig(name="agent3", stream_type="sbf"))
+                    agent_inputs.append("agent3")
+            
+            # Limit to total if specified
+            if self.data.ensemble_total:
+                agent_inputs = agent_inputs[:self.data.ensemble_total]
+            
+            # Add ensemble output
+            ensemble_output_name = f"{self.data.ensemble_pattern}_vote"
+            streams.append(StreamConfig(name=ensemble_output_name, stream_type="sbf", is_input=False))
+            
+            # Create ensemble logic block
+            if self.data.ensemble_pattern == "majority":
+                logic_blocks.append(
+                    LogicBlock(
+                        pattern="majority",
+                        inputs=tuple(agent_inputs),
+                        output=ensemble_output_name,
+                        params={
+                            "threshold": self.data.ensemble_threshold or (len(agent_inputs) // 2 + 1),
+                            "total": self.data.ensemble_total or len(agent_inputs),
+                        }
+                    )
+                )
+            elif self.data.ensemble_pattern == "unanimous":
+                logic_blocks.append(
+                    LogicBlock(
+                        pattern="unanimous",
+                        inputs=tuple(agent_inputs),
+                        output=ensemble_output_name,
+                    )
+                )
+            elif self.data.ensemble_pattern == "custom":
+                logic_blocks.append(
+                    LogicBlock(
+                        pattern="custom",
+                        inputs=tuple(agent_inputs),
+                        output=ensemble_output_name,
+                        params={"expression": self.data.custom_expression or ""}
+                    )
+                )
+            
+            # Add position FSM using ensemble output
+            streams.append(StreamConfig(name="position", stream_type="sbf", is_input=False))
+            logic_blocks.append(
+                LogicBlock(
+                    pattern="fsm",
+                    inputs=(ensemble_output_name, sell_input),
+                    output="position",
+                )
             )
-        )
-        
-        # Buy/sell signals
-        logic_blocks.append(
-            LogicBlock(
-                pattern="passthrough",
-                inputs=(buy_input,),
-                output="buy_signal",
+        else:
+            # Standard strategy logic
+            logic_blocks.append(
+                LogicBlock(
+                    pattern="fsm",
+                    inputs=(buy_input, sell_input),
+                    output="position",
+                )
             )
-        )
-        
-        logic_blocks.append(
-            LogicBlock(
-                pattern="passthrough",
-                inputs=(sell_input,),
-                output="sell_signal",
+            
+            # Buy/sell signals
+            logic_blocks.append(
+                LogicBlock(
+                    pattern="passthrough",
+                    inputs=(buy_input,),
+                    output="buy_signal",
+                )
             )
-        )
+            
+            logic_blocks.append(
+                LogicBlock(
+                    pattern="passthrough",
+                    inputs=(sell_input,),
+                    output="sell_signal",
+                )
+            )
         
         return AgentSchema(
             name=self.data.name or "unnamed_agent",

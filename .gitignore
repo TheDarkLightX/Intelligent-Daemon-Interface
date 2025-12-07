@@ -61,7 +61,9 @@ tectonic
 
 # Large binary files
 *.zip
-alignment_theorem_package.zip
+
+# Archive directory (archived content, keep in repo but documented)
+# archive/  # Uncomment to ignore archive entirely
 
 # Embedded git repos (submodules should be configured properly)
 .lake/packages/

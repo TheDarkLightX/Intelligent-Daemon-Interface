@@ -23,6 +23,26 @@
     "description": "Pass input directly to output",
     "template": "(o{output_idx}[t] = i{input_idx}[t])",
     "requires": ["input", "output"]
+  },
+  "majority": {
+    "description": "N-of-M majority voting (e.g., 2-of-3, 3-of-5)",
+    "template": "(o{output_idx}[t] = {majority_expr})",
+    "requires": ["inputs", "output", "threshold", "total"]
+  },
+  "unanimous": {
+    "description": "Unanimous consensus (all inputs must agree)",
+    "template": "(o{output_idx}[t] = {unanimous_expr})",
+    "requires": ["inputs", "output"]
+  },
+  "custom": {
+    "description": "Custom boolean expression",
+    "template": "(o{output_idx}[t] = {expression})",
+    "requires": ["inputs", "output", "expression"]
+  },
+  "quorum": {
+    "description": "Quorum checking (minimum votes required)",
+    "template": "(o{output_idx}[t] = {quorum_expr})",
+    "requires": ["inputs", "output", "threshold"]
   }
 }
 
