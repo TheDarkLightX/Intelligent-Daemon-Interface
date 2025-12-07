@@ -1,12 +1,20 @@
 """End-to-end example: Training → Witness → Proof → Tau Execution
 
 Demonstrates the complete workflow from Q-table training to verified Tau execution.
+
+Run from project root:
+    python -m idi.zk.examples.end_to_end_example
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from idi.zk.witness_generator import generate_witness_from_q_table
 from idi.zk.proof_manager import generate_proof, verify_proof

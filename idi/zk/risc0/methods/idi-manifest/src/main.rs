@@ -10,7 +10,7 @@
 #![no_main]
 
 use risc0_zkvm::guest::env;
-use risc0_zkvm::sha::{Digest, Sha256};
+use risc0_zkvm::sha::Sha256;
 use serde::{Deserialize, Serialize};
 
 risc0_zkvm::guest::entry!(main);
