@@ -13,6 +13,16 @@ from .witness_generator import (
 )
 from .merkle_tree import MerkleTreeBuilder
 from .workflow import WorkflowResult, run_training_to_proof_workflow
+from .qtable_prover import generate_qtable_proof, verify_qtable_proof
+from .training_integration import (
+    generate_proofs_from_training_output,
+    verify_training_proofs,
+)
+from .tau_integration import (
+    verify_before_tau_execution,
+    execute_tau_with_proof_verification,
+    log_proof_verification,
+)
 
 __all__ = [
     "ProofBundle",
@@ -26,5 +36,12 @@ __all__ = [
     "MerkleTreeBuilder",
     "WorkflowResult",
     "run_training_to_proof_workflow",
+    "generate_qtable_proof",
+    "verify_qtable_proof",
+    "generate_proofs_from_training_output",
+    "verify_training_proofs",
+    "verify_before_tau_execution",
+    "execute_tau_with_proof_verification",
+    "log_proof_verification",
 ]
 
