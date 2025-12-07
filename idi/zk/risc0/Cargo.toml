@@ -1,5 +1,5 @@
 [workspace]
-members = ["host", "methods", "methods/idi-manifest"]
+members = ["host", "methods", "methods/idi-manifest", "methods/idi-qtable"]
 resolver = "2"
 
 [workspace.package]
