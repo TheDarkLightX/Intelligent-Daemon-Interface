@@ -66,6 +66,7 @@ def _quantize(series: pd.Series, buckets: int) -> pd.Series:
 
 
 def _compute_kpis(
+    """Compute key performance indicators from backtest results."""
     returns: Iterable[float],
     actions: List[str] | None = None,
     risk_events: List[bool] | None = None,
