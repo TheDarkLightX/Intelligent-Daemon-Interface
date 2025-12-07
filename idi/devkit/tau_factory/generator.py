@@ -1526,6 +1526,105 @@ def _generate_tcp_connection_fsm_logic(block: LogicBlock, streams: tuple[StreamC
     return tcp_logic + init_logic
 
 
+def _generate_utxo_state_machine_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
+    """Generate UTXO state machine pattern logic.
+    
+    Implements Bitcoin UTXO (Unspent Transaction Output) state machine.
+    Tracks UTXO set state: UTXO exists or spent.
+    Validates transactions: inputs must exist in UTXO set, outputs create new UTXOs.
+    Updates UTXO set: remove spent outputs, add new outputs.
+    """
+    if len(block.inputs) < 1:
+        raise ValueError("UTXO state machine pattern requires at least 1 input")
+    
+    # Get transaction inputs from params
+    tx_inputs_name = block.params.get("tx_inputs", block.inputs[0] if len(block.inputs) > 0 else None)
+    tx_outputs_name = block.params.get("tx_outputs", block.inputs[1] if len(block.inputs) > 1 else None)
+    tx_valid_name = block.params.get("tx_valid", None)  # External validation (signatures, etc.)
+    
+    if not tx_inputs_name:
+        raise ValueError("UTXO state machine pattern requires tx_inputs")
+    
+    # Get output streams
+    utxo_set_output_name = block.params.get("utxo_set_output", block.output)
+    tx_valid_output_name = block.params.get("tx_valid_output", None)
+    
+    # Get UTXO set output stream
+    utxo_set_output_idx = _get_stream_index(utxo_set_output_name, streams, is_input=False)
+    utxo_set_output_stream = next(s for s in streams if s.name == utxo_set_output_name and not s.is_input)
+    
+    # UTXO set is a bitvector where each bit represents a UTXO
+    # For simplicity, we'll use a single bitvector to represent UTXO set
+    # In practice, this would be a set/map, but Tau uses bitvectors
+    
+    # Get input indices
+    tx_inputs_idx, tx_inputs_is_input = _get_stream_index_any(tx_inputs_name, streams)
+    tx_inputs_ref = f"i{tx_inputs_idx}[t]" if tx_inputs_is_input else f"o{tx_inputs_idx}[t]"
+    
+    tx_outputs_ref = None
+    if tx_outputs_name:
+        tx_outputs_idx, tx_outputs_is_input = _get_stream_index_any(tx_outputs_name, streams)
+        tx_outputs_ref = f"i{tx_outputs_idx}[t]" if tx_outputs_is_input else f"o{tx_outputs_idx}[t]"
+    
+    tx_valid_ref = None
+    if tx_valid_name:
+        tx_valid_idx, tx_valid_is_input = _get_stream_index_any(tx_valid_name, streams)
+        tx_valid_ref = f"i{tx_valid_idx}[t]" if tx_valid_is_input else f"o{tx_valid_idx}[t]"
+    
+    # UTXO set update logic:
+    # utxo_set[t] = (tx_valid & utxo_set[t-1] & !tx_inputs) | (tx_valid & tx_outputs)
+    # This means:
+    # - Remove spent outputs: utxo_set[t-1] & !tx_inputs (if tx_inputs references a UTXO, remove it)
+    # - Add new outputs: tx_outputs (new UTXOs created)
+    # - Only if transaction is valid: tx_valid
+    
+    # For simplicity, we'll use bitwise operations:
+    # utxo_set[t] = (tx_valid ? ((utxo_set[t-1] & tx_inputs') | tx_outputs) : utxo_set[t-1])
+    
+    if tx_valid_ref:
+        if tx_outputs_ref:
+            # Full UTXO update: remove inputs, add outputs, only if valid
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = ({tx_valid_ref} ? ((o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}') | {tx_outputs_ref}) : o{utxo_set_output_idx}[t-1]))"
+        else:
+            # Only remove inputs (no new outputs)
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = ({tx_valid_ref} ? (o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}') : o{utxo_set_output_idx}[t-1]))"
+    else:
+        # No validation: always update
+        if tx_outputs_ref:
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = ((o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}') | {tx_outputs_ref}))"
+        else:
+            utxo_logic = f"(o{utxo_set_output_idx}[t] = (o{utxo_set_output_idx}[t-1] & {tx_inputs_ref}'))"
+    
+    logic_parts = [utxo_logic]
+    
+    # Transaction validation output (optional)
+    if tx_valid_output_name:
+        try:
+            tx_valid_output_idx = _get_stream_index(tx_valid_output_name, streams, is_input=False)
+            # Validate: all inputs must exist in UTXO set
+            # tx_valid = tx_inputs & utxo_set[t-1] (all inputs are in UTXO set)
+            # For simplicity, check if inputs are subset of UTXO set
+            if tx_valid_ref:
+                # Use external validation
+                validation_logic = f"(o{tx_valid_output_idx}[t] = {tx_valid_ref}) && (o{tx_valid_output_idx}[0] = 0)"
+            else:
+                # Internal validation: inputs must be subset of UTXO set
+                # tx_valid = (tx_inputs & utxo_set[t-1]) = tx_inputs (all inputs exist)
+                validation_logic = f"(o{tx_valid_output_idx}[t] = (({tx_inputs_ref} & o{utxo_set_output_idx}[t-1]) = {tx_inputs_ref})) && (o{tx_valid_output_idx}[0] = 0)"
+            logic_parts.append(validation_logic)
+        except ValueError:
+            pass  # Validation output not declared
+    
+    # Initial condition: initial UTXO set
+    initial_utxo_set = block.params.get("initial_utxo_set", 0)
+    if utxo_set_output_stream.stream_type == "sbf":
+        init_logic = f" && (o{utxo_set_output_idx}[0] = {initial_utxo_set})"
+    else:
+        init_logic = f" && (o{utxo_set_output_idx}[0] = {{{initial_utxo_set}}}:bv[{utxo_set_output_stream.width if utxo_set_output_stream.width else 32}])"
+    
+    return " &&\n    ".join(logic_parts) + init_logic
+
+
 def _generate_quorum_logic(block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
     """Generate quorum pattern logic (uses majority internally).
     
@@ -1665,6 +1764,8 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
             logic_lines.append(_generate_state_aggregation_logic(block, schema.streams))
         elif block.pattern == "tcp_connection_fsm":
             logic_lines.append(_generate_tcp_connection_fsm_logic(block, schema.streams))
+        elif block.pattern == "utxo_state_machine":
+            logic_lines.append(_generate_utxo_state_machine_logic(block, schema.streams))
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     

@@ -28,8 +28,9 @@ Complete reference guide for all implemented patterns in the Tau Agent Factory.
 | Orthogonal Regions | ✅ | [ORTHOGONAL_REGIONS_PATTERN.md](ORTHOGONAL_REGIONS_PATTERN.md) | Parallel FSMs |
 | State Aggregation | ✅ | [STATE_AGGREGATION_PATTERN.md](STATE_AGGREGATION_PATTERN.md) | State composition |
 | TCP Connection FSM | ✅ | [TCP_CONNECTION_FSM_PATTERN.md](TCP_CONNECTION_FSM_PATTERN.md) | Network protocol |
+| UTXO State Machine | ✅ | [UTXO_STATE_MACHINE_PATTERN.md](UTXO_STATE_MACHINE_PATTERN.md) | Bitcoin UTXO |
 
-**Total: 22/26 patterns (85%)**
+**Total: 23/26 patterns (88%)**
 
 ## Pattern Categories
 
@@ -87,11 +88,13 @@ Patterns designed for specific application domains.
 - **Proposal FSM**: Governance proposal lifecycle (DRAFT → VOTING → PASSED → EXECUTED)
 - **Risk FSM**: Risk state machine (NORMAL → WARNING → CRITICAL)
 - **TCP Connection FSM**: TCP connection state machine (11 states)
+- **UTXO State Machine**: Bitcoin UTXO set tracking
 
 **Documentation**: 
 - [HEX_SUMMARY.md](HEX_SUMMARY.md)
 - [ENTRY_EXIT_FSM_PATTERN.md](ENTRY_EXIT_FSM_PATTERN.md)
 - [TCP_CONNECTION_FSM_PATTERN.md](TCP_CONNECTION_FSM_PATTERN.md)
+- [UTXO_STATE_MACHINE_PATTERN.md](UTXO_STATE_MACHINE_PATTERN.md)
 - [HIGH_PRIORITY_PATTERNS_COMPLETE.md](HIGH_PRIORITY_PATTERNS_COMPLETE.md)
 
 ### Advanced Patterns
