@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
 from idi.zk.merkle_tree import MerkleTreeBuilder
 from idi.zk import proof_manager
@@ -132,51 +133,81 @@ class TauNetZkAdapter(ZkVerifier):
 
     def _verify_stub(self, proof: ZkProofBundle) -> bool:
         """Verify using stub (digest-based) verification."""
-        # Load bytes from paths if needed
-        if not proof.proof_bytes and proof.proof_path:
-            proof.load_from_paths()
-        
-        # Basic file existence and size checks
-        if proof.proof_path and proof.receipt_path and proof.manifest_path:
-            try:
-                if not all(p.exists() for p in (proof.proof_path, proof.receipt_path, proof.manifest_path)):
-                    return False
-                if proof.proof_path.stat().st_size > self._config.max_proof_bytes:
-                    return False
-                if proof.receipt_path.stat().st_size > self._config.max_receipt_bytes:
-                    return False
-            except OSError:
-                return False
+        import tempfile
 
-        # Bind receipt to manifest + streams
+        temp_dir: Optional[tempfile.TemporaryDirectory] = None
         try:
-            if proof.receipt_json:
-                receipt = proof.receipt_json
-            elif proof.receipt_path:
-                receipt = json.loads(proof.receipt_path.read_text())
-            else:
-                return False
-                
-            receipt_manifest = Path(receipt.get("manifest", ""))
-            receipt_streams = Path(receipt.get("streams", receipt_manifest.parent / "streams" if receipt_manifest else Path(".")))
-            
-            if proof.manifest_path and receipt_manifest.resolve() != proof.manifest_path.resolve():
-                return False
-                
-            # Verify digest
-            if proof.manifest_path and receipt_streams.exists():
-                recomputed = proof_manager._combined_hash(receipt_manifest, receipt_streams)  # type: ignore[attr-defined]
-                if recomputed != receipt.get("digest") and recomputed != receipt.get("digest_hex"):
-                    return False
-        except Exception:
-            return False
+            # Materialize byte-based proofs to a temp directory for verification
+            if (proof.proof_bytes or proof.receipt_json or proof.manifest_bytes) and not (
+                proof.proof_path and proof.receipt_path and proof.manifest_path
+            ):
+                temp_dir = tempfile.TemporaryDirectory()
+                base = Path(temp_dir.name)
 
-        # Convert to IDI ProofBundle format and delegate
-        if proof.proof_path and proof.receipt_path and proof.manifest_path:
-            idi_bundle = proof.to_idi_bundle()
+                if proof.proof_bytes:
+                    proof.proof_path = base / "proof.bin"
+                    proof.proof_path.write_bytes(proof.proof_bytes)
+
+                if proof.receipt_json:
+                    proof.receipt_path = base / "receipt.json"
+                    proof.receipt_path.write_text(json.dumps(proof.receipt_json))
+
+                if proof.manifest_bytes:
+                    proof.manifest_path = base / "manifest.json"
+                    proof.manifest_path.write_bytes(proof.manifest_bytes)
+
+            # Load bytes from paths if needed (legacy path-based bundles)
+            if not proof.proof_bytes and proof.proof_path:
+                proof.load_from_paths()
+
+            # Basic file existence and size checks
+            if proof.proof_path and proof.receipt_path and proof.manifest_path:
+                try:
+                    if not all(p.exists() for p in (proof.proof_path, proof.receipt_path, proof.manifest_path)):
+                        return False
+                    if proof.proof_path.stat().st_size > self._config.max_proof_bytes:
+                        return False
+                    if proof.receipt_path.stat().st_size > self._config.max_receipt_bytes:
+                        return False
+                except OSError:
+                    return False
+
+            # Bind receipt to manifest + streams
             try:
-                return idi_verify_proof(idi_bundle)
+                if proof.receipt_json:
+                    receipt = proof.receipt_json
+                elif proof.receipt_path:
+                    receipt = json.loads(proof.receipt_path.read_text())
+                else:
+                    return False
+
+                receipt_manifest = Path(receipt.get("manifest", ""))
+                receipt_streams = Path(
+                    receipt.get("streams", receipt_manifest.parent / "streams" if receipt_manifest else Path("."))
+                )
+
+                if proof.manifest_path and receipt_manifest.resolve() != proof.manifest_path.resolve():
+                    return False
+
+                # Verify digest
+                if proof.manifest_path and receipt_streams.exists():
+                    recomputed = proof_manager._combined_hash(receipt_manifest, receipt_streams)  # type: ignore[attr-defined]
+                    if recomputed != receipt.get("digest") and recomputed != receipt.get("digest_hex"):
+                        return False
             except Exception:
                 return False
-        
+
+            # Convert to IDI ProofBundle format and delegate
+            if proof.proof_path and proof.receipt_path and proof.manifest_path:
+                idi_bundle = proof.to_idi_bundle()
+                try:
+                    return idi_verify_proof(idi_bundle)
+                except Exception:
+                    return False
+
+            return False
+        finally:
+            if temp_dir is not None:
+                temp_dir.cleanup()
+
         return False
