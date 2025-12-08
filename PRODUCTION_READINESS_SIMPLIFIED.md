@@ -1,11 +1,11 @@
 # Production Readiness - Simplified Assessment
 
-**Date**: 2025-01-XX  
-**Status**: ✅ **PRODUCTION READY** for initial deployment
+**Date**: 2025-01-XX
+**Status**: ⚠️ **NEARLY PRODUCTION READY** — security fix landed, but deploy after adding CI/ops basics
 
 ## Executive Summary
 
-**Yes, you're that close!** The codebase is **production-ready** for initial deployment. The critical security issue has been fixed, and the remaining items are **nice-to-haves** that can be added incrementally.
+The critical security issue is fixed, and core workflows remain intact, but production hygiene (CI, monitoring, config hardening) still needs to be added before calling this a safe production launch.
 
 ---
 
@@ -22,27 +22,23 @@
    - Invalid proofs should fail (this is the security guarantee)
    - See `idi/zk/risc0/PANIC_ANALYSIS.md` for details
 
-### 🟢 NICE-TO-HAVE (Can Add Later)
-3. **CI/CD Pipeline** - Optional for initial deployment
-   - You can deploy without it
-   - Add when you have time to learn GitHub Actions
-   - Or use simpler alternatives (local scripts, manual testing)
+### 🟠 STILL REQUIRED FOR PROD RELIABILITY
+3. **CI/CD Pipeline** - Add before launch
+   - GitHub Actions (tests + lint) or equivalent
+   - Blocks regressions and enforces quality gates
 
-4. **Structured Logging** - Optional
-   - Current `print()` and `logging` work fine
-   - Can upgrade later for better observability
+4. **Structured Logging** - Add for operability
+   - Needed to debug production issues quickly
 
-5. **Monitoring** - Optional for initial deployment
-   - Add when you have users/traffic
-   - Not needed for initial testing
+5. **Monitoring + Health Checks** - Add before external users
+   - Basic `/health` + metrics for proof timings/success
 
-6. **Coverage Metrics** - Optional
-   - Tests are comprehensive (50+ tests)
-   - Metrics are nice but not required
+6. **Coverage Metrics** - Add soon
+   - Quantify test confidence as the code evolves
 
 ---
 
-## What You Have (Production-Ready)
+## What You Have (Solid Foundation)
 
 ✅ **Security**
 - Command injection fixed
@@ -59,7 +55,7 @@
 ✅ **Functionality**
 - All 26 patterns working
 - Risc0 ZK proofs working end-to-end
-- TauBridge integration ready
+- TauBridge integration ready (still manual, no CI)
 - Private training workflow complete
 
 ✅ **Documentation**
@@ -72,32 +68,29 @@
 
 ## Simple Pre-Deployment Checklist
 
-### Must Do (5 minutes)
+### Must Do Before Production
 - [x] Command injection fixed ✅
-- [ ] Run full test suite locally: `pytest idi/ -v`
+- [ ] Run full Python test suite locally: `pytest idi/ -v`
 - [ ] Verify Risc0 builds: `cd idi/zk/risc0 && cargo build --release`
+- [ ] Add CI (GitHub Actions or equivalent) running tests + lint on push/PR
+- [ ] Add basic health checks/metrics
 
-### Should Do (30 minutes)
+### Should Do Soon
 - [ ] Test end-to-end workflow: `pytest idi/zk/tests/test_private_training_e2e.py -v`
-- [ ] Review `PRODUCTION_READINESS_REPORT.md` for context
-- [ ] Check that all tests pass
+- [ ] Add structured/JSON logging for proof pipeline
+- [ ] Add coverage reporting: `pytest --cov=idi --cov-report=term-missing`
 
 ### Nice to Have (Later)
-- [ ] Set up CI/CD (when you have time)
-- [ ] Add structured logging (when you need better debugging)
-- [ ] Add monitoring (when you have users)
+- [ ] Monitoring dashboards
+- [ ] Proof caching/batching (roadmap)
 
 ---
 
 ## Deployment Recommendation
 
-### ✅ **GO FOR IT!**
+### ⚠️ **ALMOST THERE**
 
-Your codebase is **production-ready** for:
-- Initial deployment
-- Testing with real users
-- Integration with Tau Testnet
-- Private agent training workflows
+Good to proceed to staging or limited pilots once CI + health checks are in place. Hold public production traffic until basic observability and automated quality gates are live.
 
 ### What to Monitor After Deployment
 
@@ -107,10 +100,10 @@ Your codebase is **production-ready** for:
 
 ### When to Add the "Nice-to-Haves"
 
-- **CI/CD**: When you have multiple contributors or frequent updates
+- **CI/CD**: Before public launch
 - **Structured Logging**: When you need to debug production issues
-- **Monitoring**: When you have active users and need to track usage
-- **Coverage Metrics**: When you want to ensure new code is tested
+- **Monitoring**: Before external traffic
+- **Coverage Metrics**: When you want quantified test confidence
 
 ---
 
@@ -142,13 +135,13 @@ pytest idi/ -v && ruff check idi/
 ### Option 3: Simple Makefile
 ```makefile
 test:
-	pytest idi/ -v
+        pytest idi/ -v
 
 lint:
-	ruff check idi/
+        ruff check idi/
 
 check: test lint
-	@echo "All checks passed!"
+        @echo "All checks passed!"
 ```
 
 Run: `make check`
@@ -157,26 +150,14 @@ Run: `make check`
 
 ## Final Verdict
 
-### ✅ **PRODUCTION READY**
+### ⚠️ **NEARLY PRODUCTION READY**
 
-**You can deploy now!** The critical security issue is fixed, and everything else works. The remaining items are improvements you can add incrementally as needed.
+Security fix is complete; remaining work is operational. Ship once CI + health/metrics are in place and tests are green.
 
-**Confidence Level**: **95%** - Ready for production deployment
+**Confidence Level**: **85%** - Ready after CI/monitoring checklist above
 
 **Next Steps**:
-1. Run full test suite: `pytest idi/ -v`
-2. Test end-to-end workflow
-3. Deploy and monitor
-4. Add improvements incrementally
-
----
-
-## Summary
-
-- ✅ Critical security issue: **FIXED**
-- ✅ Risc0 panics: **CORRECT BEHAVIOR** (no changes needed)
-- 🟢 CI/CD: **OPTIONAL** (can add later or use simple scripts)
-- 🟢 Other items: **NICE-TO-HAVE** (can add incrementally)
-
-**You're ready to deploy!** 🚀
-
+1. Add CI + health/metrics
+2. Run full test suite: `pytest idi/ -v`
+3. Test end-to-end workflow
+4. Deploy to staging; monitor proof success rate and latency

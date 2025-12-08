@@ -2,7 +2,7 @@
 
 **Date**: 2025-01-XX  
 **Reviewer**: AI Assistant (using Perplexity research + Atom of Thoughts)  
-**Status**: ⚠️ **NEARLY PRODUCTION READY** - Critical fixes needed before deployment
+**Status**: ⚠️ **NEARLY PRODUCTION READY** - Security fix landed; infra gaps remain before deployment
 
 ## Executive Summary
 
@@ -16,27 +16,28 @@ The IDI codebase demonstrates **strong engineering practices** with comprehensiv
 
 ## 1. Security Vulnerabilities 🔴 CRITICAL
 
-### 1.1 Command Injection Risk (HIGH SEVERITY)
+### 1.1 Command Injection Risk (RESOLVED)
 
-**Location**: `idi/zk/proof_manager.py:111`
+**Location**: `idi/zk/proof_manager.py:59-78`
 
 ```python
-subprocess.run(cmd, shell=True, check=True)
+        # Security: Use shlex.split to prevent command injection
+        # Format the command string first, then split safely
+        cmd_str = prover_command.format(
+            manifest=str(manifest_path),
+            streams=str(stream_dir),
+            proof=str(proof_path),
+            receipt=str(receipt_path),
+        )
+        # Split command safely (handles quoted arguments, escapes, etc.)
+        cmd_parts = shlex.split(cmd_str)
+        # Security: Never use shell=True with user-controlled input
+        subprocess.run(cmd_parts, check=True)
 ```
 
-**Issue**: Using `shell=True` with user-controlled `prover_command` format string creates command injection vulnerability.
+**Status**: ✅ **FIXED** – no `shell=True` on user-controlled input.
 
-**Risk**: Attacker could inject malicious commands via `prover_command` parameter.
-
-**Fix**:
-```python
-# Replace with:
-import shlex
-cmd_parts = shlex.split(prover_command.format(...))
-subprocess.run(cmd_parts, check=True)  # No shell=True
-```
-
-**Priority**: 🔴 **CRITICAL** - Fix before production
+**Note**: `verification/performance_benchmark.py` still pipes strings into `tau` with `shell=True`, but that helper is a developer benchmark that already hardcodes the binary path. Avoid exposing it to untrusted input.
 
 ---
 
@@ -366,7 +367,7 @@ class Settings(BaseSettings):
 - [x] Security model documented
 - [x] Threat model defined
 - [x] Privacy guarantees verified
-- [ ] **Command injection fixed** 🔴
+- [x] **Command injection fixed** ✅
 - [ ] **Security audit completed** 🟡
 
 ### Code Quality ✅
