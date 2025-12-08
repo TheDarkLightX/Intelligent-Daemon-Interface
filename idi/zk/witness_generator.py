@@ -383,6 +383,42 @@ def generate_witness_from_q_table(
     )
 
 
+def generate_witness_from_commitment(
+    commit_dir: Path,
+    state_key: str,
+    entry: QTableEntry,
+    selected_action: ActionIndex | None = None,
+) -> QTableWitness:
+    """Generate witness using precomputed policy commitment/proofs."""
+    from idi.zk.policy_commitment import load_policy_commitment, load_policy_proof, canonical_leaf_bytes
+    from idi.zk.merkle_tree import MerkleTreeBuilder
+
+    commitment = load_policy_commitment(commit_dir)
+    proof_path = load_policy_proof(commit_dir, state_key)
+    leaf_bytes = canonical_leaf_bytes(state_key, entry, q_scale=commitment.q_scale)
+
+    # Validate proof to fail fast if mismatch
+    builder = MerkleTreeBuilder()
+    if not builder.verify_proof(state_key, leaf_bytes, proof_path, commitment.root):
+        raise ValueError("Invalid Merkle proof for provided entry/state")
+
+    action = selected_action if selected_action is not None else _select_action_greedy(entry)
+
+    return QTableWitness(
+        state_key=StateKey(state_key),
+        q_entry=entry,
+        merkle_proof=MerkleProof(
+            leaf_hash=hashlib.sha256(leaf_bytes).digest(),
+            path=tuple(proof_path),
+            root_hash=commitment.root,
+        ),
+        q_table_root=HashBytes(commitment.root),
+        selected_action=action,
+        layer_weights={},
+        comm_action=None,
+    )
+
+
 def serialize_witness(witness: QTableWitness) -> bytes:
     """Serialize witness for Risc0 guest program.
     
@@ -428,4 +464,3 @@ def serialize_witness(witness: QTableWitness) -> bytes:
         }
     
     return json.dumps(data, sort_keys=True).encode()
-
