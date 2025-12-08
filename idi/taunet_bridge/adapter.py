@@ -140,8 +140,16 @@ class TauNetZkAdapter(ZkVerifier):
                 )
 
                 if local_bundle.manifest_path.exists() and receipt_streams.exists():
-                    recomputed = proof_manager.compute_manifest_streams_digest(
-                        local_bundle.manifest_path, receipt_streams
+                    extra_bindings = {}
+                    if receipt.get("policy_root"):
+                        extra_bindings["policy_root"] = bytes.fromhex(str(receipt["policy_root"]))
+                    if receipt.get("config_fingerprint"):
+                        extra_bindings["config_fingerprint"] = str(receipt["config_fingerprint"]).encode()
+                    if receipt.get("spec_hash"):
+                        extra_bindings["spec_hash"] = str(receipt["spec_hash"]).encode()
+
+                    recomputed = proof_manager.compute_artifact_digest(
+                        local_bundle.manifest_path, receipt_streams, extra=extra_bindings or None
                     )
                     if recomputed != receipt.get("digest") and recomputed != receipt.get("digest_hex"):
                         return False

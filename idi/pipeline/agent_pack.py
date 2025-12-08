@@ -13,6 +13,8 @@ from idi.training.python.idi_iann.config import TrainingConfig
 from idi.devkit.manifest import build_manifest, write_manifest
 from idi.zk.spec_generator import TauSpecGenerator
 from idi.zk import proof_manager
+from idi.zk.policy_commitment import build_policy_commitment, save_policy_commitment
+from idi.zk.witness_generator import QTableEntry
 
 
 @dataclass
@@ -58,11 +60,30 @@ def build_agent_pack(
 
     # Train
     trainer = QTrainer(cfg)
-    _policy, trace = trainer.run()
+    policy, trace = trainer.run()
 
     # Export streams
     streams_dir = out_dir / "streams"
     trace.export(streams_dir, contract=spec_kind)
+
+    # Policy commitment (best effort)
+    policy_root_bytes = None
+    if hasattr(policy, "to_entries"):
+        try:
+            entries = {
+                state: QTableEntry.from_float(
+                    q_hold=vals.get("hold", 0.0),
+                    q_buy=vals.get("buy", 0.0),
+                    q_sell=vals.get("sell", 0.0),
+                )
+                for state, vals in policy.to_entries().items()  # type: ignore[attr-defined]
+            }
+            commitment, proofs = build_policy_commitment(entries)
+            policy_dir = out_dir / "policy"
+            save_policy_commitment(policy_dir, commitment, proofs)
+            policy_root_bytes = commitment.root
+        except Exception:
+            policy_root_bytes = None
 
     # Build manifest
     manifest = build_manifest(
@@ -85,15 +106,15 @@ def build_agent_pack(
     proof_dir: Optional[Path] = None
     proof_verified = False
 
-    extras = {}
-    extras_bytes = {}
+    extras_bytes: Dict[str, bytes] = {}
     if cfg_fp:
-        extras["config_fingerprint"] = cfg_fp
+        extras_bytes["config_fingerprint"] = cfg_fp.encode()
     if spec_hash:
-        extras["spec_hash"] = spec_hash
+        extras_bytes["spec_hash"] = spec_hash.encode()
     if tx_hash:
-        extras["tx_hash"] = tx_hash
-    extras_bytes = {k: v.encode() for k, v in extras.items()}
+        extras_bytes["tx_hash"] = tx_hash.encode()
+    if policy_root_bytes:
+        extras_bytes["policy_root"] = policy_root_bytes
 
     if proof_enabled:
         proof_dir = out_dir / "proof"
@@ -107,6 +128,7 @@ def build_agent_pack(
             config_fingerprint=cfg_fp,
             spec_hash=spec_hash,
             extra_bindings=extras_bytes or None,
+            policy_root=policy_root_bytes,
         )
         proof_verified = proof_manager.verify_proof(bundle, use_risc0=False, extra_bindings=extras_bytes or None)
 

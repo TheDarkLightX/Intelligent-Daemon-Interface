@@ -192,6 +192,10 @@ def generate_proof(
     combined_extras = dict(extra_bindings or {})
     if policy_root:
         combined_extras.setdefault("policy_root", policy_root)
+    if config_fingerprint:
+        combined_extras.setdefault("config_fingerprint", config_fingerprint.encode())
+    if spec_hash:
+        combined_extras.setdefault("spec_hash", spec_hash.encode())
 
     digest = compute_artifact_digest(manifest_path, stream_dir, extra=combined_extras or None)
 
@@ -298,11 +302,17 @@ def verify_proof(
         return False
 
     derived_extras = dict(extra_bindings or {})
-    if not extra_bindings and receipt.get("policy_root"):
+
+    # Pull bindings from receipt if present
+    if receipt.get("policy_root") and "policy_root" not in derived_extras:
         try:
             derived_extras["policy_root"] = bytes.fromhex(receipt["policy_root"])
         except ValueError:
             return False
+    if receipt.get("config_fingerprint") and "config_fingerprint" not in derived_extras:
+        derived_extras["config_fingerprint"] = str(receipt["config_fingerprint"]).encode()
+    if receipt.get("spec_hash") and "spec_hash" not in derived_extras:
+        derived_extras["spec_hash"] = str(receipt["spec_hash"]).encode()
 
     digest = compute_artifact_digest(manifest_path, stream_dir, extra=derived_extras or None)
 
