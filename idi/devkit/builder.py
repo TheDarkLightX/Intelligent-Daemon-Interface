@@ -18,6 +18,7 @@ from idi.training.python.idi_iann.config import (
 from idi.training.python.idi_iann.trainer import QTrainer
 from idi.devkit.manifest import build_manifest, write_manifest
 from idi.zk.policy_commitment import build_policy_commitment, save_policy_commitment
+from idi.zk.witness_generator import QTableEntry
 
 
 def load_training_config(config_path: Path) -> TrainingConfig:
@@ -115,7 +116,7 @@ def build_artifact(
     # Optional: export policy commitment for downstream proofs
     policy_commitment = None
     policy_proofs = None
-    if hasattr(policy, "table"):
+    if hasattr(policy, "to_entries"):
         try:
             entries = {
                 state: QTableEntry.from_float(
@@ -123,7 +124,7 @@ def build_artifact(
                     q_buy=vals.get("buy", 0.0),
                     q_sell=vals.get("sell", 0.0),
                 )
-                for state, vals in policy.table.items()  # type: ignore[attr-defined]
+                for state, vals in policy.to_entries().items()  # type: ignore[attr-defined]
             }
             policy_commitment, policy_proofs = build_policy_commitment(entries)
             save_policy_commitment(policy_dir, policy_commitment, policy_proofs)

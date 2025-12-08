@@ -94,3 +94,7 @@ class LookupPolicy:
         for name, values in streams.items():
             (target_dir / f"{name}.in").write_text("\n".join(str(v) for v in values), encoding="utf-8")
         (target_dir / "q_regime.in").write_text("\n".join(str(v) for v in regimes), encoding="utf-8")
+
+    def to_entries(self) -> Dict[str, Dict[str, float]]:
+        """Return a serializable view of the policy table."""
+        return {str(state): dict(entry.q_values) for state, entry in self._table.items()}
