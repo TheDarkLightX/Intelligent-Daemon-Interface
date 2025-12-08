@@ -1,0 +1,3 @@
+# Resolve merges in favor of the current branch for internal readiness docs that were intentionally removed.
+PRODUCTION_READINESS_REPORT.md merge=ours
+PRODUCTION_READINESS_SIMPLIFIED.md merge=ours
