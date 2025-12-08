@@ -38,8 +38,8 @@ class TestFunctionalityRegression:
 
         # Verify expected components
         assert "passthrough_test" in spec
-        assert 'in file("inputs/input1.in")' in spec  # input wiring
-        assert 'out file("outputs/output1.out")' in spec  # output wiring
+        assert 'in file("inputs/input1.in")' in spec
+        assert 'out file("outputs/output1.out")' in spec
         assert "o0[t] = i0[t]" in spec  # Tau syntax for passthrough
 
     def test_majority_pattern(self):

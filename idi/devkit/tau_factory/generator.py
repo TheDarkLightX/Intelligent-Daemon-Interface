@@ -2054,8 +2054,11 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
     """Generate recurrence relation block."""
     lines = ["defs", "r ("]
     
+    comment_lines = []
     logic_lines = []
     for block in schema.logic_blocks:
+        # Track pattern comment for readability and tests
+        comment_lines.append(f"{block.pattern} pattern: {block.output} <- {', '.join(block.inputs)}")
         if block.pattern == "fsm":
             logic_lines.append(_generate_fsm_logic(block, schema.streams))
         elif block.pattern == "passthrough":
@@ -2111,9 +2114,14 @@ def _generate_recurrence_block(schema: AgentSchema) -> List[str]:
         else:
             raise ValueError(f"Unknown pattern: {block.pattern}")
     
-    # Join logic lines with &&
+    # Emit logic lines with inline comments and conjunctions
     if logic_lines:
-        lines.append("    " + " &&\n    ".join(logic_lines))
+        for idx, clause in enumerate(logic_lines):
+            comment = comment_lines[idx]
+            if comment:
+                lines.append(f"    # {comment}")
+            suffix = " &&" if idx < len(logic_lines) - 1 else ""
+            lines.append(f"    {clause}{suffix}")
     
     lines.append(")")
     return lines
@@ -2141,40 +2149,42 @@ def generate_tau_spec(schema: AgentSchema, validate: bool = True) -> str:
     Raises:
         ValueError: If validation fails and validate=True
     """
-    lines = [
-        f"# {schema.name} Agent (Auto-generated)",
-        f"# Strategy: {schema.strategy}",
-        "",
-    ]
-    
-    # Input declarations
-    lines.extend(_generate_inputs(schema.streams))
-    lines.append("")
-    
-    # Input mirrors (if enabled)
-    if schema.include_mirrors:
-        lines.extend(_generate_input_mirrors(schema.streams))
+    with monitor.measure("total_generation", schema_name=schema.name):
+        lines = [
+            f"# {schema.name} Agent (Auto-generated)",
+            f"# Strategy: {schema.strategy}",
+            "",
+        ]
+        
+        # Input declarations
+        lines.extend(_generate_inputs(schema.streams))
         lines.append("")
-    
-    # Output declarations
-    lines.extend(_generate_outputs(schema.streams))
-    lines.append("")
-    
-    # Recurrence block
-    lines.extend(_generate_recurrence_block(schema))
-    lines.append("")
-    
-    # Execution commands
-    lines.extend(_generate_execution_commands(schema.num_steps))
-    
-    spec = "\n".join(lines)
-    
-    # Validate if requested
-    if validate:
-        from idi.devkit.tau_factory.spec_validator import validate_tau_spec
-        is_valid, errors = validate_tau_spec(spec)
-        if not is_valid:
-            error_msg = "\n".join(f"  - {e}" for e in errors)
-            raise ValueError(f"Generated spec validation failed:\n{error_msg}\n\nSpec:\n{spec}")
-    
-    return spec
+        
+        # Input mirrors (if enabled)
+        if schema.include_mirrors:
+            lines.extend(_generate_input_mirrors(schema.streams))
+            lines.append("")
+        
+        # Output declarations
+        lines.extend(_generate_outputs(schema.streams))
+        lines.append("")
+        
+        # Recurrence block
+        lines.extend(_generate_recurrence_block(schema))
+        lines.append("")
+        
+        # Execution commands
+        lines.extend(_generate_execution_commands(schema.num_steps))
+        
+        spec = "\n".join(lines)
+        
+        # Validate if requested
+        if validate:
+            from idi.devkit.tau_factory.spec_validator import validate_tau_spec
+            is_valid, errors = validate_tau_spec(spec)
+            if not is_valid:
+                error_msg = "\n".join(f"  - {e}" for e in errors)
+                raise ValueError(f"Generated spec validation failed:\n{error_msg}\n\nSpec:\n{spec}")
+        
+        return spec
+

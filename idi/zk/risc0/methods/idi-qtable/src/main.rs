@@ -7,10 +7,14 @@
 //!
 //! The Q-table remains private - only commitments (Merkle roots) are revealed.
 
+#![no_std]
 #![no_main]
 
+extern crate alloc;
+
+use alloc::{string::String, vec::Vec};
 use risc0_zkvm::guest::env;
-use risc0_zkvm::sha::Sha256;
+use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 
 risc0_zkvm::guest::entry!(main);
@@ -78,18 +82,14 @@ fn main() {
             
             let mut hasher = Sha256::new();
             hasher.update(&combined);
-            current_hash = hasher.finalize().as_bytes().try_into().unwrap();
+            current_hash = hasher.finalize().into();
         }
         
         // Verify root matches
         // Security: Explicit comparison with descriptive error message
         // This ensures the proof path correctly reconstructs the committed root
-        if current_hash.as_slice() != &input.q_table_root {
-            panic!(
-                "Merkle proof verification failed: computed root {:?} != expected root {:?}",
-                hex::encode(current_hash.as_slice()),
-                hex::encode(&input.q_table_root)
-            );
+        if current_hash != input.q_table_root {
+            panic!("Merkle proof verification failed: computed root != expected root");
         }
     } else {
         // Small table: verify entry hash matches root
@@ -126,8 +126,11 @@ fn main() {
     
     let proof_hash = hasher.finalize();
     
+    // Convert GenericArray to [u8; 32] for serialization
+    let proof_hash_bytes: [u8; 32] = proof_hash.into();
+    
     // Commit to journal (public output)
-    env::commit(&proof_hash);
+    env::commit(&proof_hash_bytes);
 }
 
 /// Hash a Q-table entry with domain separation.
@@ -150,7 +153,7 @@ fn hash_q_entry(state_key: &str, entry: &QEntry) -> [u8; 32] {
     hasher.update(&entry.q_buy.to_le_bytes());
     hasher.update(&entry.q_sell.to_le_bytes());
     let digest = hasher.finalize();
-    digest.as_bytes().try_into().unwrap()
+    digest.into()
 }
 
 /// Find action with maximum Q-value using greedy (argmax) policy.

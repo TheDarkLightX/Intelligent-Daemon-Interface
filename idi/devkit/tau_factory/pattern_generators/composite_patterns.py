@@ -65,7 +65,7 @@ class CompositePatternGenerator:
 
     def generate(self, block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
         """Generate Tau code for composite patterns."""
-        pattern = block.pattern.value if hasattr(block.pattern, "value") else block.pattern
+        pattern = block.pattern
 
         if pattern == "majority":
             return self._generate_majority(block, streams)

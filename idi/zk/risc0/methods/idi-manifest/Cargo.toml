@@ -6,6 +6,6 @@ publish = false
 
 [dependencies]
 risc0-zkvm = { workspace = true, default-features = false }
-sha2 = { workspace = true, default-features = false }
-serde = { workspace = true, default-features = false }
+sha2 = { workspace = true, default-features = false, features = ["oid"] }
+serde = { workspace = true, default-features = false, features = ["derive", "alloc"] }
 
