@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from idi.training.python.idi_iann.config import TrainingConfig
+from idi.contracts.streams import get_contract
 
 
 class TauSpecGenerator:
@@ -21,6 +22,7 @@ class TauSpecGenerator:
         *,
         include_tile_coding: bool = False,
         include_communication: bool = True,
+        contract_name: str = "v38",
     ) -> None:
         """Generate V38 Minimal Core agent spec.
 
@@ -29,47 +31,28 @@ class TauSpecGenerator:
             include_tile_coding: Whether to include tile coding inputs
             include_communication: Whether to include communication Q-table inputs
         """
+        contract = get_contract(contract_name)
+
         spec_lines = [
             "# IDI-ready agent spec (V38 Minimal Core)",
             "# Generated from training config",
             "",
             "# === INPUT STREAMS (IDI-ready) ===",
-            'i0:sbf = in file("inputs/price.in").',
-            'i1:sbf = in file("inputs/volume.in").',
-            'i2:sbf = in file("inputs/trend.in").',
-            'i3:sbf = in file("inputs/profit_guard.in").',
-            'i4:sbf = in file("inputs/failure_echo.in").',
-            'i5:sbf = in file("inputs/q_buy.in").',
-            'i6:sbf = in file("inputs/q_sell.in").',
-            'i7:sbf = in file("inputs/risk_budget_ok.in").',
-            'i8:bv[5] = in file("inputs/q_regime.in").',
         ]
 
-        if include_communication:
-            spec_lines.extend([
-                'i9:sbf = in file("inputs/q_emote_positive.in").',
-                'iA:sbf = in file("inputs/q_emote_alert.in").',
-            ])
+        for idx, stream in enumerate(s for s in contract if s.role == "input"):
+            spec_lines.append(f'i{idx}:{stream.tau_type} = in file("{stream.filename}").')
+
+        start_mirror_idx = len([s for s in contract if s.role == "input"])
 
         spec_lines.extend([
             "",
             "# === INPUT MIRRORS (Interpreter requirement) ===",
-            'o_i0:sbf = out file("outputs/i0_mirror.out").',
-            'o_i1:sbf = out file("outputs/i1_mirror.out").',
-            'o_i2:sbf = out file("outputs/i2_mirror.out").',
-            'o_i3:sbf = out file("outputs/i3_mirror.out").',
-            'o_i4:sbf = out file("outputs/i4_mirror.out").',
-            'o_i5:sbf = out file("outputs/i5_mirror.out").',
-            'o_i6:sbf = out file("outputs/i6_mirror.out").',
-            'o_i7:sbf = out file("outputs/i7_mirror.out").',
-            'o_i8:bv[5] = out file("outputs/i8_mirror.out").',
         ])
 
-        if include_communication:
-            spec_lines.extend([
-                'o_i9:sbf = out file("outputs/i9_mirror.out").',
-                'o_iA:sbf = out file("outputs/iA_mirror.out").',
-            ])
+        for offset, stream in enumerate(s for s in contract if s.role == "input"):
+            mirror_idx = start_mirror_idx + offset
+            spec_lines.append(f"o_i{mirror_idx}:{stream.tau_type} = out file(\"outputs/i{offset}_mirror.out\").")
 
         spec_lines.extend([
             "",
@@ -110,26 +93,16 @@ class TauSpecGenerator:
             "    (o11[t] = o3[t] & i0[t] & o10[t-1]' & i3[t]) &&",
             "",
             "    # Burn tracking",
-            "    (o13[t] = o13[t-1] | o11[t]) &&",
-            "",
-            "    # Input mirrors",
-            "    (o_i0[t] = i0[t]) &&",
-            "    (o_i1[t] = i1[t]) &&",
-            "    (o_i2[t] = i2[t]) &&",
-            "    (o_i3[t] = i3[t]) &&",
-            "    (o_i4[t] = i4[t]) &&",
-            "    (o_i5[t] = i5[t]) &&",
-            "    (o_i6[t] = i6[t]) &&",
-            "    (o_i7[t] = i7[t]) &&",
-            "    (o_i8[t] = i8[t])",
+            "    (o13[t] = o13[t-1] | o11[t])",
         ])
 
-        if include_communication:
-            spec_lines.extend([
-                " &&",
-                "    (o_i9[t] = i9[t]) &&",
-                "    (o_iA[t] = iA[t])",
-            ])
+        # Append input mirror bindings
+        mirror_bindings = []
+        for offset in range(start_mirror_idx):
+            mirror_bindings.append(f"(o_i{start_mirror_idx + offset}[t] = i{offset}[t])")
+        if mirror_bindings:
+            spec_lines.append(" &&")
+            spec_lines.append("    " + " &&\n    ".join(mirror_bindings))
 
         spec_lines.append(")")
 
@@ -200,6 +173,7 @@ def generate_spec_from_config(
     config_path: Path,
     output_path: Path,
     spec_type: str = "v38",
+    contract_name: str = "v38",
 ) -> None:
     """Generate Tau spec from config file.
 
@@ -216,9 +190,8 @@ def generate_spec_from_config(
     generator = TauSpecGenerator(config)
 
     if spec_type == "v38":
-        generator.generate_v38_spec(output_path)
+        generator.generate_v38_spec(output_path, contract_name=contract_name)
     elif spec_type == "layered":
         generator.generate_layered_spec(output_path)
     else:
         raise ValueError(f"Unknown spec type: {spec_type}")
-

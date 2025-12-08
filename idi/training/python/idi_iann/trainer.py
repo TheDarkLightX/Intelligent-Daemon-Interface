@@ -39,23 +39,37 @@ class TraceBatch:
         *,
         stream_map: Optional[Dict[str, str]] = None,
         write_streams_json: bool = True,
+        contract: str = "v38",
     ) -> None:
         target_dir.mkdir(parents=True, exist_ok=True)
-        streams = stream_map or {
-            "q_buy": "q_buy.in",
-            "q_sell": "q_sell.in",
-            "risk_budget_ok": "risk_budget_ok.in",
-            "q_emote_positive": "q_emote_positive.in",
-            "q_emote_alert": "q_emote_alert.in",
-            "q_emote_persistence": "q_emote_persistence.in",
-            "q_regime": "q_regime.in",
-            "price_up": "price_up.in",
-            "price_down": "price_down.in",
-            "weight_momentum": "weight_momentum.in",
-            "weight_contra": "weight_contra.in",
-            "weight_trend": "weight_trend.in",
-            "risk_event": "risk_event.in",
-        }
+        if stream_map:
+            streams = stream_map
+        else:
+            streams = {
+                "q_buy": "q_buy.in",
+                "q_sell": "q_sell.in",
+                "risk_budget_ok": "risk_budget_ok.in",
+                "q_emote_positive": "q_emote_positive.in",
+                "q_emote_alert": "q_emote_alert.in",
+                "q_emote_persistence": "q_emote_persistence.in",
+                "q_regime": "q_regime.in",
+                "price_up": "price_up.in",
+                "price_down": "price_down.in",
+                "weight_momentum": "weight_momentum.in",
+                "weight_contra": "weight_contra.in",
+                "weight_trend": "weight_trend.in",
+                "risk_event": "risk_event.in",
+            }
+            if get_contract:
+                try:
+                    streams = {
+                        # only include inputs/mirrors in contract for now
+                        s.name: Path(s.filename).name
+                        for s in get_contract(contract)
+                        if s.role == "input"
+                    } | streams
+                except Exception:
+                    pass
         for key, filename in streams.items():
             data = [str(tick.get(key, 0)) for tick in self.ticks]
             (target_dir / filename).write_text("\n".join(data), encoding="utf-8")
@@ -331,3 +345,7 @@ class QTrainer:
             "mean_reward": mean_reward,
             "comm_action_counts": dict(self._comm_action_counts),
         }
+try:
+    from idi.contracts.streams import get_contract
+except Exception:
+    get_contract = None
