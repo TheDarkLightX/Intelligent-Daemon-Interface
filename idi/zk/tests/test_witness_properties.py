@@ -8,8 +8,11 @@ Tests witness generation properties:
 
 from __future__ import annotations
 
-from hypothesis import given, strategies as st
 import pytest
+
+hypothesis = pytest.importorskip("hypothesis")
+given = hypothesis.given
+st = hypothesis.strategies
 
 from idi.zk.witness_generator import (
     QTableEntry,
@@ -182,3 +185,10 @@ def test_tie_breaking_determinism() -> None:
     action = _select_action_greedy(entry_sell_hold_equal)
     assert action == 1, "Buy should win when > sell and hold"
 
+    # Buy strictly greatest
+    entry_buy_top = QTableEntry.from_float(-1.0, 2.0, 1.5)
+    assert _select_action_greedy(entry_buy_top) == 1
+
+    # Sell strictly greatest
+    entry_sell_top = QTableEntry.from_float(0.0, 0.1, 0.2)
+    assert _select_action_greedy(entry_sell_top) == 2

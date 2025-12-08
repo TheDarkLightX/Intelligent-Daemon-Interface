@@ -144,6 +144,27 @@ class MultiLayerConfig:
 
 
 @dataclass(frozen=True)
+class EpisodicConfig:
+    """Optional episodic memory settings."""
+
+    enabled: bool = False
+    capacity: int = 1024
+    k: int = 8
+    decay: float = 0.99
+    blend_alpha: float = 0.5  # weight for episodic vs q-table
+
+    def validate(self) -> None:
+        if self.capacity <= 0:
+            raise ValueError("episodic.capacity must be > 0")
+        if self.k <= 0:
+            raise ValueError("episodic.k must be > 0")
+        if not (0.0 <= self.decay <= 1.0):
+            raise ValueError("episodic.decay must be in [0,1]")
+        if not (0.0 <= self.blend_alpha <= 1.0):
+            raise ValueError("episodic.blend_alpha must be in [0,1]")
+
+
+@dataclass(frozen=True)
 class TrainingConfig:
     """High-level training knobs."""
 
@@ -160,6 +181,7 @@ class TrainingConfig:
     communication: CommunicationConfig = field(default_factory=CommunicationConfig)
     fractal: Optional[FractalConfig] = None
     multi_layer: Optional[MultiLayerConfig] = None
+    episodic: Optional[EpisodicConfig] = None
 
     def validate(self) -> None:
         if not (0.0 < self.discount <= 1.0):
@@ -177,6 +199,8 @@ class TrainingConfig:
             self.fractal.validate()
         if self.multi_layer:
             self.multi_layer.validate()
+        if self.episodic:
+            self.episodic.validate()
 
     @classmethod
     def from_json(cls, path: Path) -> TrainingConfig:

@@ -10,6 +10,7 @@ import random
 import secrets
 
 from .config import TrainingConfig
+from .episodic_control import EpisodicQMemory
 from .env import SyntheticMarketEnv
 from .crypto_env import CryptoMarket, MarketParams
 from .policy import LookupPolicy
@@ -112,6 +113,11 @@ class QTrainer:
         self._rng = random.Random(self._seed)
         self._strategy = strategy or EpsilonGreedyStrategy()
         self._tile_coder = TileCoder(config.tile_coder) if config.tile_coder else None
+        self._episodic = EpisodicQMemory(
+            capacity=config.episodic.capacity,
+            k=config.episodic.k,
+            decay=config.episodic.decay,
+        ) if config.episodic and config.episodic.enabled else None
         self._episode_rewards: List[float] = []
         self._comm_action_counts: Dict[str, int] = {a: 0 for a in self._communication.actions}
 
@@ -178,6 +184,8 @@ class QTrainer:
         td_target = self._compute_td_target(state, action, reward, next_state)
         td_error = td_target - self._policy.q_value(state, action)
         self._policy.update(state, action, self._config.learning_rate * td_error)
+        if self._episodic:
+            self._episodic.write(state, action, td_target)
 
     def _update_comm_q(
         self, state: StateKey, action: CommAction, reward: float, next_state: StateKey
@@ -193,7 +201,13 @@ class QTrainer:
     ) -> float:
         """Compute TD target for Q-update."""
         best_next = self._policy.best_action(next_state)
-        return reward + self._config.discount * self._policy.q_value(next_state, best_next)
+        base_q = reward + self._config.discount * self._policy.q_value(next_state, best_next)
+        if self._episodic:
+            episodic_est = self._episodic.query(state, action)
+            if episodic_est is not None:
+                alpha = self._config.episodic.blend_alpha  # type: ignore[union-attr]
+                return alpha * episodic_est + (1 - alpha) * base_q
+        return base_q
 
     def _rollout(self) -> TraceBatch:
         """Greedy pass to produce Tau input traces."""
