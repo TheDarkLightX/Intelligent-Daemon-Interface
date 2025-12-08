@@ -115,25 +115,32 @@ def test_action_matches_argmax(q_table: dict[str, dict[str, float]]) -> None:
     """
     if not q_table:
         return
-    
+
     state_key = list(q_table.keys())[0]
     q_values = q_table[state_key]
-    
-    witness = generate_witness_from_q_table(q_table, state_key, use_merkle=False)
-    
-    # Verify action matches manual argmax
     q_hold = q_values.get("hold", 0.0)
     q_buy = q_values.get("buy", 0.0)
     q_sell = q_values.get("sell", 0.0)
-    
-    # Manual argmax with tie-breaking: buy > sell > hold (when buy > sell and buy > hold)
-    # Default to hold (0) when all equal or hold >= others
-    if q_buy > q_sell and q_buy > q_hold:
-        expected_action = 1
-    elif q_sell > q_hold:
-        expected_action = 2
-    else:
-        expected_action = 0
+
+    witness = generate_witness_from_q_table(q_table, state_key, use_merkle=False)
+
+    # Verify action matches manual argmax (buy > sell > hold tie-breaking)
+    q_entry = QTableEntry.from_float(q_hold, q_buy, q_sell)
+
+    def _manual_argmax(entry: QTableEntry) -> int:
+        priorities = (
+            (entry.q_hold, 0, 0),
+            (entry.q_buy, 1, 2),
+            (entry.q_sell, 2, 1),
+        )
+
+        best_value, best_action, best_priority = priorities[0]
+        for value, action, priority in priorities[1:]:
+            if value > best_value or (value == best_value and priority > best_priority):
+                best_value, best_action, best_priority = value, action, priority
+        return best_action
+
+    expected_action = _manual_argmax(q_entry)
     
     assert witness.selected_action == expected_action, (
         f"Action mismatch: got {witness.selected_action}, expected {expected_action} "
@@ -166,24 +173,23 @@ def test_fixed_point_overflow_handling(q_hold: float, q_buy: float, q_sell: floa
 
 def test_tie_breaking_determinism() -> None:
     """Tie-breaking rules are deterministic.
-    
-    Property: When Q-values are equal, default to hold (0).
-    When buy and sell are equal and both > hold, prefer buy.
+
+    Property: Buy wins any tie, then sell, then hold.
     """
-    # All equal - defaults to hold (0)
+    # All equal - buy (highest priority) wins
     entry_all_equal = QTableEntry.from_float(0.5, 0.5, 0.5)
     action = _select_action_greedy(entry_all_equal)
-    assert action == 0, "Tie-breaking: hold should be default when all equal"
-    
+    assert action == 1, "Tie-breaking: buy should win when all equal"
+
     # Buy and sell equal, both > hold - prefer buy
     entry_buy_sell_equal = QTableEntry.from_float(0.0, 0.5, 0.5)
     action = _select_action_greedy(entry_buy_sell_equal)
     assert action == 1, "Tie-breaking: buy should win over sell when equal and both > hold"
-    
-    # Sell and hold equal, both < buy - buy wins
-    entry_sell_hold_equal = QTableEntry.from_float(0.0, 0.5, 0.0)
-    action = _select_action_greedy(entry_sell_hold_equal)
-    assert action == 1, "Buy should win when > sell and hold"
+
+    # Buy and hold equal, both > sell - buy wins
+    entry_buy_hold_equal = QTableEntry.from_float(0.5, 0.5, 0.0)
+    action = _select_action_greedy(entry_buy_hold_equal)
+    assert action == 1, "Tie-breaking: buy should win over hold when equal"
 
     # Buy strictly greatest
     entry_buy_top = QTableEntry.from_float(-1.0, 2.0, 1.5)

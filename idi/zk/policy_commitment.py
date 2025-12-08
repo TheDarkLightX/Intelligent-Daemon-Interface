@@ -39,13 +39,24 @@ class PolicyCommitment:
 
 
 def canonical_leaf_bytes(state_key: str, entry: QTableEntry, q_scale: int = Q16_16_SCALE) -> bytes:
-    """Deterministic encoding for a policy leaf."""
-    payload = {
-        "state": state_key,
-        "q_scale": q_scale,
-        "q": [entry.q_hold, entry.q_buy, entry.q_sell],
-    }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    """Deterministic encoding for a policy leaf.
+
+    The encoding matches the Risc0 guest's `hash_q_entry` function:
+    SHA-256("qtable_entry" || state_key || q_hold || q_buy || q_sell).
+    Using the same domain-separated preimage ensures Merkle roots and proofs
+    produced here verify inside the guest program.
+    """
+    # Maintain the q_scale parameter for forwards compatibility even though the
+    # current guest only consumes the fixed-point values directly.
+    _ = q_scale
+
+    return (
+        b"qtable_entry"
+        + state_key.encode()
+        + entry.q_hold.to_bytes(4, "little", signed=True)
+        + entry.q_buy.to_bytes(4, "little", signed=True)
+        + entry.q_sell.to_bytes(4, "little", signed=True)
+    )
 
 
 def build_policy_commitment(

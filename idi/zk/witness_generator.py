@@ -142,33 +142,21 @@ class MerkleTree:
     """Compatibility wrapper around MerkleTreeBuilder (deprecated)."""
 
     def __init__(self, entries: Dict[str, QTableEntry]):
+        from idi.zk.policy_commitment import canonical_leaf_bytes
+
         self.entries = entries
         builder = MerkleTreeBuilder()
         for state_key, entry in entries.items():
-            leaf_data = json.dumps(
-                {
-                    "state": state_key,
-                    "q_hold": entry.q_hold,
-                    "q_buy": entry.q_buy,
-                    "q_sell": entry.q_sell,
-                },
-                sort_keys=True,
-            ).encode()
+            leaf_data = canonical_leaf_bytes(state_key, entry)
             builder.add_leaf(state_key, leaf_data)
         self.root, self._proofs = builder.build()
 
     def get_proof(self, state_key: str) -> Optional[MerkleProof]:
+        from idi.zk.policy_commitment import canonical_leaf_bytes
+
         if state_key not in self.entries:
             return None
-        leaf_data = json.dumps(
-            {
-                "state": state_key,
-                "q_hold": self.entries[state_key].q_hold,
-                "q_buy": self.entries[state_key].q_buy,
-                "q_sell": self.entries[state_key].q_sell,
-            },
-            sort_keys=True,
-        ).encode()
+        leaf_data = canonical_leaf_bytes(state_key, self.entries[state_key])
         leaf_hash = hashlib.sha256(leaf_data).digest()
         return MerkleProof(
             leaf_hash=leaf_hash,
@@ -179,30 +167,33 @@ class MerkleTree:
 
 def _select_action_greedy(q_entry: QTableEntry) -> ActionIndex:
     """Select action using greedy (argmax) policy.
-    
+
     Returns the action with highest Q-value.
-    Tie-breaking order: buy > sell > hold (deterministic).
-    
+    Tie-breaking order: buy > sell > hold for equal Q-values. The function uses
+    the fixed-point integers directly to avoid floating point drift.
+
     Security:
         - Deterministic: Same Q-values always produce same action
         - Matches Rust implementation in idi-qtable/src/main.rs:argmax_q()
-    
+
     Args:
         q_entry: Q-table entry with fixed-point values
-        
+
     Returns:
         Action index: 0=hold, 1=buy, 2=sell
     """
-    q_hold, q_buy, q_sell = q_entry.to_float()
-    
-    # Greedy selection: choose action with highest Q-value
-    # Tie-breaking: buy > sell > hold (matches Rust implementation)
-    if q_buy > q_sell and q_buy > q_hold:
-        return ActionIndex(1)  # buy
-    elif q_sell > q_hold:
-        return ActionIndex(2)  # sell
-    else:
-        return ActionIndex(0)  # hold
+    priorities: Tuple[Tuple[int, ActionIndex, int], ...] = (
+        (q_entry.q_hold, ActionIndex(0), 0),  # lowest priority on ties
+        (q_entry.q_buy, ActionIndex(1), 2),   # highest priority on ties
+        (q_entry.q_sell, ActionIndex(2), 1),  # middle priority on ties
+    )
+
+    best_value, best_action, best_priority = priorities[0]
+    for value, action, priority in priorities[1:]:
+        if value > best_value or (value == best_value and priority > best_priority):
+            best_value, best_action, best_priority = value, action, priority
+
+    return best_action
 
 
 @dataclass(frozen=True)

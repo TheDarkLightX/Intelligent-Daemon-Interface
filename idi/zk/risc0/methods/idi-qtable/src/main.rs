@@ -173,13 +173,20 @@ fn hash_q_entry(state_key: &str, entry: &QEntry) -> [u8; 32] {
 /// Never panics - all code paths return valid action indices
 fn argmax_q(q: &QEntry) -> u8 {
     // Greedy selection: choose action with highest Q-value
-    // Tie-breaking: buy > sell > hold (deterministic, matches Python)
-    if q.q_buy > q.q_sell && q.q_buy > q.q_hold {
-        1  // buy
-    } else if q.q_sell > q.q_hold {
-        2  // sell
-    } else {
-        0  // hold
+    // Tie-breaking priority: buy > sell > hold
+    let priorities: [(i32, u8, u8); 3] = [
+        (q.q_hold, 0, 0), // lowest priority when tied
+        (q.q_buy, 1, 2),  // highest priority when tied
+        (q.q_sell, 2, 1), // middle priority when tied
+    ];
+
+    let mut best = priorities[0];
+    for candidate in priorities.iter().skip(1) {
+        if candidate.0 > best.0 || (candidate.0 == best.0 && candidate.2 > best.2) {
+            best = *candidate;
+        }
     }
+
+    best.1
 }
 
