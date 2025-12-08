@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shlex
 import subprocess
 import time
 from dataclasses import dataclass
@@ -111,7 +112,6 @@ def generate_proof(
             receipt=str(receipt_path),
         )
         # Split command safely (handles quoted arguments, escapes, etc.)
-        import shlex
         cmd_parts = shlex.split(cmd_str)
         # Security: Never use shell=True with user-controlled input
         subprocess.run(cmd_parts, check=True)
