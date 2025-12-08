@@ -102,13 +102,19 @@ def generate_proof(
     digest = _combined_hash(manifest_path, stream_dir)
 
     if prover_command:
-        cmd = prover_command.format(
+        # Security: Use shlex.split to prevent command injection
+        # Format the command string first, then split safely
+        cmd_str = prover_command.format(
             manifest=str(manifest_path),
             streams=str(stream_dir),
             proof=str(proof_path),
             receipt=str(receipt_path),
         )
-        subprocess.run(cmd, shell=True, check=True)
+        # Split command safely (handles quoted arguments, escapes, etc.)
+        import shlex
+        cmd_parts = shlex.split(cmd_str)
+        # Security: Never use shell=True with user-controlled input
+        subprocess.run(cmd_parts, check=True)
     else:
         proof_path.write_text(digest, encoding="utf-8")
 
