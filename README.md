@@ -167,6 +167,9 @@ archive/                     # Archived content (Alignment Theorem, Lean proofs)
 - [Complexity Analysis](idi/devkit/tau_factory/COMPLEXITY_ANALYSIS.md) - Current capabilities and gaps
 - [Limitations & Why](idi/devkit/tau_factory/LIMITATIONS_AND_WHY.md) - What can't be done and why
 
+### Benchmarks
+- [Performance Benchmark Guide](verification/PERFORMANCE_BENCHMARK_GUIDE.md) - Run Tau micro-benchmarks and the economic simulation, configure `TAU_PATH`, and interpret the JSON/console outputs.
+
 ## 🧪 Testing
 
 ```bash

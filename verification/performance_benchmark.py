@@ -10,12 +10,14 @@ This module benchmarks:
 5. Scalability with input size
 """
 
-import time
-import os
-import subprocess
 import json
+import os
+import shutil
+import subprocess
+import time
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 import statistics
 
 
@@ -37,27 +39,29 @@ class BenchmarkResult:
 
 class TauBenchmark:
     """Benchmark runner for Tau specifications"""
-    
-    TAU_PATH = "/home/trevormoc/Downloads/tau-lang-latest/build-Release/tau"
-    SPEC_DIR = "/home/trevormoc/Downloads/DeflationaryAgent/specification"
+
+    TAU_PATH = os.environ.get("TAU_PATH", "tau")
+    SPEC_DIR = os.environ.get(
+        "TAU_SPEC_DIR", str(Path(__file__).resolve().parent.parent / "specification")
+    )
     
     def __init__(self):
         self.results: List[BenchmarkResult] = []
         
     def check_tau_exists(self) -> bool:
         """Check if tau binary exists"""
-        return os.path.exists(self.TAU_PATH)
+        return shutil.which(self.TAU_PATH) is not None or os.path.exists(self.TAU_PATH)
     
     def run_tau_command(self, command: str, timeout: int = 30) -> Tuple[str, float, bool]:
         """Run a tau command and measure time"""
         start = time.perf_counter()
         try:
             result = subprocess.run(
-                f"echo '{command}' | {self.TAU_PATH}",
-                shell=True,
+                [self.TAU_PATH],
+                input=command,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             )
             elapsed = (time.perf_counter() - start) * 1000  # ms
             success = result.returncode == 0
@@ -66,6 +70,9 @@ class TauBenchmark:
         except subprocess.TimeoutExpired:
             elapsed = timeout * 1000
             return "TIMEOUT", elapsed, False
+        except FileNotFoundError as e:
+            elapsed = (time.perf_counter() - start) * 1000
+            return str(e), elapsed, False
         except Exception as e:
             elapsed = (time.perf_counter() - start) * 1000
             return str(e), elapsed, False
@@ -399,12 +406,13 @@ def main():
     print("\n" + "=" * 80)
     print("VCC PERFORMANCE BENCHMARK SUITE")
     print("=" * 80)
-    
+
     # Check if tau exists
     benchmark = TauBenchmark()
     if not benchmark.check_tau_exists():
         print(f"\nWARNING: Tau binary not found at {benchmark.TAU_PATH}")
         print("Running simulation benchmarks only...")
+        print("Set TAU_PATH to your built tau binary to enable native benchmarks.")
     else:
         # Run Tau benchmarks
         benchmark.run_all_benchmarks()
@@ -414,7 +422,7 @@ def main():
     run_simulation_benchmark()
     
     # Save results
-    results_path = "/home/trevormoc/Downloads/DeflationaryAgent/verification/performance_results.json"
+    results_path = Path(__file__).resolve().parent / "performance_results.json"
     with open(results_path, 'w') as f:
         json.dump({
             "tau_benchmarks": [
