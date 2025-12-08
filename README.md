@@ -149,7 +149,6 @@ archive/                     # Archived content (Alignment Theorem, Lean proofs)
 - **End-to-End Testing** - Complete test suite verifies privacy guarantees
 - **TauBridge Integration** - Ready for Tau Net testnet deployment
 
-See [`PRODUCTION_STATUS.md`](PRODUCTION_STATUS.md) for production readiness assessment.
 
 ## 📚 Documentation
 
@@ -166,8 +165,7 @@ See [`PRODUCTION_STATUS.md`](PRODUCTION_STATUS.md) for production readiness asse
 - [Hex Pattern](idi/devkit/tau_factory/HEX_SUMMARY.md) - Time-lock staking implementation
 - [High Priority Patterns](idi/devkit/tau_factory/HIGH_PRIORITY_PATTERNS_COMPLETE.md) - Multi-bit counter, streak counter, mode switch, proposal FSM, risk FSM
 
-### Analysis & Limitations
-- [Complexity Analysis](idi/devkit/tau_factory/COMPLEXITY_ANALYSIS.md) - Current capabilities and gaps
+### Pattern Limitations
 - [Limitations & Why](idi/devkit/tau_factory/LIMITATIONS_AND_WHY.md) - What can't be done and why
 
 ## 🧪 Testing
@@ -235,8 +233,6 @@ See [LICENSE](LICENSE) for details.
 - ✅ **Low Priority Patterns** (3): History State, Decomposed FSM, Script Execution
 
 **All patterns complete!** See [IMPLEMENTATION_STATUS.md](idi/devkit/tau_factory/IMPLEMENTATION_STATUS.md) for details.
-
-See [IMPLEMENTATION_STATUS.md](idi/devkit/tau_factory/IMPLEMENTATION_STATUS.md) for details.
 
 ## 📖 Related Projects
 
