@@ -10,6 +10,13 @@ import os
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
+from collections import defaultdict
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
 
 @dataclass
@@ -82,12 +89,9 @@ class PerformanceMonitor:
         start_time = time.perf_counter()
         memory_start = 0.0
 
-        try:
-            import psutil  # Optional dependency
+        if HAS_PSUTIL:
             process = psutil.Process()
             memory_start = process.memory_info().rss / 1024 / 1024  # MB
-        except ImportError:
-            memory_start = 0.0
 
         try:
             yield
@@ -95,11 +99,8 @@ class PerformanceMonitor:
             end_time = time.perf_counter()
             memory_end = 0.0
 
-            try:
-                import psutil  # Optional dependency
+            if HAS_PSUTIL:
                 memory_end = psutil.Process().memory_info().rss / 1024 / 1024  # MB
-            except ImportError:
-                memory_end = 0.0
 
             metrics = PerformanceMetrics(
                 operation=operation,
@@ -136,12 +137,13 @@ class PerformanceMonitor:
         lines = ["=== Tau Factory Performance Report ==="]
 
         for op, stats in sorted(self.stats.items()):
-            lines.append(f"\n{op}:")
-            lines.append(f"  calls: {stats.call_count}")
-            lines.append(f"  avg_time_ms: {stats.avg_time_ms:.2f}")
-            lines.append(f"  max_time_ms: {stats.max_time_ms:.2f}")
-            lines.append(f"  min_time_ms: {stats.min_time_ms:.2f}")
-            lines.append(f"  avg_memory_delta_mb: {stats.avg_memory_mb:.2f}")
+            lines.append(
+                f"\n{op}: calls={stats.call_count}, "
+                f"avg={stats.avg_time_ms:.2f}ms, "
+                f"min={stats.min_time_ms:.2f}ms, "
+                f"max={stats.max_time_ms:.2f}ms, "
+                f"avg_mem={stats.avg_memory_mb:.2f}MB"
+            )
 
         lines.append(f"\nTotal operations tracked: {len(self.metrics)}")
         return "\n".join(lines)

@@ -14,7 +14,7 @@ class BasicPatternGenerator:
 
     def generate(self, block: LogicBlock, streams: tuple[StreamConfig, ...]) -> str:
         """Generate Tau code for basic patterns."""
-        pattern = block.pattern.value if hasattr(block.pattern, "value") else block.pattern
+        pattern = block.pattern
 
         if pattern == "fsm":
             return self._generate_basic_fsm(block, streams)

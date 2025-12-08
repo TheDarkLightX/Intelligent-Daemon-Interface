@@ -100,6 +100,8 @@ class MerkleTreeBuilder:
     def __init__(self) -> None:
         """Initialize Merkle tree builder."""
         self.leaves: List[Tuple[str, bytes]] = []  # (key, hash)
+        self._cache_root: Optional[bytes] = None
+        self._cache_proofs: Optional[Dict[str, List[Tuple[bytes, bool]]]] = None
     
     def add_leaf(self, key: str, data: bytes) -> None:
         """Add a leaf node to the tree with validation."""
@@ -109,6 +111,9 @@ class MerkleTreeBuilder:
             raise ValueError("Leaf data must be bytes")
         leaf_hash = hashlib.sha256(data).digest()
         self.leaves.append((key, leaf_hash))
+        # Invalidate caches when leaf set changes
+        self._cache_root = None
+        self._cache_proofs = None
     
     def build(self) -> Tuple[bytes, Dict[str, List[Tuple[bytes, bool]]]]:
         """Build Merkle tree and return root hash and proofs.
@@ -123,6 +128,9 @@ class MerkleTreeBuilder:
             
         Complexity: O(n log n) where n is number of leaves
         """
+        if self._cache_root is not None and self._cache_proofs is not None:
+            return self._cache_root, self._cache_proofs
+
         if not self.leaves:
             return hashlib.sha256(b"").digest(), {}
         
@@ -143,6 +151,10 @@ class MerkleTreeBuilder:
         
         root_hash = level[0] if level else hashlib.sha256(b"").digest()
         
+        # Cache computed root/proofs for reuse when leaves unchanged
+        self._cache_root = root_hash
+        self._cache_proofs = proofs
+
         return root_hash, proofs
     
     def verify_proof(

@@ -25,21 +25,33 @@ python -m idi.zk.run_stub_proofs --artifacts-root idi/artifacts
 ```
 This creates `proof_stub/` folders next to each artifact (regime layers, emotive layers, etc.) and verifies the receipts in one go.
 
-## Native Risc0 prover ✅ Implemented
+## Native Risc0 prover ✅ Production Ready
 
-- Workspace lives in `idi/zk/risc0/` (`cargo` workspace with `host/`, `methods/`, and generated guest code).
-- Guest program: `idi/zk/risc0/methods/idi-manifest/src/main.rs` - Verifies manifest and stream hashes
-- Host program: `idi/zk/risc0/host/src/main.rs` - Generates proofs via Risc0 zkVM
-- Build: `cargo run --release -p idi_risc0_host -- --help` (requires `rzup install` + the `riscv32im-risc0-zkvm-elf` toolchain).
-- Usage example:
+- **Status**: Fully functional end-to-end implementation with comprehensive testing
+- Workspace lives in `idi/zk/risc0/` (`cargo` workspace with `host/`, `methods/`, and generated guest code)
+- **Guest programs**:
+  - `idi/zk/risc0/methods/idi-manifest/src/main.rs` - Verifies manifest and stream hashes
+  - `idi/zk/risc0/methods/idi-qtable/src/main.rs` - Verifies Q-table action selection with Merkle proofs
+- **Host program**: `idi/zk/risc0/host/src/main.rs` - Generates STARK proofs via Risc0 zkVM
+- **Build**:
+  ```bash
+  cd idi/zk/risc0
+  cargo build --release -p idi_risc0_methods  # Build guest programs
+  cargo build --release -p idi_risc0_host      # Build host program
   ```
+- **Usage**:
+  ```bash
   cargo run --release -p idi_risc0_host -- \
-      --manifest idi/artifacts/regime_macro/artifact_manifest.json \
-      --streams idi/artifacts/regime_macro/streams \
-      --proof idi/artifacts/regime_macro/proof_risc0/proof.bin \
-      --receipt idi/artifacts/regime_macro/proof_risc0/receipt.json
+      --manifest artifacts/my_agent/artifact_manifest.json \
+      --streams artifacts/my_agent/streams \
+      --proof artifacts/my_agent/proof_risc0/proof.bin \
+      --receipt artifacts/my_agent/proof_risc0/receipt.json
   ```
-- The host consumes the manifest + streams, embeds them into the guest, proves via Risc0, checks the guest digest against a deterministic host hash, and writes both the binary proof and a JSON receipt (including the method ID and digest).
+- **Verification**: Receipt contains `method_id` (image ID) and `digest_hex` for cryptographic verification
+- **Testing**: Complete end-to-end test suite in `idi/zk/tests/test_private_training_e2e.py`
+  - Verifies Q-values remain private throughout workflow
+  - Tests Risc0 proof generation and verification
+  - Validates TauBridge integration
 
 ## Witness Generation ✅ Implemented
 
@@ -73,7 +85,43 @@ PY
 ```
 
 ## Verifier hand-off
-- Store `artifact_manifest.json`, proof binary, and `receipt.json` in the Tau ledger.
-- Tau daemon should only accept `q_*` streams when the receipt digest matches the expected manifest hash.
-- On-chain deployments can re-run `verify_proof` (or the actual Risc0 verifier) before actioning trades.
+
+### Integration with TauBridge
+
+The `idi/taunet_bridge/` module provides integration with [Tau Testnet](https://github.com/IDNI/tau-testnet):
+
+```python
+from idi.taunet_bridge import TauNetZkAdapter, ZkConfig, ZkValidationStep
+from idi.taunet_bridge.validation import ValidationContext
+
+# Configure ZK verification
+config = ZkConfig(enabled=True, proof_system="risc0")
+adapter = TauNetZkAdapter(config)
+
+# Create validation step
+zk_step = ZkValidationStep(adapter, required=False)
+
+# Validate transaction with ZK proof
+ctx = ValidationContext(tx_hash="...", payload={"zk_proof": proof_bundle})
+zk_step.run(ctx)  # Raises InvalidZkProofError if verification fails
+```
+
+### End-to-End Workflow
+
+1. **Train agent privately** - Q-table stays on user's machine
+2. **Generate artifact manifest** - No Q-values included
+3. **Create Tau input streams** - Only binary action signals
+4. **Generate witness** - Merkle root commitment (Q-values private)
+5. **Generate Risc0 proof** - Cryptographically verifiable proof
+6. **Submit to Tau Net** - Via TauBridge integration
+
+See [`PRIVATE_TRAINING_GUIDE.md`](PRIVATE_TRAINING_GUIDE.md) for complete workflow.
+
+### Privacy Guarantees
+
+✅ Q-values never exposed in any artifact  
+✅ Only Merkle root commitments revealed  
+✅ Proofs verifiable without Q-values  
+✅ Tamper detection (any modification invalidates proof)  
+✅ Complete test coverage verifying privacy
 

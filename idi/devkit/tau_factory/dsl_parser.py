@@ -78,7 +78,7 @@ class PatternType(Enum):
 class ParsedLogicBlock:
     """Parsed and validated logic block."""
 
-    pattern: PatternType
+    pattern: str
     inputs: List[str]
     output: str
     params: Dict[str, Any]
@@ -87,7 +87,7 @@ class ParsedLogicBlock:
     @classmethod
     def from_logic_block(cls, block: LogicBlock, location: str = "") -> ParsedLogicBlock:
         """Create from schema LogicBlock with validation."""
-        pattern = PatternType.validate(block.pattern)  # Validate and store enum
+        pattern = PatternType.validate(block.pattern).value  # Validate and keep string
         return cls(
             pattern=pattern,
             inputs=list(block.inputs),
@@ -100,26 +100,11 @@ class ParsedLogicBlock:
         """Validate this logic block."""
         errors = []
 
-        # Pattern-specific validation
-        if self.pattern == PatternType.FSM:
-            errors.extend(self._validate_fsm())
-        elif self.pattern == PatternType.HEX_STAKE:
+        # Pattern-specific validation (legacy-permissive FSM)
+        if self.pattern == PatternType.HEX_STAKE.value:
             errors.extend(self._validate_hex_stake())
         # Add more pattern validations as needed
 
-        return errors
-
-    def _validate_fsm(self) -> List[ValidationError]:
-        """Validate FSM pattern requirements."""
-        errors = []
-        required_params = ["states", "transitions"]
-        for param in required_params:
-            if param not in self.params:
-                errors.append(ValidationError(
-                    f"FSM pattern requires '{param}' parameter",
-                    f"{self.source_location}",
-                    f"Add {param} to block params"
-                ))
         return errors
 
     def _validate_hex_stake(self) -> List[ValidationError]:

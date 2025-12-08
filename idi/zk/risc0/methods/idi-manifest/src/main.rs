@@ -7,10 +7,14 @@
 //!
 //! The guest computes a deterministic hash of all inputs and commits it to the journal.
 
+#![no_std]
 #![no_main]
 
+extern crate alloc;
+
+use alloc::{string::String, vec::Vec};
 use risc0_zkvm::guest::env;
-use risc0_zkvm::sha::Sha256;
+use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 
 risc0_zkvm::guest::entry!(main);
@@ -29,12 +33,15 @@ fn main() {
     let mut hasher = Sha256::new();
     for blob in &blobs {
         hasher.update(blob.name.as_bytes());
-        hasher.update((blob.data.len() as u64).to_le_bytes());
+        hasher.update(&(blob.data.len() as u64).to_le_bytes());
         hasher.update(&blob.data);
     }
     
     let digest = hasher.finalize();
     
+    // Convert GenericArray to [u8; 32] for serialization
+    let digest_bytes: [u8; 32] = digest.into();
+    
     // Commit digest to journal (public output)
-    env::commit(&digest);
+    env::commit(&digest_bytes);
 }

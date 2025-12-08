@@ -32,7 +32,7 @@ from idi.taunet_bridge import TauNetZkAdapter, ZkConfig, ZkValidationStep
 from idi.taunet_bridge.validation import ValidationContext
 
 # Configure ZK verification
-config = ZkConfig(enabled=True, proof_system="stub")
+config = ZkConfig(enabled=True, proof_system="risc0")  # Use "risc0" for production
 adapter = TauNetZkAdapter(config)
 
 # Create validation step
@@ -80,9 +80,9 @@ from idi.taunet_bridge.config import ZkConfig
 
 config = ZkConfig(
     enabled=True,              # Enable ZK verification
-    proof_system="stub",       # "stub" or "risc0"
+    proof_system="risc0",      # "stub" (testing) or "risc0" (production)
     require_proofs=False,      # Require proofs for all txs
-    merkle_threshold=100,     # Use Merkle for tables > 100 entries
+    merkle_threshold=100,      # Use Merkle for tables > 100 entries
 )
 ```
 
