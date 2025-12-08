@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import hashlib
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 
 
@@ -175,3 +178,20 @@ class TrainingConfig:
         if self.multi_layer:
             self.multi_layer.validate()
 
+    @classmethod
+    def from_json(cls, path: Path) -> TrainingConfig:
+        """Load and validate a TrainingConfig from JSON."""
+        data = json.loads(path.read_text())
+        cfg = cls(**data)
+        cfg.validate()
+        return cfg
+
+    def to_json(self, path: Path) -> None:
+        """Persist the config to disk in canonical form."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(asdict(self), sort_keys=True, indent=2))
+
+    def fingerprint(self) -> str:
+        """Stable SHA-256 fingerprint for binding receipts/specs."""
+        payload = json.dumps(asdict(self), sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(payload).hexdigest()

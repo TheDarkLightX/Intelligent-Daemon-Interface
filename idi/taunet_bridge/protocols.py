@@ -7,10 +7,11 @@ type safety throughout the system.
 
 from __future__ import annotations
 
+import base64
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, Union, runtime_checkable
 
 from idi.zk.proof_manager import ProofBundle as IdiProofBundle
 
@@ -24,109 +25,146 @@ class InvalidZkProofError(Exception):
         super().__init__(f"Invalid ZK proof for transaction {tx_hash}: {reason or 'verification failed'}")
 
 
-@dataclass
-class ZkProofBundle:
-    """ZK proof bundle containing proof binary, receipt, and manifest.
+@runtime_checkable
+class ProofBundleProtocol(Protocol):
+    """Common interface for local and network proof bundles."""
 
-    This dataclass provides a typed interface for ZK proofs, ensuring
-    type safety and enabling serialization for network transmission.
-    
-    For network portability, this class can serialize either:
-    - File paths (for local development)
-    - Actual proof bytes (for network transmission)
-    """
-
-    proof_path: Optional[Path] = None
-    receipt_path: Optional[Path] = None
-    manifest_path: Optional[Path] = None
-    # Network-portable fields (serialize actual bytes)
-    proof_bytes: Optional[bytes] = None
-    receipt_json: Optional[dict] = None
-    manifest_bytes: Optional[bytes] = None
-    tx_hash: Optional[str] = None
-    timestamp: Optional[int] = None
+    tx_hash: Optional[str]
+    timestamp: Optional[int]
 
     def serialize(self) -> bytes:
-        """Serialize proof bundle to bytes for network transmission.
-        
-        Serializes actual proof/receipt/manifest bytes, not file paths,
-        for network portability across machines.
-        """
-        # Prefer bytes over paths for network transmission
-        if self.proof_bytes and self.receipt_json and self.manifest_bytes:
-            import base64
-            data = {
-                "proof_bytes": base64.b64encode(self.proof_bytes).decode(),
-                "receipt": self.receipt_json,
-                "manifest_bytes": base64.b64encode(self.manifest_bytes).decode(),
-                "tx_hash": self.tx_hash,
-                "timestamp": self.timestamp,
-            }
-        else:
-            # Fallback to paths for local development
-            if not all([self.proof_path, self.receipt_path, self.manifest_path]):
-                raise ValueError("Either bytes or paths must be provided")
-            data = {
-                "proof_path": str(self.proof_path),
-                "receipt_path": str(self.receipt_path),
-                "manifest_path": str(self.manifest_path),
-                "tx_hash": self.tx_hash,
-                "timestamp": self.timestamp,
-            }
+        """Serialize to network-portable bytes."""
+        ...
+
+    def to_network(self) -> "NetworkZkProofBundle":
+        """Return a network-safe representation."""
+        ...
+
+
+@dataclass
+class NetworkZkProofBundle(ProofBundleProtocol):
+    """Network-portable proof bundle containing proof, receipt, and manifest bytes."""
+
+    proof_bytes: bytes
+    receipt_bytes: bytes
+    manifest_bytes: bytes
+    tx_hash: Optional[str] = None
+    timestamp: Optional[int] = None
+    stream_dir: Optional[Path] = None
+
+    def serialize(self) -> bytes:
+        """Serialize to JSON bytes with base64-encoded blobs."""
+        data = {
+            "proof_b64": base64.b64encode(self.proof_bytes).decode(),
+            "receipt_b64": base64.b64encode(self.receipt_bytes).decode(),
+            "manifest_b64": base64.b64encode(self.manifest_bytes).decode(),
+            "tx_hash": self.tx_hash,
+            "timestamp": self.timestamp,
+        }
         return json.dumps(data, sort_keys=True).encode()
 
     @classmethod
-    def deserialize(cls, data: bytes) -> ZkProofBundle:
-        """Deserialize proof bundle from bytes."""
+    def deserialize(cls, data: bytes) -> "NetworkZkProofBundle":
         obj = json.loads(data.decode())
-        
-        # Check if bytes are present (network format)
-        if "proof_bytes" in obj and "receipt" in obj and "manifest_bytes" in obj:
-            import base64
-            return cls(
-                proof_bytes=base64.b64decode(obj["proof_bytes"]),
-                receipt_json=obj["receipt"],
-                manifest_bytes=base64.b64decode(obj["manifest_bytes"]),
-                tx_hash=obj.get("tx_hash"),
-                timestamp=obj.get("timestamp"),
-            )
-        else:
-            # Fallback to paths (local format)
-            return cls(
-                proof_path=Path(obj["proof_path"]),
-                receipt_path=Path(obj["receipt_path"]),
-                manifest_path=Path(obj["manifest_path"]),
-                tx_hash=obj.get("tx_hash"),
-                timestamp=obj.get("timestamp"),
-            )
-    
-    def load_from_paths(self) -> None:
-        """Load bytes from file paths (for conversion from path-based to bytes-based)."""
-        if self.proof_path and self.receipt_path and self.manifest_path:
-            self.proof_bytes = self.proof_path.read_bytes()
-            self.receipt_json = json.loads(self.receipt_path.read_text())
-            self.manifest_bytes = self.manifest_path.read_bytes()
-    
-    def save_to_paths(self, base_dir: Path) -> None:
-        """Save bytes to file paths (for local development/testing)."""
-        if self.proof_bytes and self.receipt_json and self.manifest_bytes:
-            base_dir.mkdir(parents=True, exist_ok=True)
-            self.proof_path = base_dir / "proof.bin"
-            self.receipt_path = base_dir / "receipt.json"
-            self.manifest_path = base_dir / "manifest.json"
-            self.proof_path.write_bytes(self.proof_bytes)
-            self.receipt_path.write_text(json.dumps(self.receipt_json, indent=2))
-            self.manifest_path.write_bytes(self.manifest_bytes)
+
+        def _decode(key: str) -> bytes:
+            if key in obj:
+                return base64.b64decode(obj[key])
+            if key.replace("_b64", "_bytes") in obj:
+                return base64.b64decode(obj[key.replace("_b64", "_bytes")])
+            if key == "receipt_b64" and "receipt" in obj:
+                # Backwards compatibility with receipt stored as JSON object
+                return json.dumps(obj["receipt"]).encode()
+            raise ValueError(f"Missing required field {key}")
+
+        return cls(
+            proof_bytes=_decode("proof_b64"),
+            receipt_bytes=_decode("receipt_b64"),
+            manifest_bytes=_decode("manifest_b64"),
+            tx_hash=obj.get("tx_hash"),
+            timestamp=obj.get("timestamp"),
+            stream_dir=Path(obj["stream_dir"]) if obj.get("stream_dir") else None,
+        )
+
+    def to_local(self, base_dir: Path) -> "LocalZkProofBundle":
+        """Persist bundle to disk for local verification."""
+        base_dir.mkdir(parents=True, exist_ok=True)
+        proof_path = base_dir / "proof.bin"
+        receipt_path = base_dir / "receipt.json"
+        manifest_path = base_dir / "manifest.json"
+        proof_path.write_bytes(self.proof_bytes)
+        receipt_path.write_bytes(self.receipt_bytes)
+        manifest_path.write_bytes(self.manifest_bytes)
+        return LocalZkProofBundle(
+            proof_path=proof_path,
+            receipt_path=receipt_path,
+            manifest_path=manifest_path,
+            tx_hash=self.tx_hash,
+            timestamp=self.timestamp,
+            stream_dir=self.stream_dir,
+        )
+
+    def to_network(self) -> "NetworkZkProofBundle":
+        return self
+
+
+@dataclass
+class LocalZkProofBundle(ProofBundleProtocol):
+    """Local proof bundle backed by filesystem paths."""
+
+    proof_path: Path
+    receipt_path: Path
+    manifest_path: Path
+    tx_hash: Optional[str] = None
+    timestamp: Optional[int] = None
+    stream_dir: Optional[Path] = None
+
+    def serialize(self) -> bytes:
+        """Serialize by converting to a network bundle (portable, hash-stable)."""
+        return self.to_network().serialize()
+
+    def to_network(self) -> NetworkZkProofBundle:
+        return NetworkZkProofBundle(
+            proof_bytes=self.proof_path.read_bytes(),
+            receipt_bytes=self.receipt_path.read_bytes(),
+            manifest_bytes=self.manifest_path.read_bytes(),
+            tx_hash=self.tx_hash,
+            timestamp=self.timestamp,
+            stream_dir=self.stream_dir,
+        )
 
     def to_idi_bundle(self) -> IdiProofBundle:
         """Convert to IDI ProofBundle for integration with existing infrastructure."""
-        if not all([self.proof_path, self.receipt_path, self.manifest_path]):
-            raise ValueError("Cannot convert to IdiProofBundle: paths not available")
         return IdiProofBundle(
             manifest_path=self.manifest_path,
             proof_path=self.proof_path,
             receipt_path=self.receipt_path,
+            stream_dir=self.stream_dir,
         )
+
+
+ZkProofBundle = Union[LocalZkProofBundle, NetworkZkProofBundle]
+
+
+def deserialize_proof_bundle(data: bytes | str) -> ZkProofBundle:
+    """Deserialize bytes (or UTF-8 string) into the appropriate bundle type."""
+    raw = data if isinstance(data, (bytes, bytearray)) else str(data).encode()
+    obj = json.loads(raw.decode())
+
+    if any(key in obj for key in ("proof_b64", "proof_bytes")):
+        return NetworkZkProofBundle.deserialize(raw)
+
+    if all(key in obj for key in ("proof_path", "receipt_path", "manifest_path")):
+        return LocalZkProofBundle(
+            proof_path=Path(obj["proof_path"]),
+            receipt_path=Path(obj["receipt_path"]),
+            manifest_path=Path(obj["manifest_path"]),
+            tx_hash=obj.get("tx_hash"),
+            timestamp=obj.get("timestamp"),
+            stream_dir=Path(obj["stream_dir"]) if obj.get("stream_dir") else None,
+        )
+
+    raise ValueError("Unrecognized proof bundle format")
 
 
 @dataclass
@@ -234,4 +272,3 @@ class ZkProver(Protocol):
             ValueError: If witness data is invalid
         """
         ...
-

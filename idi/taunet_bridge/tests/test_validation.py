@@ -1,11 +1,10 @@
 """TDD tests for ZK validation step."""
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from idi.taunet_bridge.protocols import ZkProofBundle, InvalidZkProofError
+from idi.taunet_bridge.protocols import NetworkZkProofBundle, InvalidZkProofError
 from idi.taunet_bridge.validation import ZkValidationStep, ValidationContext
 from idi.taunet_bridge.adapter import TauNetZkAdapter
 from idi.taunet_bridge.config import ZkConfig
@@ -21,10 +20,10 @@ class TestZkValidationStep:
         
         step = ZkValidationStep(mock_verifier)
         
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
         
         ctx = ValidationContext(
@@ -43,10 +42,10 @@ class TestZkValidationStep:
         
         step = ZkValidationStep(mock_verifier)
         
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
         
         ctx = ValidationContext(
@@ -103,10 +102,10 @@ class TestValidationContext:
 
     def test_has_zk_proof(self):
         """Test checking for ZK proof in context."""
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
         
         ctx_with_proof = ValidationContext(
@@ -120,4 +119,3 @@ class TestValidationContext:
             payload={},
         )
         assert ctx_without_proof.has_zk_proof is False
-

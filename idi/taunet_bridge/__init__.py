@@ -5,12 +5,15 @@ and the Tau Testnet blockchain, following SOLID principles and TDD methodology.
 """
 
 from idi.taunet_bridge.protocols import (
+    LocalZkProofBundle,
+    NetworkZkProofBundle,
     ZkProofBundle,
     ZkWitness,
     ZkValidationResult,
     ZkVerifier,
     ZkProver,
     InvalidZkProofError,
+    deserialize_proof_bundle,
 )
 from idi.taunet_bridge.adapter import TauNetZkAdapter
 from idi.taunet_bridge.validation import ZkValidationStep, ValidationContext
@@ -24,12 +27,15 @@ from idi.taunet_bridge.state_integration import (
 )
 
 __all__ = [
+    "LocalZkProofBundle",
+    "NetworkZkProofBundle",
     "ZkProofBundle",
     "ZkWitness",
     "ZkValidationResult",
     "ZkVerifier",
     "ZkProver",
     "InvalidZkProofError",
+    "deserialize_proof_bundle",
     "TauNetZkAdapter",
     "ZkValidationStep",
     "ValidationContext",
@@ -42,4 +48,3 @@ __all__ = [
     "get_zk_verifier",
     "set_zk_verifier",
 ]
-

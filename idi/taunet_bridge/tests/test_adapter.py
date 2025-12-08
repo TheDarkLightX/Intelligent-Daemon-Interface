@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from idi.zk.merkle_tree import MerkleTreeBuilder
-from idi.taunet_bridge.protocols import ZkProofBundle, InvalidZkProofError
+from idi.taunet_bridge.protocols import LocalZkProofBundle
 from idi.taunet_bridge.adapter import TauNetZkAdapter
 from idi.taunet_bridge.config import ZkConfig
 
@@ -49,7 +49,7 @@ class TestTauNetZkAdapter:
         config = ZkConfig(enabled=True, proof_system="stub")
         adapter = TauNetZkAdapter(config)
 
-        proof = ZkProofBundle(
+        proof = LocalZkProofBundle(
             proof_path=bundle.proof_path,
             receipt_path=bundle.receipt_path,
             manifest_path=bundle.manifest_path,
@@ -65,7 +65,7 @@ class TestTauNetZkAdapter:
         config = ZkConfig(enabled=False, proof_system="stub")
         adapter = TauNetZkAdapter(config)
         
-        proof = ZkProofBundle(
+        proof = LocalZkProofBundle(
             proof_path=Path("/tmp/proof.bin"),
             receipt_path=Path("/tmp/receipt.json"),
             manifest_path=Path("/tmp/manifest.json"),
@@ -102,7 +102,7 @@ class TestTauNetZkAdapter:
         config = ZkConfig(enabled=True, proof_system="stub")
         adapter = TauNetZkAdapter(config)
 
-        proof = ZkProofBundle(
+        proof = LocalZkProofBundle(
             proof_path=bundle.proof_path,
             receipt_path=bundle.receipt_path,
             manifest_path=bundle.manifest_path,

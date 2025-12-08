@@ -11,13 +11,13 @@ import pytest
 
 from idi.taunet_bridge.adapter import TauNetZkAdapter
 from idi.taunet_bridge.config import ZkConfig
-from idi.taunet_bridge.protocols import ZkProofBundle, InvalidZkProofError
+from idi.taunet_bridge.protocols import LocalZkProofBundle, InvalidZkProofError
 from idi.taunet_bridge.validation import ValidationContext, ZkValidationStep
 from idi.taunet_bridge.state_integration import apply_verified_transition, set_zk_verifier
 from idi.zk.proof_manager import generate_proof
 
 
-def _make_stub_bundle(tmp_path: Path) -> ZkProofBundle:
+def _make_stub_bundle(tmp_path: Path) -> LocalZkProofBundle:
     """Generate a stub proof bundle from minimal manifest/streams."""
     streams_dir = tmp_path / "streams"
     streams_dir.mkdir()
@@ -34,7 +34,7 @@ def _make_stub_bundle(tmp_path: Path) -> ZkProofBundle:
         auto_detect_risc0=False,  # Use stub for tests
     )
 
-    return ZkProofBundle(
+    return LocalZkProofBundle(
         proof_path=bundle.proof_path,
         receipt_path=bundle.receipt_path,
         manifest_path=bundle.manifest_path,

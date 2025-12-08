@@ -13,7 +13,14 @@ from typing import Any, Dict, Optional
 MAX_PROOF_SIZE_BYTES = 512 * 1024  # 512KB safety cap
 MAX_FIELDS = 32  # safety cap for unexpected fields
 
-from idi.taunet_bridge.protocols import ZkProofBundle, ZkVerifier, InvalidZkProofError
+from idi.taunet_bridge.protocols import (
+    LocalZkProofBundle,
+    NetworkZkProofBundle,
+    ZkProofBundle,
+    ZkVerifier,
+    InvalidZkProofError,
+    deserialize_proof_bundle,
+)
 
 
 @dataclass
@@ -39,17 +46,16 @@ class ValidationContext:
 
         if "zk_proof" in self.payload:
             proof_data = self.payload["zk_proof"]
-            if isinstance(proof_data, ZkProofBundle):
+            if isinstance(proof_data, (LocalZkProofBundle, NetworkZkProofBundle)):
                 self.zk_proof = proof_data
             elif isinstance(proof_data, dict):
                 serialized = proof_data.get("serialized")
                 if serialized is None:
                     raise ValueError("zk_proof missing 'serialized' field")
-                if not isinstance(serialized, (bytes, bytearray)):
-                    raise ValueError("zk_proof.serialized must be bytes")
-                if len(serialized) > MAX_PROOF_SIZE_BYTES:
+                encoded = serialized if isinstance(serialized, (bytes, bytearray)) else str(serialized).encode()
+                if len(encoded) > MAX_PROOF_SIZE_BYTES:
                     raise ValueError("zk_proof serialized payload too large")
-                self.zk_proof = ZkProofBundle.deserialize(serialized)
+                self.zk_proof = deserialize_proof_bundle(encoded)
             else:
                 raise ValueError("zk_proof must be ZkProofBundle or dict with 'serialized'")
 
@@ -96,4 +102,3 @@ class ZkValidationStep:
 
         if not self._verifier.verify(ctx.zk_proof):
             raise InvalidZkProofError(ctx.tx_hash, reason="Proof verification failed")
-

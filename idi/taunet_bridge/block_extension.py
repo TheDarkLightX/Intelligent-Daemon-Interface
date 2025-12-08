@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
-from idi.taunet_bridge.protocols import ZkProofBundle
+from idi.taunet_bridge.protocols import ZkProofBundle, deserialize_proof_bundle
 
 
 def sha256_hex(data: bytes) -> str:
@@ -36,17 +36,11 @@ def compute_zk_merkle_root(proofs: List[ZkProofBundle]) -> str:
     if not proofs:
         return sha256_hex(b"")
 
-    # Compute hash for each proof (using receipt digest if available)
+    # Compute hash for each proof using portable serialization
     proof_hashes = []
     for proof in proofs:
-        # Use receipt path as identifier, hash the receipt content if available
-        proof_id = str(proof.receipt_path)
-        if proof.receipt_path.exists():
-            receipt_data = proof.receipt_path.read_bytes()
-        else:
-            receipt_data = proof_id.encode()
-        proof_hash = sha256_hex(receipt_data)
-        proof_hashes.append(proof_hash)
+        serialized = proof.serialize()
+        proof_hashes.append(sha256_hex(serialized))
 
     # Build Merkle tree (same algorithm as block.py)
     level = [bytes.fromhex(h) for h in proof_hashes]
@@ -96,11 +90,10 @@ class BlockZkExtension:
         """Deserialize extension from bytes."""
         obj = json.loads(data.decode())
         proofs = [
-            ZkProofBundle.deserialize(bytes.fromhex(hex_str))
+            deserialize_proof_bundle(bytes.fromhex(hex_str))
             for hex_str in obj.get("zk_proofs", [])
         ]
         return cls(
             zk_commitment=obj.get("zk_commitment"),
             zk_proofs=proofs,
         )
-

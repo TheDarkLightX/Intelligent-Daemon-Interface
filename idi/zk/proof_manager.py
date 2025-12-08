@@ -20,7 +20,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from .secure_errors import SecureError, handle_file_operation_error, handle_json_parse_error
 
@@ -108,7 +108,9 @@ def _get_default_prover_command() -> Optional[str]:
     return None
 
 
-def _combined_hash(manifest_path: Path, stream_dir: Path) -> str:
+def compute_artifact_digest(
+    manifest_path: Path, stream_dir: Path, extra: Optional[Dict[str, bytes]] = None
+) -> str:
     hasher = hashlib.sha256()
 
     def _update(name: str, payload: bytes) -> None:
@@ -121,6 +123,10 @@ def _combined_hash(manifest_path: Path, stream_dir: Path) -> str:
     for stream_file in sorted(stream_dir.glob("*.in")):
         rel_name = f"streams/{stream_file.name}"
         _update(rel_name, stream_file.read_bytes())
+
+    if extra:
+        for key in sorted(extra.keys()):
+            _update(f"extra/{key}", extra[key])
     return hasher.hexdigest()
 
 
@@ -137,6 +143,7 @@ class ProofBundle:
     manifest_path: Path
     proof_path: Path
     receipt_path: Path
+    stream_dir: Optional[Path] = None
 
 
 def generate_proof(
@@ -146,6 +153,10 @@ def generate_proof(
     out_dir: Path,
     prover_command: Optional[str] = None,
     auto_detect_risc0: bool = True,
+    tx_hash: Optional[str] = None,
+    config_fingerprint: Optional[str] = None,
+    spec_hash: Optional[str] = None,
+    extra_bindings: Optional[Dict[str, bytes]] = None,
 ) -> ProofBundle:
     """Generate a proof bundle via stub or external prover command.
     
@@ -172,7 +183,7 @@ def generate_proof(
     proof_path = out_dir / "proof.bin"
     receipt_path = out_dir / "receipt.json"
 
-    digest = _combined_hash(manifest_path, stream_dir)
+    digest = compute_artifact_digest(manifest_path, stream_dir, extra=extra_bindings)
 
     # Auto-detect Risc0 if no explicit command provided
     if prover_command is None and auto_detect_risc0:
@@ -208,16 +219,31 @@ def generate_proof(
         "digest": digest,
         "prover": "external" if prover_command else "stub",
     }
+    if tx_hash is not None:
+        receipt["tx_hash"] = tx_hash
+    if config_fingerprint is not None:
+        receipt["config_fingerprint"] = config_fingerprint
+    if spec_hash is not None:
+        receipt["spec_hash"] = spec_hash
     if external_receipt:
         receipt["prover"] = external_receipt.get("prover", receipt["prover"])
         receipt["method_id"] = external_receipt.get("method_id")
         receipt["prover_digest"] = external_receipt.get("digest_hex")
         receipt["prover_meta"] = external_receipt
     receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
-    return ProofBundle(manifest_path=manifest_path, proof_path=proof_path, receipt_path=receipt_path)
+    return ProofBundle(
+        manifest_path=manifest_path,
+        proof_path=proof_path,
+        receipt_path=receipt_path,
+        stream_dir=stream_dir,
+    )
 
 
-def verify_proof(bundle: ProofBundle, use_risc0: bool = False) -> bool:
+def verify_proof(
+    bundle: ProofBundle,
+    use_risc0: bool = False,
+    extra_bindings: Optional[Dict[str, bytes]] = None,
+) -> bool:
     """Verify that the proof digest matches the manifest and stream directory.
     
     Args:
@@ -235,15 +261,11 @@ def verify_proof(bundle: ProofBundle, use_risc0: bool = False) -> bool:
 
         receipt = json.loads(receipt_bytes.decode())
 
-        # If Risc0 proof, verify receipt
-        if use_risc0 or receipt.get("prover") == "risc0":
-            return _verify_risc0_receipt(bundle.proof_path, receipt)
-
-        manifest_path = Path(receipt["manifest"])
+        manifest_path = bundle.manifest_path
         # Security: Validate manifest path safety
         _validate_path_safety(manifest_path)
 
-        stream_dir = Path(receipt.get("streams", manifest_path.parent / "streams"))
+        stream_dir = bundle.stream_dir or Path(receipt.get("streams", manifest_path.parent / "streams"))
         # Security: Validate stream directory path safety
         _validate_path_safety(stream_dir)
 
@@ -252,45 +274,48 @@ def verify_proof(bundle: ProofBundle, use_risc0: bool = False) -> bool:
             # Validate the fallback path too
             _validate_path_safety(stream_dir)
 
+        if not manifest_path.exists() or not stream_dir.exists():
+            return False
+
+        # If Risc0 proof, verify receipt and digest binding
+        if use_risc0 or receipt.get("prover") == "risc0":
+            return _verify_risc0_receipt(bundle.proof_path, manifest_path, stream_dir)
+
     except (ValueError, KeyError, OSError, json.JSONDecodeError):
         # Invalid data, paths, or missing required fields
         return False
 
-    digest = _combined_hash(manifest_path, stream_dir)
+    digest = compute_artifact_digest(manifest_path, stream_dir, extra=extra_bindings)
+
+    # Stub proofs include digest text; ensure the proof artifact matches
+    if bundle.proof_path.exists():
+        try:
+            proof_bytes = bundle.proof_path.read_bytes().strip()
+            if proof_bytes and proof_bytes.decode(errors="ignore") != digest:
+                return False
+        except OSError:
+            return False
+
     return digest == receipt.get("digest") or digest == receipt.get("digest_hex")
 
 
-def _verify_risc0_receipt(proof_path: Path, receipt: dict) -> bool:
-    """Verify a Risc0 receipt by calling the verifier binary.
-    
-    Args:
-        proof_path: Path to proof.bin file
-        receipt: Receipt JSON dict
-    
-    Returns:
-        True if receipt verifies, False otherwise
-    """
+def _verify_risc0_receipt(proof_path: Path, manifest_path: Path, stream_dir: Path) -> bool:
+    """Verify a Risc0 receipt by calling the verifier binary with inputs bound."""
     import subprocess
     import shlex
     from pathlib import Path
     
-    if not proof_path.exists():
-        return False
-    
-    # Check for method_id in receipt
-    if "method_id" not in receipt:
-        # Fallback to digest-only verification
+    if not proof_path.exists() or not manifest_path.exists() or not stream_dir.exists():
         return False
     
     try:
-        # Find idi_risc0_host binary
         current_file = Path(__file__)
         risc0_host = current_file.parent / "risc0" / "host" / "target" / "release" / "idi_risc0_host"
         if not risc0_host.exists():
             # Try cargo run as fallback
             risc0_workspace = current_file.parent / "risc0"
             cmd = shlex.split(
-                f"cargo run --release -p idi_risc0_host -- verify --proof {proof_path}"
+                f"cargo run --release -p idi_risc0_host -- verify --proof {proof_path} --manifest {manifest_path} --streams {stream_dir}"
             )
             result = subprocess.run(
                 cmd,
@@ -301,7 +326,16 @@ def _verify_risc0_receipt(proof_path: Path, receipt: dict) -> bool:
             )
         else:
             result = subprocess.run(
-                [str(risc0_host), "verify", "--proof", str(proof_path)],
+                [
+                    str(risc0_host),
+                    "verify",
+                    "--proof",
+                    str(proof_path),
+                    "--manifest",
+                    str(manifest_path),
+                    "--streams",
+                    str(stream_dir),
+                ],
                 capture_output=True,
                 timeout=30,
                 check=False,

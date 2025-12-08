@@ -1,6 +1,5 @@
 """TDD tests for ZK gossip protocol."""
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,10 +9,9 @@ try:
 except ImportError:
     pytest_asyncio = None
 
-from idi.taunet_bridge.protocols import ZkProofBundle, InvalidZkProofError
+from idi.taunet_bridge.protocols import NetworkZkProofBundle, InvalidZkProofError
 from idi.taunet_bridge.gossip import ZkGossipProtocol, TAU_PROTOCOL_ZK_PROOFS
 from idi.taunet_bridge.adapter import TauNetZkAdapter
-from idi.taunet_bridge.config import ZkConfig
 
 
 class TestZkGossipProtocol:
@@ -44,10 +42,10 @@ class TestZkGossipProtocol:
         """Test broadcasting a proof (synchronous wrapper)."""
         import asyncio
         
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
 
         # Run async function synchronously for testing
@@ -63,31 +61,30 @@ class TestZkGossipProtocol:
         """Test handling a valid proof (synchronous wrapper)."""
         import asyncio
         
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
         mock_verifier.verify.return_value = True
 
         data = proof.serialize()
         result = asyncio.run(zk_gossip.handle_proof(data))
 
-        assert isinstance(result, ZkProofBundle)
+        assert isinstance(result, NetworkZkProofBundle)
         mock_verifier.verify.assert_called_once()
 
     def test_handle_proof_invalid_sync(self, zk_gossip, mock_verifier):
         """Test handling an invalid proof (synchronous wrapper)."""
         import asyncio
         
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
         mock_verifier.verify.return_value = False
 
         data = proof.serialize()
         with pytest.raises(InvalidZkProofError):
             asyncio.run(zk_gossip.handle_proof(data))
-

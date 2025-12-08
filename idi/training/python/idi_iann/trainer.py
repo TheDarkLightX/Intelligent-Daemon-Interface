@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional, Callable
+import json
 import random
 import secrets
 
@@ -32,9 +33,15 @@ class TraceBatch:
     def append(self, payload: Dict[str, int]) -> None:
         self.ticks.append(payload)
 
-    def export(self, target_dir: Path) -> None:
+    def export(
+        self,
+        target_dir: Path,
+        *,
+        stream_map: Optional[Dict[str, str]] = None,
+        write_streams_json: bool = True,
+    ) -> None:
         target_dir.mkdir(parents=True, exist_ok=True)
-        streams = {
+        streams = stream_map or {
             "q_buy": "q_buy.in",
             "q_sell": "q_sell.in",
             "risk_budget_ok": "risk_budget_ok.in",
@@ -47,10 +54,16 @@ class TraceBatch:
             "weight_momentum": "weight_momentum.in",
             "weight_contra": "weight_contra.in",
             "weight_trend": "weight_trend.in",
+            "risk_event": "risk_event.in",
         }
         for key, filename in streams.items():
             data = [str(tick.get(key, 0)) for tick in self.ticks]
             (target_dir / filename).write_text("\n".join(data), encoding="utf-8")
+
+        if write_streams_json:
+            (target_dir / "streams.json").write_text(
+                json.dumps({"streams": streams}, sort_keys=True, indent=2), encoding="utf-8"
+            )
 
 
 @dataclass(frozen=True)
@@ -174,6 +187,7 @@ class QTrainer:
         obs = self._env.reset()
         self._emotion.reset()
         prev_base = self._as_state(obs)
+        prev_obs = obs
         state = self._state_key(prev_base)
         for _ in range(self._config.episode_length):
             action = self._policy.best_action(state)
@@ -182,9 +196,12 @@ class QTrainer:
             next_obs, aux = step.obs, step.aux
             next_base = self._as_state(next_obs)
             weights = self._layer_gates(next_base)
-            payload = self._build_payload(action, comm_action, prev_base, next_base, weights, aux)
+            payload = self._build_payload(
+                action, comm_action, prev_base, next_base, weights, aux, prev_obs, next_obs
+            )
             trace.append(payload)
             prev_base = next_base
+            prev_obs = next_obs
             state = self._state_key(next_base)
         return trace
 
@@ -196,10 +213,29 @@ class QTrainer:
         next_base: Tuple[int, ...],
         weights: Dict[str, int],
         aux: Dict[str, Any],
+        prev_obs: object,
+        next_obs: object,
     ) -> Dict[str, int]:
+        def _extract_price(o: object) -> Optional[float]:
+            for attr in ("price", "close", "mid", "last", "last_price"):
+                if hasattr(o, attr):
+                    try:
+                        return float(getattr(o, attr))
+                    except (TypeError, ValueError):
+                        continue
+            return None
+
+        prev_price = _extract_price(prev_obs)
+        next_price = _extract_price(next_obs)
+
         emote_bits = self._emotion.render(next_base[-1], comm_action)
-        price_up = int(next_base[0] > prev_base[0])
-        price_down = int(next_base[0] < prev_base[0])
+        price_up = price_down = 0
+        if prev_price is not None and next_price is not None:
+            price_up = int(next_price > prev_price)
+            price_down = int(next_price < prev_price)
+        else:
+            price_up = int(next_base[0] > prev_base[0])
+            price_down = int(next_base[0] < prev_base[0])
         risk_event = int(bool(aux.get("risk_event"))) if aux else 0
         action_str = action.value if isinstance(action, Action) else action
         return {
@@ -263,7 +299,7 @@ class QTrainer:
             risk_signal = float(next_state[2] > 0)
         return {"risk_signal": risk_signal}
 
-    def _step_env(self, action: Action) -> Tuple[object, float, Dict[str, Any]]:
+    def _step_env(self, action: Action) -> StepResult:
         # Convert Action enum to string for environment compatibility
         action_str = action.value if isinstance(action, Action) else action
         step_out = self._env.step(action_str)
@@ -295,4 +331,3 @@ class QTrainer:
             "mean_reward": mean_reward,
             "comm_action_counts": dict(self._comm_action_counts),
         }
-

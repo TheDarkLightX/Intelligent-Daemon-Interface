@@ -1,54 +1,73 @@
 """TDD tests for ZK protocol interfaces and data models."""
 
-import json
-from dataclasses import asdict
 from pathlib import Path
 
 import pytest
 
 from idi.taunet_bridge.protocols import (
-    ZkProofBundle,
+    LocalZkProofBundle,
+    NetworkZkProofBundle,
     ZkWitness,
     ZkValidationResult,
     ZkVerifier,
     ZkProver,
     InvalidZkProofError,
+    deserialize_proof_bundle,
 )
 
 
-class TestZkProofBundle:
-    """Test ZkProofBundle dataclass."""
+class TestZkProofBundles:
+    """Test ZkProofBundle variants."""
 
-    def test_creation(self):
-        """Test creating a ZkProofBundle."""
-        bundle = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
-        )
-        assert bundle.proof_path == Path("/tmp/proof.bin")
-        assert bundle.receipt_path == Path("/tmp/receipt.json")
-        assert bundle.manifest_path == Path("/tmp/manifest.json")
-
-    def test_serialization_roundtrip(self):
-        """Test serialization and deserialization."""
-        bundle = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+    def test_network_roundtrip(self):
+        """Network bundle base64 serialization/deserialization."""
+        bundle = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b'{"digest":"abc"}',
+            manifest_bytes=b'{"manifest": true}',
+            tx_hash="tx123",
         )
         serialized = bundle.serialize()
-        deserialized = ZkProofBundle.deserialize(serialized)
-        assert deserialized.proof_path == bundle.proof_path
-        assert deserialized.receipt_path == bundle.receipt_path
-        assert deserialized.manifest_path == bundle.manifest_path
+        deserialized = deserialize_proof_bundle(serialized)
+        assert isinstance(deserialized, NetworkZkProofBundle)
+        assert deserialized.proof_bytes == b"proof"
+        assert deserialized.receipt_bytes.startswith(b"{")
+        assert deserialized.tx_hash == "tx123"
 
-    def test_to_idi_bundle(self):
+    def test_local_serialize_uses_data_bytes(self, tmp_path: Path):
+        """Local bundle serializes to the data, not paths."""
+        proof = tmp_path / "proof.bin"
+        receipt = tmp_path / "receipt.json"
+        manifest = tmp_path / "manifest.json"
+        proof.write_bytes(b"proof-bytes")
+        receipt.write_bytes(b'{"digest":"abc"}')
+        manifest.write_bytes(b"{}")
+
+        bundle = LocalZkProofBundle(
+            proof_path=proof,
+            receipt_path=receipt,
+            manifest_path=manifest,
+            tx_hash="tx123",
+        )
+        serialized = bundle.serialize()
+        deserialized = deserialize_proof_bundle(serialized)
+        assert isinstance(deserialized, NetworkZkProofBundle)
+        assert deserialized.proof_bytes == b"proof-bytes"
+        assert deserialized.tx_hash == "tx123"
+
+    def test_to_idi_bundle(self, tmp_path: Path):
         """Test conversion to IDI ProofBundle."""
-        bundle = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = tmp_path / "proof.bin"
+        receipt = tmp_path / "receipt.json"
+        manifest = tmp_path / "manifest.json"
+        proof.write_bytes(b"proof")
+        receipt.write_text("{}", encoding="utf-8")
+        manifest.write_text("{}", encoding="utf-8")
+
+        bundle = LocalZkProofBundle(
+            proof_path=proof,
+            receipt_path=receipt,
+            manifest_path=manifest,
         )
         idi_bundle = bundle.to_idi_bundle()
         assert idi_bundle.proof_path == bundle.proof_path
@@ -123,4 +142,3 @@ class TestZkProverProtocol:
         assert hasattr(ZkProver, "prove")
         # Check it's a Protocol
         assert hasattr(ZkProver, "__protocol_attrs__") or hasattr(ZkProver, "__annotations__")
-

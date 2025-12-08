@@ -1,11 +1,10 @@
 """TDD tests for state integration with ZK proofs."""
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from idi.taunet_bridge.protocols import ZkProofBundle
+from idi.taunet_bridge.protocols import NetworkZkProofBundle
 from idi.taunet_bridge.state_integration import (
     apply_verified_transition,
     get_zk_verifier,
@@ -31,10 +30,10 @@ class TestStateIntegration:
         mock_verifier.verify.return_value = True
         set_zk_verifier(mock_verifier)
 
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
 
         # Mock chain_state module (imported inside apply_verified_transition)
@@ -74,10 +73,10 @@ class TestStateIntegration:
         mock_verifier.verify.return_value = False
         set_zk_verifier(mock_verifier)
 
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
 
         result = apply_verified_transition(
@@ -98,4 +97,3 @@ class TestStateIntegration:
         retrieved = get_zk_verifier()
 
         assert retrieved == verifier
-

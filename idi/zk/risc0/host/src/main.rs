@@ -2,7 +2,7 @@ use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use idi_risc0_methods::{IDI_RISC0_METHODS_GUEST_ELF, IDI_RISC0_METHODS_GUEST_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv};
@@ -29,6 +29,10 @@ enum Args {
     Verify {
         #[arg(long)]
         proof: PathBuf,
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        streams: PathBuf,
     },
 }
 
@@ -133,7 +137,7 @@ fn main() -> Result<()> {
             write_json(&receipt, receipt_json)?;
             Ok(())
         }
-        Args::Verify { proof } => {
+        Args::Verify { proof, manifest, streams } => {
             // Read proof binary
             let proof_bytes = fs::read(&proof)
                 .with_context(|| format!("read proof {}", proof.display()))?;
@@ -150,6 +154,17 @@ fn main() -> Result<()> {
             let digest: [u8; 32] = receipt.journal.decode()
                 .context("decode receipt journal")?;
             let digest_hex = hex::encode(digest);
+
+            // Bind digest to manifest + streams deterministically
+            let blobs = gather_blobs(&manifest, &streams)?;
+            let host_digest = deterministic_hash(&blobs);
+            if host_digest != digest_hex {
+                bail!(
+                    "guest digest {} does not match host digest {}",
+                    digest_hex,
+                    host_digest
+                );
+            }
             
             eprintln!("✓ Proof verified successfully");
             eprintln!("  Method ID: {IDI_RISC0_METHODS_GUEST_ID:?}");
@@ -159,4 +174,3 @@ fn main() -> Result<()> {
         }
     }
 }
-

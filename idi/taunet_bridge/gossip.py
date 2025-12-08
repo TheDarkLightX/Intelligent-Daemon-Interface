@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from idi.taunet_bridge.protocols import ZkProofBundle, ZkVerifier, InvalidZkProofError
+from idi.taunet_bridge.protocols import (
+    ZkProofBundle,
+    ZkVerifier,
+    InvalidZkProofError,
+    deserialize_proof_bundle,
+)
 
 TAU_PROTOCOL_ZK_PROOFS = "/tau/zkproofs/1.0.0"
 
@@ -66,7 +71,7 @@ class ZkGossipProtocol:
             InvalidZkProofError: If proof is invalid or verification fails
         """
         try:
-            proof = ZkProofBundle.deserialize(data)
+            proof = deserialize_proof_bundle(data)
         except Exception as e:
             raise InvalidZkProofError("unknown", reason=f"Deserialization failed: {e}")
 
@@ -74,4 +79,3 @@ class ZkGossipProtocol:
             raise InvalidZkProofError(proof.tx_hash or "unknown", reason="Verification failed")
 
         return proof
-

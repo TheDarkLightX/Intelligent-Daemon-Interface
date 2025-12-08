@@ -1,10 +1,6 @@
 """TDD tests for Block extension with ZK proofs."""
 
-from pathlib import Path
-
-import pytest
-
-from idi.taunet_bridge.protocols import ZkProofBundle
+from idi.taunet_bridge.protocols import NetworkZkProofBundle
 from idi.taunet_bridge.block_extension import (
     compute_zk_merkle_root,
     BlockZkExtension,
@@ -22,10 +18,10 @@ class TestBlockZkExtension:
 
     def test_compute_zk_merkle_root_single(self):
         """Test computing Merkle root with single proof."""
-        proof = ZkProofBundle(
-            proof_path=Path("/tmp/proof.bin"),
-            receipt_path=Path("/tmp/receipt.json"),
-            manifest_path=Path("/tmp/manifest.json"),
+        proof = NetworkZkProofBundle(
+            proof_bytes=b"proof",
+            receipt_bytes=b"receipt",
+            manifest_bytes=b"manifest",
         )
         root = compute_zk_merkle_root([proof])
         assert isinstance(root, str)
@@ -34,10 +30,10 @@ class TestBlockZkExtension:
     def test_compute_zk_merkle_root_multiple(self):
         """Test computing Merkle root with multiple proofs."""
         proofs = [
-            ZkProofBundle(
-                proof_path=Path(f"/tmp/proof{i}.bin"),
-                receipt_path=Path(f"/tmp/receipt{i}.json"),
-                manifest_path=Path("/tmp/manifest.json"),
+            NetworkZkProofBundle(
+                proof_bytes=f"proof{i}".encode(),
+                receipt_bytes=f"receipt{i}".encode(),
+                manifest_bytes=b"manifest",
             )
             for i in range(3)
         ]
@@ -54,10 +50,10 @@ class TestBlockZkExtension:
     def test_block_zk_extension_with_proofs(self):
         """Test BlockZkExtension with proofs."""
         proofs = [
-            ZkProofBundle(
-                proof_path=Path("/tmp/proof.bin"),
-                receipt_path=Path("/tmp/receipt.json"),
-                manifest_path=Path("/tmp/manifest.json"),
+            NetworkZkProofBundle(
+                proof_bytes=b"proof",
+                receipt_bytes=b"receipt",
+                manifest_bytes=b"manifest",
             )
         ]
         extension = BlockZkExtension(zk_proofs=proofs)
@@ -67,10 +63,10 @@ class TestBlockZkExtension:
     def test_serialization_roundtrip(self):
         """Test serialization and deserialization."""
         proofs = [
-            ZkProofBundle(
-                proof_path=Path("/tmp/proof.bin"),
-                receipt_path=Path("/tmp/receipt.json"),
-                manifest_path=Path("/tmp/manifest.json"),
+            NetworkZkProofBundle(
+                proof_bytes=b"proof",
+                receipt_bytes=b"receipt",
+                manifest_bytes=b"manifest",
             )
         ]
         extension = BlockZkExtension(zk_proofs=proofs)
@@ -78,4 +74,3 @@ class TestBlockZkExtension:
         deserialized = BlockZkExtension.deserialize(serialized)
         assert len(deserialized.zk_proofs) == len(extension.zk_proofs)
         assert deserialized.zk_commitment == extension.zk_commitment
-
