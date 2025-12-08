@@ -77,4 +77,17 @@ tectonic
 # Tau Testnet reference (for integration development)
 tau-testnet-ref/
 
+# AI-generated developer documents (internal use only)
+PRODUCTION_STATUS.md
+*PRODUCTION*.md
+*READINESS*.md
+*DEPLOYMENT*.md
+*CHECKLIST*.md
+CODEBASE_ANALYSIS*.md
+*ANALYSIS*.md
+*_ANALYSIS.md
+*_TODO.md
+*_REVIEW.md
+*_REPORT.md
+
 
