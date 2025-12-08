@@ -142,11 +142,14 @@ archive/                     # Archived content (Alignment Theorem, Lean proofs)
   - Guest programs: Manifest verification and Q-table action selection
   - Host program: Generates STARK proofs with method_id verification
   - Receipt verification: Cryptographically secure proof validation
+  - **Auto-Detection** - Automatically uses Risc0 when available (default behavior)
 - **Witness Generation** - Convert Q-tables to zk-friendly format with Merkle commitments
 - **Merkle Trees** - Efficient commitments for large Q-tables (>100 entries)
 - **Privacy-Preserving** - Q-values never exposed; only commitments revealed
 - **End-to-End Testing** - Complete test suite verifies privacy guarantees
 - **TauBridge Integration** - Ready for Tau Net testnet deployment
+
+See [`PRODUCTION_STATUS.md`](PRODUCTION_STATUS.md) for production readiness assessment.
 
 ## 📚 Documentation
 

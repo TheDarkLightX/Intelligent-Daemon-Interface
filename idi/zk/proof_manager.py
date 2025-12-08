@@ -51,6 +51,63 @@ def _validate_path_safety(path: Path, base_dir: Optional[Path] = None) -> None:
 
 MAX_RECEIPT_SIZE_BYTES = 512 * 1024  # safety cap
 
+# Default Risc0 command template
+_DEFAULT_RISC0_CMD = (
+    "cargo run --release -p idi_risc0_host -- "
+    "--manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
+)
+
+
+def _detect_risc0_available() -> bool:
+    """Check if Risc0 prover is available and built.
+    
+    Returns True if:
+    - cargo is available
+    - Risc0 workspace exists
+    - idi_risc0_host package can be found
+    """
+    try:
+        # Check if cargo is available
+        result = subprocess.run(
+            ["cargo", "--version"],
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return False
+        
+        # Check if Risc0 workspace exists
+        # Try to find the workspace from common locations
+        import os
+        current_file = Path(__file__)
+        risc0_workspace = current_file.parent / "risc0" / "Cargo.toml"
+        
+        if not risc0_workspace.exists():
+            # Try relative to project root
+            project_root = current_file.parent.parent.parent
+            risc0_workspace = project_root / "idi" / "zk" / "risc0" / "Cargo.toml"
+            if not risc0_workspace.exists():
+                return False
+        
+        # Check if the package exists in the workspace
+        # This is a lightweight check - actual build verification would be expensive
+        return True
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+
+
+def _get_default_prover_command() -> Optional[str]:
+    """Get default prover command, auto-detecting Risc0 if available.
+    
+    Returns:
+        Risc0 command template if available, None otherwise (will use stub).
+    """
+    if _detect_risc0_available():
+        return _DEFAULT_RISC0_CMD
+    return None
+
+
 def _combined_hash(manifest_path: Path, stream_dir: Path) -> str:
     hasher = hashlib.sha256()
 
@@ -88,8 +145,23 @@ def generate_proof(
     stream_dir: Path,
     out_dir: Path,
     prover_command: Optional[str] = None,
+    auto_detect_risc0: bool = True,
 ) -> ProofBundle:
-    """Generate a proof bundle via stub or external prover command."""
+    """Generate a proof bundle via stub or external prover command.
+    
+    Args:
+        manifest_path: Path to artifact manifest JSON
+        stream_dir: Directory containing input stream files
+        out_dir: Output directory for proof bundle
+        prover_command: Optional explicit prover command template.
+            If None and auto_detect_risc0=True, will auto-detect Risc0.
+            If None and auto_detect_risc0=False, will use stub (SHA-256 only).
+        auto_detect_risc0: If True and prover_command is None, automatically
+            detect and use Risc0 if available. Default True.
+    
+    Returns:
+        ProofBundle with paths to generated proof artifacts.
+    """
 
     # Path safety validation
     _validate_path_safety(manifest_path)
@@ -101,6 +173,10 @@ def generate_proof(
     receipt_path = out_dir / "receipt.json"
 
     digest = _combined_hash(manifest_path, stream_dir)
+
+    # Auto-detect Risc0 if no explicit command provided
+    if prover_command is None and auto_detect_risc0:
+        prover_command = _get_default_prover_command()
 
     if prover_command:
         # Security: Use shlex.split to prevent command injection

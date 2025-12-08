@@ -36,6 +36,7 @@ def main() -> None:
             manifest_path=manifest,
             stream_dir=stream_dir,
             out_dir=proof_dir,
+            auto_detect_risc0=False,  # Explicitly use stub for this script
         )
         verified = verify_proof(bundle)
         status = "✅" if verified else "❌"
