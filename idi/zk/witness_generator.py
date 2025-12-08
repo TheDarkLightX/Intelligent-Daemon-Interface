@@ -139,123 +139,40 @@ class MerkleProof:
 
 
 class MerkleTree:
-    """Merkle tree for Q-table commitments."""
-    
+    """Compatibility wrapper around MerkleTreeBuilder (deprecated)."""
+
     def __init__(self, entries: Dict[str, QTableEntry]):
-        """Build Merkle tree from Q-table entries.
-        
-        Args:
-            entries: Dictionary mapping state keys to Q-table entries
-        """
         self.entries = entries
-        self.leaves = self._build_leaves()
-        self.root = self._build_tree()
-    
-    def _build_leaves(self) -> List[bytes]:
-        """Build leaf hashes from entries."""
-        leaves = []
-        for state_key, entry in sorted(self.entries.items()):
-            leaf_data = json.dumps({
-                "state": state_key,
-                "q_hold": entry.q_hold,
-                "q_buy": entry.q_buy,
-                "q_sell": entry.q_sell,
-            }, sort_keys=True).encode()
-            leaf_hash = hashlib.sha256(leaf_data).digest()
-            leaves.append((state_key, leaf_hash))
-        return leaves
-    
-    def _build_tree(self) -> bytes:
-        """Build Merkle tree and return root hash."""
-        if not self.leaves:
-            return hashlib.sha256(b"").digest()
-        
-        # Build tree bottom-up
-        level = [hash for _, hash in self.leaves]
-        
-        while len(level) > 1:
-            next_level = []
-            for i in range(0, len(level), 2):
-                if i + 1 < len(level):
-                    combined = level[i] + level[i + 1]
-                else:
-                    combined = level[i] + level[i]  # Duplicate odd node
-                next_level.append(hashlib.sha256(combined).digest())
-            level = next_level
-        
-        return level[0]
-    
-    def _compute_parent_level(self, level: List[bytes]) -> List[bytes]:
-        """Compute parent level from current level by hashing pairs.
-        
-        Args:
-            level: Current level hashes
-            
-        Returns:
-            Parent level hashes
-        """
-        next_level: List[bytes] = []
-        for i in range(0, len(level), 2):
-            left = level[i]
-            right = level[i + 1] if i + 1 < len(level) else left
-            combined = left + right
-            next_level.append(hashlib.sha256(combined).digest())
-        return next_level
-    
-    def _get_sibling_for_index(self, idx: int, level: List[bytes]) -> Optional[Tuple[bytes, bool]]:
-        """Get sibling hash and position for a given index.
-        
-        Args:
-            idx: Current node index
-            level: Current level hashes
-            
-        Returns:
-            Tuple of (sibling_hash, is_right) or None if no sibling
-        """
-        sibling_idx = idx ^ 1  # XOR to get sibling index
-        if sibling_idx >= len(level):
-            return None
-        is_right = sibling_idx > idx
-        return (level[sibling_idx], is_right)
-    
+        builder = MerkleTreeBuilder()
+        for state_key, entry in entries.items():
+            leaf_data = json.dumps(
+                {
+                    "state": state_key,
+                    "q_hold": entry.q_hold,
+                    "q_buy": entry.q_buy,
+                    "q_sell": entry.q_sell,
+                },
+                sort_keys=True,
+            ).encode()
+            builder.add_leaf(state_key, leaf_data)
+        self.root, self._proofs = builder.build()
+
     def get_proof(self, state_key: str) -> Optional[MerkleProof]:
-        """Get Merkle proof for a state key.
-        
-        Builds authentication path from leaf to root by traversing tree levels.
-        Each path element contains sibling hash and position (left/right).
-        
-        Args:
-            state_key: State key to get proof for
-            
-        Returns:
-            MerkleProof if key exists, None otherwise
-            
-        Complexity: O(log n) where n is number of entries
-        """
         if state_key not in self.entries:
             return None
-        
-        # Find leaf index in sorted order
-        sorted_keys = sorted(self.entries.keys())
-        leaf_idx = sorted_keys.index(state_key)
-        
-        # Build authentication path bottom-up
-        level = [hash for _, hash in self.leaves]
-        path: List[Tuple[bytes, bool]] = []
-        current_idx = leaf_idx
-        
-        while len(level) > 1:
-            sibling = self._get_sibling_for_index(current_idx, level)
-            if sibling is not None:
-                path.append(sibling)
-            
-            # Move to parent level
-            current_idx //= 2
-            level = self._compute_parent_level(level)
-        
+        leaf_data = json.dumps(
+            {
+                "state": state_key,
+                "q_hold": self.entries[state_key].q_hold,
+                "q_buy": self.entries[state_key].q_buy,
+                "q_sell": self.entries[state_key].q_sell,
+            },
+            sort_keys=True,
+        ).encode()
+        leaf_hash = hashlib.sha256(leaf_data).digest()
         return MerkleProof(
-            leaf_hash=self.leaves[leaf_idx][1],
-            path=tuple(path),  # Convert to immutable tuple
+            leaf_hash=leaf_hash,
+            path=tuple(self._proofs[state_key]),
             root_hash=self.root,
         )
 
