@@ -162,6 +162,7 @@ def generate_proof(
     config_fingerprint: Optional[str] = None,
     spec_hash: Optional[str] = None,
     extra_bindings: Optional[Dict[str, bytes]] = None,
+    policy_root: Optional[bytes] = None,
 ) -> ProofBundle:
     """Generate a proof bundle via stub or external prover command.
     
@@ -188,7 +189,11 @@ def generate_proof(
     proof_path = out_dir / "proof.bin"
     receipt_path = out_dir / "receipt.json"
 
-    digest = compute_artifact_digest(manifest_path, stream_dir, extra=extra_bindings)
+    combined_extras = dict(extra_bindings or {})
+    if policy_root:
+        combined_extras.setdefault("policy_root", policy_root)
+
+    digest = compute_artifact_digest(manifest_path, stream_dir, extra=combined_extras or None)
 
     # Auto-detect Risc0 if no explicit command provided
     if prover_command is None and auto_detect_risc0:
@@ -230,6 +235,8 @@ def generate_proof(
         receipt["config_fingerprint"] = config_fingerprint
     if spec_hash is not None:
         receipt["spec_hash"] = spec_hash
+    if policy_root is not None:
+        receipt["policy_root"] = policy_root.hex()
     if external_receipt:
         receipt["prover"] = external_receipt.get("prover", receipt["prover"])
         receipt["method_id"] = external_receipt.get("method_id")
@@ -290,7 +297,14 @@ def verify_proof(
         # Invalid data, paths, or missing required fields
         return False
 
-    digest = compute_artifact_digest(manifest_path, stream_dir, extra=extra_bindings)
+    derived_extras = dict(extra_bindings or {})
+    if not extra_bindings and receipt.get("policy_root"):
+        try:
+            derived_extras["policy_root"] = bytes.fromhex(receipt["policy_root"])
+        except ValueError:
+            return False
+
+    digest = compute_artifact_digest(manifest_path, stream_dir, extra=derived_extras or None)
 
     # Stub proofs include digest text; ensure the proof artifact matches
     if bundle.proof_path.exists():
