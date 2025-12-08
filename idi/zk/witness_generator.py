@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, List, NewType, Optional, Tuple
 
 import numpy as np
+from idi.zk.merkle_tree import MerkleTreeBuilder
 
 
 # Type-safe wrappers for security-critical strings
@@ -54,10 +55,9 @@ class QTableEntry:
     @classmethod
     def from_float(cls, q_hold: float, q_buy: float, q_sell: float) -> QTableEntry:
         """Convert float Q-values to Q16.16 fixed-point.
-        
+
         Security:
-            - Overflow/underflow: Values outside [-32768, 32767.9999] will
-              overflow/underflow INT32 range. Caller should validate inputs.
+            - Enforces Q16.16 representable range [-32768, 32767.9999]
             - Rounding: Truncation to int may lose precision (acceptable for Q-values)
         
         Args:
@@ -73,6 +73,12 @@ class QTableEntry:
             >>> entry.q_buy == int(0.75 * 65536)
             True
         """
+        min_val = -32768.0
+        max_val = 32767.9999
+        for name, v in (("q_hold", q_hold), ("q_buy", q_buy), ("q_sell", q_sell)):
+            if v < min_val or v > max_val:
+                raise ValueError(f"{name} out of Q16.16 range: {v}")
+
         return cls(
             q_hold=int(q_hold * Q16_16_SCALE),
             q_buy=int(q_buy * Q16_16_SCALE),
@@ -142,11 +148,11 @@ class MerkleTree:
     """Compatibility wrapper around MerkleTreeBuilder (deprecated)."""
 
     def __init__(self, entries: Dict[str, QTableEntry]):
-        from idi.zk.policy_commitment import canonical_leaf_bytes
-
         self.entries = entries
         builder = MerkleTreeBuilder()
         for state_key, entry in entries.items():
+            from idi.zk.policy_commitment import canonical_leaf_bytes
+
             leaf_data = canonical_leaf_bytes(state_key, entry)
             builder.add_leaf(state_key, leaf_data)
         self.root, self._proofs = builder.build()

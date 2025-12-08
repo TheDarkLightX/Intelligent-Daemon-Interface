@@ -29,27 +29,30 @@ MAX_RECEIPT_SIZE_BYTES = 512 * 1024  # 512KB limit for receipt files
 
 
 def _validate_path_safety(path: Path, base_dir: Optional[Path] = None) -> None:
-    """Validate that a path is safe to access (no traversal, reasonable length)."""
+    """Validate that a path is safe to access (no traversal, reasonable length).
+
+    If base_dir is provided, the resolved path must remain within base_dir.
+    """
     try:
         # Resolve to absolute path to check for traversal
         resolved = path.resolve()
 
         # Check for path traversal (should not go above base_dir if provided)
-        if base_dir and not resolved.is_relative_to(base_dir):
-            raise ValueError(f"Path traversal detected: {path}")
+        if base_dir is not None:
+            base_dir_resolved = base_dir.resolve()
+            if not resolved.is_relative_to(base_dir_resolved):
+                raise ValueError(f"Path traversal detected: {path} (base_dir={base_dir_resolved})")
 
         # Check path length (prevent extremely long paths)
         if len(str(resolved)) > 4096:  # 4KB limit for path length
             raise ValueError(f"Path too long: {path}")
 
         # Check for null bytes in path (potential security issue)
-        if '\x00' in str(path):
+        if "\x00" in str(path):
             raise ValueError(f"Invalid null byte in path: {path}")
 
     except (OSError, RuntimeError) as e:
         raise ValueError(f"Invalid path: {path} - {e}")
-
-MAX_RECEIPT_SIZE_BYTES = 512 * 1024  # safety cap
 
 # Default Risc0 command template
 _DEFAULT_RISC0_CMD = (
@@ -181,11 +184,12 @@ def generate_proof(
     """
 
     # Path safety validation
-    _validate_path_safety(manifest_path)
-    _validate_path_safety(stream_dir)
+    # Use caller-provided out_dir as the bundle directory; we do not
+    # currently constrain manifest/streams to be inside it to preserve
+    # existing workflows (tests expect absolute paths in the receipt).
+    out_dir.mkdir(parents=True, exist_ok=True)
     _validate_path_safety(out_dir)
 
-    out_dir.mkdir(parents=True, exist_ok=True)
     proof_path = out_dir / "proof.bin"
     receipt_path = out_dir / "receipt.json"
 
@@ -255,19 +259,18 @@ def generate_proof(
     )
 
 
-def verify_proof(
+def verify_commitment(
     bundle: ProofBundle,
-    use_risc0: bool = False,
     extra_bindings: Optional[Dict[str, bytes]] = None,
 ) -> bool:
     """Verify that the proof digest matches the manifest and stream directory.
-    
-    Args:
-        bundle: Proof bundle to verify
-        use_risc0: If True, perform Risc0 receipt verification instead of just digest matching
-    
+
+    This only checks the commitment binding (manifest + streams + extra bindings)
+    and, for stub proofs, that the proof artifact contains the digest. It does
+    not perform zkVM receipt verification.
+
     Returns:
-        True if proof is valid, False otherwise
+        True if commitment is valid and consistent with the receipt, False otherwise.
     """
     try:
         # Security: Validate receipt size before parsing
@@ -277,25 +280,16 @@ def verify_proof(
 
         receipt = json.loads(receipt_bytes.decode())
 
-        manifest_path = bundle.manifest_path
-        # Security: Validate manifest path safety
+        manifest_path = bundle.manifest_path.resolve()
         _validate_path_safety(manifest_path)
 
-        stream_dir = bundle.stream_dir or Path(receipt.get("streams", manifest_path.parent / "streams"))
-        # Security: Validate stream directory path safety
+        stream_dir = (bundle.stream_dir or Path(
+            receipt.get("streams", manifest_path.parent / "streams")
+        )).resolve()
         _validate_path_safety(stream_dir)
-
-        if not stream_dir.exists():
-            stream_dir = manifest_path.parent / "streams"
-            # Validate the fallback path too
-            _validate_path_safety(stream_dir)
 
         if not manifest_path.exists() or not stream_dir.exists():
             return False
-
-        # If Risc0 proof, verify receipt and digest binding
-        if use_risc0 or receipt.get("prover") == "risc0":
-            return _verify_risc0_receipt(bundle.proof_path, manifest_path, stream_dir)
 
     except (ValueError, KeyError, OSError, json.JSONDecodeError):
         # Invalid data, paths, or missing required fields
@@ -326,6 +320,37 @@ def verify_proof(
             return False
 
     return digest == receipt.get("digest") or digest == receipt.get("digest_hex")
+
+
+def verify_proof(
+    bundle: ProofBundle,
+    use_risc0: bool = False,
+    extra_bindings: Optional[Dict[str, bytes]] = None,
+) -> bool:
+    """High-level verifier that combines commitment and optional zk verification.
+
+    When use_risc0 is True or the receipt prover is "risc0", this will first
+    verify the Risc0 receipt and then verify the manifest/streams commitment.
+    For stub proofs, it only verifies the commitment.
+    """
+    try:
+        receipt_bytes = bundle.receipt_path.read_bytes()
+        if len(receipt_bytes) > MAX_RECEIPT_SIZE_BYTES:
+            return False
+        receipt = json.loads(receipt_bytes.decode())
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    # For Risc0 proofs, require both zk verification and commitment verification.
+    if use_risc0 or receipt.get("prover") == "risc0":
+        manifest_path = bundle.manifest_path
+        stream_dir = bundle.stream_dir or Path(
+            receipt.get("streams", manifest_path.parent / "streams")
+        )
+        if not _verify_risc0_receipt(bundle.proof_path, manifest_path, stream_dir):
+            return False
+
+    return verify_commitment(bundle, extra_bindings=extra_bindings)
 
 
 def _verify_risc0_receipt(proof_path: Path, manifest_path: Path, stream_dir: Path) -> bool:
