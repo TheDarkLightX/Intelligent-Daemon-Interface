@@ -31,6 +31,7 @@ def _make_stub_bundle(tmp_path: Path) -> ZkProofBundle:
         stream_dir=streams_dir,
         out_dir=tmp_path / "proof",
         prover_command=None,
+        auto_detect_risc0=False,  # Use stub for tests
     )
 
     return ZkProofBundle(

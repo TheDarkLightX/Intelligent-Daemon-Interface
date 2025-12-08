@@ -155,7 +155,7 @@ artifacts/my_agent/
 ## Next Steps
 
 1. Compile Risc0 guest programs
-2. Test with real Q-tables from training
+2. Test with Q-tables from training
 3. Integrate with Tau daemon
 4. Deploy on-chain verification
 

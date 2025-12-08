@@ -43,6 +43,7 @@ class TestTauNetZkAdapter:
             stream_dir=streams_dir,
             out_dir=tmp_path / "proof",
             prover_command=None,
+            auto_detect_risc0=False,  # Use stub for tests
         )
 
         config = ZkConfig(enabled=True, proof_system="stub")
@@ -91,6 +92,7 @@ class TestTauNetZkAdapter:
             stream_dir=streams_dir,
             out_dir=tmp_path / "proof",
             prover_command=None,
+            auto_detect_risc0=False,  # Use stub for tests
         )
 
         receipt = json.loads(bundle.receipt_path.read_text())

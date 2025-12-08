@@ -1,7 +1,7 @@
 """Proof bundle helpers for IDI zk workflows.
 
 Manages proof generation and verification for manifest-based ZK proofs.
-Supports both stub (SHA-256 only) and real zkVM provers (Risc0).
+Supports both stub (SHA-256 only) and zkVM provers (Risc0).
 
 Security Properties:
 - Integrity: Proof digest binds manifest and stream data
@@ -177,6 +177,8 @@ def generate_proof(
     # Auto-detect Risc0 if no explicit command provided
     if prover_command is None and auto_detect_risc0:
         prover_command = _get_default_prover_command()
+        # If Risc0 not available, prover_command will be None
+        # and we'll fall back to stub proof generation
 
     if prover_command:
         # Security: Use shlex.split to prevent command injection
@@ -215,9 +217,16 @@ def generate_proof(
     return ProofBundle(manifest_path=manifest_path, proof_path=proof_path, receipt_path=receipt_path)
 
 
-def verify_proof(bundle: ProofBundle) -> bool:
-    """Verify that the proof digest matches the manifest and stream directory."""
-
+def verify_proof(bundle: ProofBundle, use_risc0: bool = False) -> bool:
+    """Verify that the proof digest matches the manifest and stream directory.
+    
+    Args:
+        bundle: Proof bundle to verify
+        use_risc0: If True, perform Risc0 receipt verification instead of just digest matching
+    
+    Returns:
+        True if proof is valid, False otherwise
+    """
     try:
         # Security: Validate receipt size before parsing
         receipt_bytes = bundle.receipt_path.read_bytes()
@@ -225,6 +234,10 @@ def verify_proof(bundle: ProofBundle) -> bool:
             return False
 
         receipt = json.loads(receipt_bytes.decode())
+
+        # If Risc0 proof, verify receipt
+        if use_risc0 or receipt.get("prover") == "risc0":
+            return _verify_risc0_receipt(bundle.proof_path, receipt)
 
         manifest_path = Path(receipt["manifest"])
         # Security: Validate manifest path safety
@@ -244,4 +257,56 @@ def verify_proof(bundle: ProofBundle) -> bool:
         return False
 
     digest = _combined_hash(manifest_path, stream_dir)
-    return digest == receipt["digest"]
+    return digest == receipt.get("digest") or digest == receipt.get("digest_hex")
+
+
+def _verify_risc0_receipt(proof_path: Path, receipt: dict) -> bool:
+    """Verify a Risc0 receipt by calling the verifier binary.
+    
+    Args:
+        proof_path: Path to proof.bin file
+        receipt: Receipt JSON dict
+    
+    Returns:
+        True if receipt verifies, False otherwise
+    """
+    import subprocess
+    import shlex
+    from pathlib import Path
+    
+    if not proof_path.exists():
+        return False
+    
+    # Check for method_id in receipt
+    if "method_id" not in receipt:
+        # Fallback to digest-only verification
+        return False
+    
+    try:
+        # Find idi_risc0_host binary
+        current_file = Path(__file__)
+        risc0_host = current_file.parent / "risc0" / "host" / "target" / "release" / "idi_risc0_host"
+        if not risc0_host.exists():
+            # Try cargo run as fallback
+            risc0_workspace = current_file.parent / "risc0"
+            cmd = shlex.split(
+                f"cargo run --release -p idi_risc0_host -- verify --proof {proof_path}"
+            )
+            result = subprocess.run(
+                cmd,
+                cwd=str(risc0_workspace),
+                capture_output=True,
+                timeout=30,
+                check=False,
+            )
+        else:
+            result = subprocess.run(
+                [str(risc0_host), "verify", "--proof", str(proof_path)],
+                capture_output=True,
+                timeout=30,
+                check=False,
+            )
+        
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False

@@ -12,16 +12,24 @@ use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
-#[command(version, about = "Risc0 prover for IDI manifests")]
-struct Args {
-    #[arg(long)]
-    manifest: PathBuf,
-    #[arg(long)]
-    streams: PathBuf,
-    #[arg(long)]
-    proof: PathBuf,
-    #[arg(long)]
-    receipt: PathBuf,
+#[command(version, about = "Risc0 prover/verifier for IDI manifests")]
+enum Args {
+    /// Generate a proof from manifest and streams
+    Prove {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        streams: PathBuf,
+        #[arg(long)]
+        proof: PathBuf,
+        #[arg(long)]
+        receipt: PathBuf,
+    },
+    /// Verify a proof binary
+    Verify {
+        #[arg(long)]
+        proof: PathBuf,
+    },
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -84,39 +92,71 @@ fn write_json(path: &Path, value: serde_json::Value) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
-    let blobs = gather_blobs(&args.manifest, &args.streams)?;
-    let env = ExecutorEnv::builder().write(&blobs)?.build()?;
-    let prover = default_prover();
-    let prove_info = prover.prove(env, IDI_RISC0_METHODS_GUEST_ELF)?;
-    prove_info.receipt.verify(IDI_RISC0_METHODS_GUEST_ID)?;
+    match Args::parse() {
+        Args::Prove {
+            manifest,
+            streams,
+            proof,
+            receipt,
+        } => {
+            let blobs = gather_blobs(&manifest, &streams)?;
+            let env = ExecutorEnv::builder().write(&blobs)?.build()?;
+            let prover = default_prover();
+            let prove_info = prover.prove(env, IDI_RISC0_METHODS_GUEST_ELF)?;
+            prove_info.receipt.verify(IDI_RISC0_METHODS_GUEST_ID)?;
 
-    if let Some(parent) = args.proof.parent() {
-        fs::create_dir_all(parent)?;
+            if let Some(parent) = proof.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let proof_bytes = bincode::serialize(&prove_info.receipt)?;
+            fs::write(&proof, proof_bytes)?;
+
+            let digest: [u8; 32] = prove_info.receipt.journal.decode()?;
+            let digest_hex = hex::encode(digest);
+            let host_digest = deterministic_hash(&blobs);
+            if host_digest != digest_hex {
+                anyhow::bail!(
+                    "guest digest {} does not match host digest {}",
+                    digest_hex,
+                    host_digest
+                );
+            }
+
+            let receipt_json = json!({
+                "prover": "risc0",
+                "manifest": manifest,
+                "streams": streams,
+                "digest_hex": digest_hex,
+                "method_id": format!("{IDI_RISC0_METHODS_GUEST_ID:?}"),
+                "proof": proof,
+            });
+            write_json(&receipt, receipt_json)?;
+            Ok(())
+        }
+        Args::Verify { proof } => {
+            // Read proof binary
+            let proof_bytes = fs::read(&proof)
+                .with_context(|| format!("read proof {}", proof.display()))?;
+            
+            // Deserialize receipt
+            let receipt: risc0_zkvm::Receipt = bincode::deserialize(&proof_bytes)
+                .context("deserialize proof binary")?;
+            
+            // Verify receipt against method ID
+            receipt.verify(IDI_RISC0_METHODS_GUEST_ID)
+                .context("verify receipt against method ID")?;
+            
+            // Decode journal to get digest
+            let digest: [u8; 32] = receipt.journal.decode()
+                .context("decode receipt journal")?;
+            let digest_hex = hex::encode(digest);
+            
+            eprintln!("✓ Proof verified successfully");
+            eprintln!("  Method ID: {IDI_RISC0_METHODS_GUEST_ID:?}");
+            eprintln!("  Digest: {digest_hex}");
+            
+            Ok(())
+        }
     }
-    let proof_bytes = bincode::serialize(&prove_info.receipt)?;
-    fs::write(&args.proof, proof_bytes)?;
-
-    let digest: [u8; 32] = prove_info.receipt.journal.decode()?;
-    let digest_hex = hex::encode(digest);
-    let host_digest = deterministic_hash(&blobs);
-    if host_digest != digest_hex {
-        anyhow::bail!(
-            "guest digest {} does not match host digest {}",
-            digest_hex,
-            host_digest
-        );
-    }
-
-    let receipt_json = json!({
-        "prover": "risc0",
-        "manifest": args.manifest,
-        "streams": args.streams,
-        "digest_hex": digest_hex,
-        "method_id": format!("{IDI_RISC0_METHODS_GUEST_ID:?}"),
-        "proof": args.proof,
-    });
-    write_json(&args.receipt, receipt_json)?;
-    Ok(())
 }
 

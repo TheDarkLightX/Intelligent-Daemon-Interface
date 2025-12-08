@@ -1,4 +1,4 @@
-"""Generate real proofs using the integrated Risc0 prover."""
+"""Generate proofs using the integrated Risc0 prover."""
 
 from __future__ import annotations
 

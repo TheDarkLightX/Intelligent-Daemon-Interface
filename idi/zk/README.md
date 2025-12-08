@@ -17,7 +17,7 @@ assert verify_proof(bundle)
 print("Proof digest:", bundle.receipt_path.read_text())
 PY
 ```
-The stub uses SHA-256 commitments to emulate a proof so downstream automation (Tau daemon, ledger, etc.) can proceed even before the real zkVM integration is wired up.
+The stub uses SHA-256 commitments to emulate a proof so downstream automation (Tau daemon, ledger, etc.) can proceed even before the zkVM integration is wired up.
 
 Batch all manifests under `idi/artifacts/` with:
 ```

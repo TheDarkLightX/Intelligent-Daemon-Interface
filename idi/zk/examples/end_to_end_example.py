@@ -122,7 +122,7 @@ def example_complete_workflow():
     print()
     print("Next Steps:")
     print("  1. Compile Risc0 guest programs: cd idi/zk/risc0 && cargo build")
-    print("  2. Generate real proofs: Use Risc0 prover instead of stub")
+    print("  2. Generate proofs: Use Risc0 prover instead of stub")
     print("  3. Execute Tau spec: Run with verified inputs")
     print("  4. Deploy: Use proofs for on-chain verification")
 
