@@ -100,6 +100,14 @@ class TauNetZkAdapter(ZkVerifier):
             if local_bundle.receipt_path.stat().st_size > self._config.max_receipt_bytes:
                 return False
 
+            # Enforce tx_hash binding if present
+            try:
+                receipt = json.loads(local_bundle.receipt_path.read_bytes())
+                if proof.tx_hash and receipt.get("tx_hash") and receipt.get("tx_hash") != proof.tx_hash:
+                    return False
+            except Exception:
+                return False
+
             idi_bundle = local_bundle.to_idi_bundle()
             return bool(idi_verify_proof(idi_bundle, use_risc0=True))
         except OSError:
@@ -125,12 +133,14 @@ class TauNetZkAdapter(ZkVerifier):
             # Bind receipt to manifest + streams
             try:
                 receipt = json.loads(local_bundle.receipt_path.read_bytes())
+                if proof.tx_hash and receipt.get("tx_hash") and receipt.get("tx_hash") != proof.tx_hash:
+                    return False
                 receipt_streams = local_bundle.stream_dir or Path(
                     receipt.get("streams", local_bundle.manifest_path.parent / "streams")
                 )
 
                 if local_bundle.manifest_path.exists() and receipt_streams.exists():
-                    recomputed = proof_manager.compute_artifact_digest(
+                    recomputed = proof_manager.compute_manifest_streams_digest(
                         local_bundle.manifest_path, receipt_streams
                     )
                     if recomputed != receipt.get("digest") and recomputed != receipt.get("digest_hex"):

@@ -130,6 +130,11 @@ def compute_artifact_digest(
     return hasher.hexdigest()
 
 
+def compute_manifest_streams_digest(manifest_path: Path, stream_dir: Path) -> str:
+    """Public helper to compute manifest+streams digest (no extra bindings)."""
+    return compute_artifact_digest(manifest_path, stream_dir)
+
+
 @dataclass(frozen=True)
 class ProofBundle:
     """Proof bundle containing manifest, proof binary, and receipt.

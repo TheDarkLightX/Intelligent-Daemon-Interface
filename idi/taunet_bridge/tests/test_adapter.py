@@ -111,6 +111,44 @@ class TestTauNetZkAdapter:
 
         assert adapter.verify(proof) is False
 
+    def test_verify_rejects_tx_hash_mismatch(self, tmp_path):
+        """Verification fails when receipt tx_hash differs from proof.tx_hash."""
+        import json
+        from idi.zk.proof_manager import generate_proof
+
+        streams_dir = tmp_path / "streams"
+        streams_dir.mkdir()
+        (streams_dir / "test.in").write_text("1\n", encoding="utf-8")
+
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(json.dumps({"test": "data"}, sort_keys=True), encoding="utf-8")
+
+        bundle = generate_proof(
+            manifest_path=manifest_path,
+            stream_dir=streams_dir,
+            out_dir=tmp_path / "proof",
+            prover_command=None,
+            auto_detect_risc0=False,  # Use stub for tests
+            tx_hash="tx123",
+        )
+
+        # Tamper tx_hash in receipt
+        receipt = json.loads(bundle.receipt_path.read_text())
+        receipt["tx_hash"] = "mismatch"
+        bundle.receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+        config = ZkConfig(enabled=True, proof_system="stub", require_proofs=True)
+        adapter = TauNetZkAdapter(config)
+
+        proof = LocalZkProofBundle(
+            proof_path=bundle.proof_path,
+            receipt_path=bundle.receipt_path,
+            manifest_path=bundle.manifest_path,
+            tx_hash="tx123",
+        )
+
+        assert adapter.verify(proof) is False
+
     def test_integration_with_idi_modules(self):
         """Test adapter integrates with IDI ZK modules."""
         config = ZkConfig(enabled=True, proof_system="stub")
