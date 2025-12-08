@@ -17,6 +17,7 @@ from idi.training.python.idi_iann.config import (
 )
 from idi.training.python.idi_iann.trainer import QTrainer
 from idi.devkit.manifest import build_manifest, write_manifest
+from idi.zk.policy_commitment import build_policy_commitment, save_policy_commitment
 
 
 def load_training_config(config_path: Path) -> TrainingConfig:
@@ -99,7 +100,7 @@ def build_artifact(
         print(f"Training complete. Mean reward: {stats['mean_reward']:.2f}")
 
     streams_dir = out_dir / "streams"
-    policy_manifest_path = out_dir / "policy_manifest.json"
+    policy_dir = out_dir / "policy"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if streams_dir.exists():
@@ -111,8 +112,24 @@ def build_artifact(
 
     trace.export(streams_dir)
 
-    if hasattr(policy, "serialize_manifest"):
-        policy.serialize_manifest(policy_manifest_path)  # type: ignore[attr-defined]
+    # Optional: export policy commitment for downstream proofs
+    policy_commitment = None
+    policy_proofs = None
+    if hasattr(policy, "table"):
+        try:
+            entries = {
+                state: QTableEntry.from_float(
+                    q_hold=vals.get("hold", 0.0),
+                    q_buy=vals.get("buy", 0.0),
+                    q_sell=vals.get("sell", 0.0),
+                )
+                for state, vals in policy.table.items()  # type: ignore[attr-defined]
+            }
+            policy_commitment, policy_proofs = build_policy_commitment(entries)
+            save_policy_commitment(policy_dir, policy_commitment, policy_proofs)
+        except Exception:
+            # Non-fatal: continue without commitment if policy structure unexpected
+            policy_commitment = None
 
     metadata_pairs = metadata_pairs or []
     try:
@@ -126,7 +143,18 @@ def build_artifact(
     manifest = build_manifest(
         config_path=config_path,
         stream_dir=streams_dir,
-        metadata=metadata,
+        metadata={
+            **metadata,
+            **(
+                {
+                    "policy_root_hex": policy_commitment.root.hex(),
+                    "policy_leaf_encoding": policy_commitment.leaf_encoding,
+                    "policy_q_scale": str(policy_commitment.q_scale),
+                }
+                if policy_commitment
+                else {}
+            ),
+        },
     )
     manifest_path = out_dir / "artifact_manifest.json"
     write_manifest(manifest, manifest_path)
@@ -200,4 +228,3 @@ Examples:
 
 if __name__ == "__main__":
     main()
-
