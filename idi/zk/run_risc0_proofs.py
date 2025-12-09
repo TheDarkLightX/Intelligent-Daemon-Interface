@@ -8,7 +8,7 @@ from pathlib import Path
 from idi.zk.proof_manager import generate_proof
 
 RISC0_CMD = (
-    "cargo run --release -p idi_risc0_host -- "
+    "cargo run --release -p idi_risc0_host -- prove "
     "--manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
 )
 

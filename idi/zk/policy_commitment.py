@@ -41,10 +41,13 @@ class PolicyCommitment:
 def canonical_leaf_bytes(state_key: str, entry: QTableEntry, q_scale: int = Q16_16_SCALE) -> bytes:
     """Deterministic encoding for a policy leaf.
 
-    The encoding matches the Risc0 guest's `hash_q_entry` function:
-    SHA-256("qtable_entry" || state_key || q_hold || q_buy || q_sell).
-    Using the same domain-separated preimage ensures Merkle roots and proofs
-    produced here verify inside the guest program.
+    Encoding format (matches Risc0 guest `hash_q_entry`):
+        b"qtable_entry" || state_key_bytes || i32_le(q_hold) || i32_le(q_buy) || i32_le(q_sell)
+    
+    IMPORTANT: This encoding MUST match the Risc0 guest's `hash_q_entry` function
+    exactly, or Merkle proofs will fail to verify inside the ZK guest program.
+    
+    See: idi/zk/risc0/methods/idi-qtable/src/main.rs::hash_q_entry()
     """
     # Maintain the q_scale parameter for forwards compatibility even though the
     # current guest only consumes the fixed-point values directly.
@@ -52,7 +55,7 @@ def canonical_leaf_bytes(state_key: str, entry: QTableEntry, q_scale: int = Q16_
 
     return (
         b"qtable_entry"
-        + state_key.encode()
+        + state_key.encode("utf-8")
         + entry.q_hold.to_bytes(4, "little", signed=True)
         + entry.q_buy.to_bytes(4, "little", signed=True)
         + entry.q_sell.to_bytes(4, "little", signed=True)
@@ -60,7 +63,7 @@ def canonical_leaf_bytes(state_key: str, entry: QTableEntry, q_scale: int = Q16_
 
 
 def build_policy_commitment(
-    entries: Dict[str, QTableEntry], leaf_encoding: str = "json_q16_16"
+    entries: Dict[str, QTableEntry], leaf_encoding: str = "qtable_entry_v1"
 ) -> Tuple[PolicyCommitment, Dict[str, List[Tuple[bytes, bool]]]]:
     """Build a Merkle commitment and proofs for the given Q-table entries."""
     builder = MerkleTreeBuilder()

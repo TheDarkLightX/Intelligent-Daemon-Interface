@@ -54,11 +54,9 @@ def _validate_path_safety(path: Path, base_dir: Optional[Path] = None) -> None:
     except (OSError, RuntimeError) as e:
         raise ValueError(f"Invalid path: {path} - {e}")
 
-# Default Risc0 command template
-_DEFAULT_RISC0_CMD = (
-    "cargo run --release -p idi_risc0_host -- "
-    "--manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
-)
+# Default Risc0 command template (invokes prebuilt host binary directly).
+# The actual binary path is prefixed in `_get_default_prover_command`.
+_DEFAULT_RISC0_CMD = "prove --manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
 
 
 def _detect_risc0_available() -> bool:
@@ -106,9 +104,12 @@ def _get_default_prover_command() -> Optional[str]:
     Returns:
         Risc0 command template if available, None otherwise (will use stub).
     """
-    if _detect_risc0_available():
-        return _DEFAULT_RISC0_CMD
-    return None
+    # Require a prebuilt idi_risc0_host binary; do not invoke cargo directly.
+    current_file = Path(__file__)
+    risc0_host = current_file.parent / "risc0" / "target" / "release" / "idi_risc0_host"
+    if not risc0_host.exists():
+        return None
+    return f"{risc0_host} {_DEFAULT_RISC0_CMD}"
 
 
 def compute_artifact_digest(
@@ -279,6 +280,7 @@ def verify_commitment(
             return False
 
         receipt = json.loads(receipt_bytes.decode())
+        prover = str(receipt.get("prover", "stub"))
 
         manifest_path = bundle.manifest_path.resolve()
         _validate_path_safety(manifest_path)
@@ -311,7 +313,7 @@ def verify_commitment(
     digest = compute_artifact_digest(manifest_path, stream_dir, extra=derived_extras or None)
 
     # Stub proofs include digest text; ensure the proof artifact matches
-    if bundle.proof_path.exists():
+    if prover == "stub" and bundle.proof_path.exists():
         try:
             proof_bytes = bundle.proof_path.read_bytes().strip()
             if proof_bytes and proof_bytes.decode(errors="ignore") != digest:
@@ -354,9 +356,17 @@ def verify_proof(
 
 
 def _verify_risc0_receipt(proof_path: Path, manifest_path: Path, stream_dir: Path) -> bool:
-    """Verify a Risc0 receipt by calling the verifier binary with inputs bound."""
+    """Verify a Risc0 receipt by calling the verifier binary with inputs bound.
+    
+    Security: This function requires a prebuilt verifier binary. It will NOT
+    fall back to 'cargo run' to avoid triggering builds during verification,
+    which could be slow, unpredictable, or a security risk if source is modified.
+    
+    To build the verifier, run:
+        cd idi/zk/risc0 && cargo build --release -p idi_risc0_host
+    """
     import subprocess
-    import shlex
+    import logging
     from pathlib import Path
     
     if not proof_path.exists() or not manifest_path.exists() or not stream_dir.exists():
@@ -364,37 +374,175 @@ def _verify_risc0_receipt(proof_path: Path, manifest_path: Path, stream_dir: Pat
     
     try:
         current_file = Path(__file__)
-        risc0_host = current_file.parent / "risc0" / "host" / "target" / "release" / "idi_risc0_host"
+        risc0_host = current_file.parent / "risc0" / "target" / "release" / "idi_risc0_host"
+        
         if not risc0_host.exists():
-            # Try cargo run as fallback
-            risc0_workspace = current_file.parent / "risc0"
-            cmd = shlex.split(
-                f"cargo run --release -p idi_risc0_host -- verify --proof {proof_path} --manifest {manifest_path} --streams {stream_dir}"
+            # Do NOT fall back to cargo run - require prebuilt binary
+            logging.warning(
+                "Risc0 verifier binary not found at %s. "
+                "Build it with: cd idi/zk/risc0 && cargo build --release -p idi_risc0_host",
+                risc0_host
             )
-            result = subprocess.run(
-                cmd,
-                cwd=str(risc0_workspace),
-                capture_output=True,
-                timeout=30,
-                check=False,
-            )
-        else:
-            result = subprocess.run(
-                [
-                    str(risc0_host),
-                    "verify",
-                    "--proof",
-                    str(proof_path),
-                    "--manifest",
-                    str(manifest_path),
-                    "--streams",
-                    str(stream_dir),
-                ],
-                capture_output=True,
-                timeout=30,
-                check=False,
+            return False
+        
+        result = subprocess.run(
+            [
+                str(risc0_host),
+                "verify",
+                "--proof",
+                str(proof_path),
+                "--manifest",
+                str(manifest_path),
+                "--streams",
+                str(stream_dir),
+            ],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        
+        if result.returncode != 0:
+            stderr = result.stderr.decode("utf-8", errors="replace").strip()
+            logging.error("Risc0 verifier failed (code %s): %s", result.returncode, stderr)
+            return False
+        
+        return True
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+        logging.error("Error invoking Risc0 verifier: %s", e)
+        return False
+
+
+def verify_zk_receipt(
+    proof_path: Path,
+    manifest_path: Path,
+    stream_dir: Path,
+    expected_method_id: str | None = None,
+    expected_journal_digest: str | None = None,
+    timeout_s: int = 30,
+) -> "VerificationReport":
+    """Verify a ZK receipt with method ID and journal digest enforcement.
+    
+    This is the secure verification function that enforces cryptographic
+    binding of the proof to specific program logic (method ID) and data
+    (journal digest).
+    
+    Args:
+        proof_path: Path to proof binary file
+        manifest_path: Path to manifest JSON file
+        stream_dir: Directory containing stream files
+        expected_method_id: Required method ID (hex) for Risc0 proofs
+        expected_journal_digest: Optional expected journal digest (hex)
+        timeout_s: Verification timeout in seconds
+        
+    Returns:
+        VerificationReport with success/failure and error details
+        
+    Security:
+        - Requires prebuilt verifier binary (no cargo run fallback)
+        - Enforces method ID if provided (prevents program substitution)
+        - Verifies journal digest matches commitment
+    """
+    import subprocess
+    import logging
+    from pathlib import Path
+    from idi.zk.verification import VerificationReport, VerificationErrorCode
+    
+    # Check file existence
+    if not proof_path.exists():
+        return VerificationReport.fail(
+            VerificationErrorCode.RECEIPT_MISSING,
+            f"Proof file not found: {proof_path}",
+        )
+    if not manifest_path.exists():
+        return VerificationReport.fail(
+            VerificationErrorCode.MANIFEST_MISSING,
+            f"Manifest file not found: {manifest_path}",
+        )
+    if not stream_dir.exists():
+        return VerificationReport.fail(
+            VerificationErrorCode.STREAMS_MISSING,
+            f"Streams directory not found: {stream_dir}",
+        )
+    
+    # Locate verifier binary
+    current_file = Path(__file__)
+    risc0_host = current_file.parent / "risc0" / "target" / "release" / "idi_risc0_host"
+    
+    if not risc0_host.exists():
+        return VerificationReport.fail(
+            VerificationErrorCode.VERIFIER_UNAVAILABLE,
+            f"Risc0 verifier not found. Build with: cd idi/zk/risc0 && cargo build --release",
+            binary_path=str(risc0_host),
+        )
+    
+    # Build command
+    cmd = [
+        str(risc0_host),
+        "verify",
+        "--proof", str(proof_path),
+        "--manifest", str(manifest_path),
+        "--streams", str(stream_dir),
+    ]
+    
+    if expected_method_id:
+        cmd.extend(["--method-id", expected_method_id])
+    
+    if expected_journal_digest:
+        cmd.extend(["--journal-digest", expected_journal_digest])
+    
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            timeout=timeout_s,
+            check=False,
+        )
+        
+        if result.returncode == 0:
+            return VerificationReport.ok(
+                "ZK proof verified successfully",
+                method_id=expected_method_id,
             )
         
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        return False
+        # Parse error from stderr
+        stderr = result.stderr.decode("utf-8", errors="replace").strip()
+        
+        if "Method ID mismatch" in stderr:
+            return VerificationReport.fail(
+                VerificationErrorCode.METHOD_ID_MISMATCH,
+                stderr,
+                expected=expected_method_id,
+            )
+        elif "Journal digest mismatch" in stderr:
+            return VerificationReport.fail(
+                VerificationErrorCode.JOURNAL_DIGEST_MISMATCH,
+                stderr,
+                expected=expected_journal_digest,
+            )
+        elif "guest digest" in stderr and "does not match" in stderr:
+            return VerificationReport.fail(
+                VerificationErrorCode.COMMITMENT_MISMATCH,
+                stderr,
+            )
+        else:
+            return VerificationReport.fail(
+                VerificationErrorCode.ZK_RECEIPT_INVALID,
+                f"Verification failed: {stderr}",
+                returncode=result.returncode,
+            )
+            
+    except subprocess.TimeoutExpired:
+        return VerificationReport.fail(
+            VerificationErrorCode.VERIFIER_TIMEOUT,
+            f"Verification timed out after {timeout_s}s",
+        )
+    except FileNotFoundError:
+        return VerificationReport.fail(
+            VerificationErrorCode.VERIFIER_UNAVAILABLE,
+            f"Verifier binary not found: {risc0_host}",
+        )
+    except OSError as e:
+        return VerificationReport.fail(
+            VerificationErrorCode.INTERNAL_ERROR,
+            f"OS error during verification: {e}",
+        )

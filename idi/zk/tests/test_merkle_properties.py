@@ -9,8 +9,12 @@ Tests Merkle tree properties that must hold for all inputs:
 
 from __future__ import annotations
 
-from hypothesis import given, strategies as st
 import pytest
+
+try:
+    from hypothesis import given, strategies as st
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pytest.skip("hypothesis not installed; skipping Merkle property tests", allow_module_level=True)
 
 from idi.zk.merkle_tree import MerkleTreeBuilder
 

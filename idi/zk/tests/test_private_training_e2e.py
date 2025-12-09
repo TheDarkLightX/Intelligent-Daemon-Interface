@@ -30,7 +30,7 @@ from idi.zk.training_integration import (
 )
 from idi.taunet_bridge import TauNetZkAdapter, ZkConfig, ZkValidationStep
 from idi.taunet_bridge.validation import ValidationContext
-from idi.taunet_bridge.protocols import ZkProofBundle as BridgeProofBundle, InvalidZkProofError
+from idi.taunet_bridge.protocols import LocalZkProofBundle, InvalidZkProofError
 
 
 def _create_private_q_table() -> Dict[str, Dict[str, float]]:
@@ -181,19 +181,13 @@ def test_private_training_workflow(tmp_path: Path) -> None:
     
     # Use Risc0 prover if available, otherwise fall back to stub for testing
     if risc0_host.exists():
-        # Use absolute path to Risc0 host binary for reliability
-        risc0_cmd = (
-            f"cd {risc0_dir.absolute()} && "
-            f"cargo run --release -p idi_risc0_host -- "
-            "--manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
-        )
+        # Use prebuilt Risc0 host binary directly (no cargo, no shell).
         print(f"  ✓ Using Risc0 zkVM prover: {risc0_host}")
         try:
             proof_bundle = generate_proof(
                 manifest_path=manifest_path,
                 stream_dir=streams_dir,
                 out_dir=proof_dir,
-                prover_command=risc0_cmd,
             )
         except Exception as e:
             print(f"  ⚠ Risc0 proof generation failed: {e}")
@@ -205,7 +199,10 @@ def test_private_training_workflow(tmp_path: Path) -> None:
                 out_dir=proof_dir,
             )
     else:
-        print(f"  ⚠ Risc0 host not found at {risc0_host}, using stub (run: cd idi/zk/risc0 && cargo build --release -p idi_risc0_host)")
+        print(
+            f"  ⚠ Risc0 host not found at {risc0_host}, using stub "
+            "(run: cd idi/zk/risc0 && cargo build --release -p idi_risc0_host)"
+        )
         proof_dir = artifact_dir / "proof_stub"
         proof_bundle = generate_proof(
             manifest_path=manifest_path,
@@ -280,8 +277,8 @@ def test_private_training_workflow(tmp_path: Path) -> None:
     config = ZkConfig(enabled=True, proof_system="stub", require_proofs=False)
     adapter = TauNetZkAdapter(config)
     
-    # Convert to bridge format
-    bridge_bundle = BridgeProofBundle(
+    # Convert to bridge format (use concrete LocalZkProofBundle, not the Union alias)
+    bridge_bundle = LocalZkProofBundle(
         proof_path=proof_bundle.proof_path,
         receipt_path=proof_bundle.receipt_path,
         manifest_path=proof_bundle.manifest_path,
@@ -397,7 +394,7 @@ def test_tau_bridge_integration(tmp_path: Path) -> None:
     adapter = TauNetZkAdapter(config)
     
     # Convert to bridge format
-    bridge_bundle = BridgeProofBundle(
+    bridge_bundle = LocalZkProofBundle(
         proof_path=proof_bundle.proof_path,
         receipt_path=proof_bundle.receipt_path,
         manifest_path=proof_bundle.manifest_path,

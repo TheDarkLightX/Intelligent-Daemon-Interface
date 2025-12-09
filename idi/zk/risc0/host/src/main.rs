@@ -33,6 +33,12 @@ enum Args {
         manifest: PathBuf,
         #[arg(long)]
         streams: PathBuf,
+        /// Expected method ID (hex). If provided, must match receipt's method ID.
+        #[arg(long)]
+        method_id: Option<String>,
+        /// Expected journal digest (hex). If provided, must match receipt's journal.
+        #[arg(long)]
+        journal_digest: Option<String>,
     },
 }
 
@@ -137,7 +143,7 @@ fn main() -> Result<()> {
             write_json(&receipt, receipt_json)?;
             Ok(())
         }
-        Args::Verify { proof, manifest, streams } => {
+        Args::Verify { proof, manifest, streams, method_id, journal_digest } => {
             // Read proof binary
             let proof_bytes = fs::read(&proof)
                 .with_context(|| format!("read proof {}", proof.display()))?;
@@ -147,13 +153,43 @@ fn main() -> Result<()> {
                 .context("deserialize proof binary")?;
             
             // Verify receipt against method ID
+            // NOTE: In Risc0 3.x, image ID (method ID) is enforced by calling
+            // `receipt.verify(IDI_RISC0_METHODS_GUEST_ID)` below. Here we only
+            // check that the caller's expected method ID string matches the
+            // compiled guest ID constant, to catch configuration mistakes.
+            if let Some(ref expected_method_id) = method_id {
+                let expected_trimmed = expected_method_id.trim();
+                let actual_method_id = format!("{IDI_RISC0_METHODS_GUEST_ID:?}");
+
+                if expected_trimmed != actual_method_id {
+                    bail!(
+                        "Method ID mismatch: expected {}, host compiled with {}",
+                        expected_trimmed,
+                        actual_method_id
+                    );
+                }
+            }
+
+            // Always verify cryptographic validity against the known guest ID
             receipt.verify(IDI_RISC0_METHODS_GUEST_ID)
-                .context("verify receipt against method ID")?;
+                .context("verify receipt cryptographic validity")?;
             
             // Decode journal to get digest
             let digest: [u8; 32] = receipt.journal.decode()
                 .context("decode receipt journal")?;
             let digest_hex = hex::encode(digest);
+            
+            // Check explicit journal digest if provided
+            if let Some(ref expected_digest) = journal_digest {
+                let expected = expected_digest.trim_start_matches("0x").to_lowercase();
+                if expected != digest_hex {
+                    bail!(
+                        "Journal digest mismatch: expected {}, got {}",
+                        expected,
+                        digest_hex
+                    );
+                }
+            }
 
             // Bind digest to manifest + streams deterministically
             let blobs = gather_blobs(&manifest, &streams)?;

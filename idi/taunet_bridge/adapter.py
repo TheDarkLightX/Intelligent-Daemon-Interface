@@ -87,25 +87,53 @@ class TauNetZkAdapter(ZkVerifier):
 
         return local, temp_dir
 
+    def _validate_bundle_files(
+        self,
+        local_bundle: LocalZkProofBundle,
+        expected_tx_hash: Optional[str] = None,
+    ) -> tuple[bool, Optional[dict]]:
+        """Validate bundle files exist, are within size limits, and parse receipt.
+        
+        This DRY helper consolidates common validation logic for both
+        risc0 and stub verification paths.
+        
+        Args:
+            local_bundle: The local bundle with file paths
+            expected_tx_hash: Optional tx_hash to verify against receipt
+            
+        Returns:
+            (is_valid, parsed_receipt) - receipt is None if validation failed
+        """
+        # File existence checks
+        if not all(
+            p.exists() for p in (local_bundle.proof_path, local_bundle.receipt_path, local_bundle.manifest_path)
+        ):
+            return False, None
+        
+        # Size limit checks
+        if local_bundle.proof_path.stat().st_size > self._config.max_proof_bytes:
+            return False, None
+        if local_bundle.receipt_path.stat().st_size > self._config.max_receipt_bytes:
+            return False, None
+        
+        # Parse and validate receipt JSON
+        try:
+            receipt = json.loads(local_bundle.receipt_path.read_bytes())
+        except Exception:
+            return False, None
+        
+        # tx_hash binding check
+        if expected_tx_hash and receipt.get("tx_hash") and receipt.get("tx_hash") != expected_tx_hash:
+            return False, None
+        
+        return True, receipt
+
     def _verify_risc0(self, proof: ZkProofBundle) -> bool:
         """Verify using Risc0 receipt verification."""
         local_bundle, temp_dir = self._materialize_local(proof)
         try:
-            if not all(
-                p.exists() for p in (local_bundle.proof_path, local_bundle.receipt_path, local_bundle.manifest_path)
-            ):
-                return False
-            if local_bundle.proof_path.stat().st_size > self._config.max_proof_bytes:
-                return False
-            if local_bundle.receipt_path.stat().st_size > self._config.max_receipt_bytes:
-                return False
-
-            # Enforce tx_hash binding if present
-            try:
-                receipt = json.loads(local_bundle.receipt_path.read_bytes())
-                if proof.tx_hash and receipt.get("tx_hash") and receipt.get("tx_hash") != proof.tx_hash:
-                    return False
-            except Exception:
+            is_valid, receipt = self._validate_bundle_files(local_bundle, proof.tx_hash)
+            if not is_valid:
                 return False
 
             idi_bundle = local_bundle.to_idi_bundle()
@@ -120,14 +148,8 @@ class TauNetZkAdapter(ZkVerifier):
         """Verify using stub (digest-based) verification."""
         local_bundle, temp_dir = self._materialize_local(proof)
         try:
-            # Basic file existence and size checks
-            if not all(
-                p.exists() for p in (local_bundle.proof_path, local_bundle.receipt_path, local_bundle.manifest_path)
-            ):
-                return False
-            if local_bundle.proof_path.stat().st_size > self._config.max_proof_bytes:
-                return False
-            if local_bundle.receipt_path.stat().st_size > self._config.max_receipt_bytes:
+            is_valid, receipt = self._validate_bundle_files(local_bundle, proof.tx_hash)
+            if not is_valid:
                 return False
 
             idi_bundle = local_bundle.to_idi_bundle()
@@ -135,10 +157,6 @@ class TauNetZkAdapter(ZkVerifier):
                 return idi_verify_proof(idi_bundle)
             except Exception:
                 return False
-
-            return False
         finally:
             if temp_dir is not None:
                 temp_dir.cleanup()
-
-        return False

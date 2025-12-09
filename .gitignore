@@ -95,3 +95,6 @@ CODEBASE_ANALYSIS*.md
 
 
 experiments/
+
+# Internal development documents (AI agent collaboration)
+Internal/

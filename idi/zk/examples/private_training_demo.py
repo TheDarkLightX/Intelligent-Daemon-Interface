@@ -25,7 +25,7 @@ from idi.zk.witness_generator import generate_witness_from_q_table
 from idi.zk.proof_manager import generate_proof, verify_proof
 from idi.taunet_bridge import TauNetZkAdapter, ZkConfig, ZkValidationStep
 from idi.taunet_bridge.validation import ValidationContext
-from idi.taunet_bridge.protocols import ZkProofBundle as BridgeProofBundle
+from idi.taunet_bridge.protocols import LocalZkProofBundle as BridgeProofBundle
 
 
 def main():
