@@ -9,21 +9,7 @@ It is meant for readers who think best in pictures.
 
 ---
 
-## 1. Can GitHub show these diagrams?
-
-Yes:
-
-- GitHub can **render Mermaid diagrams directly in Markdown**.
-- GitHub can also display **SVG/PNG vector graphics** if you add them to
-  `docs/` and reference them via `![alt](path/to.svg)`.
-- GitHub Pages is **optional** and mainly useful if you want a full
-  documentation site with navigation and custom styling.
-
-All diagrams below are **Mermaid**; GitHub will render them inline.
-
----
-
-## 2. Parameterization Layers
+## 1. Parameterization Layers
 
 The synth stack treats parameters as a layered surface:
 
@@ -32,21 +18,21 @@ The synth stack treats parameters as a layered surface:
 - KRR packs and profiles
 - Tau specs and invariants
 
-### 2.1 Parameter Layers Overview
+### 1.1 Parameter Layers Overview
 
 ```mermaid
 flowchart TB
-    U[User Inputs\n(JSON, CLI, UI sliders)] --> GS[Goal Spec\nAutoQAgentGoalSpec]
+    U[User Inputs (JSON, CLI, UI)] --> GS[Goal Spec (AutoQAgentGoalSpec)]
 
-    GS --> B[Budgets\nmax_agents, max_generations,\nmax_episodes_per_agent, wallclock_hours]
-    GS --> P[Profiles & Packs\nprofiles, packs.include/extra]
-    GS --> O[Objectives\nid + direction]
-    GS --> OUT[Outputs\nnum_final_agents, bundle_format]
+    GS --> B[Budgets]
+    GS --> P[Profiles & Packs]
+    GS --> O[Objectives]
+    GS --> OUT[Outputs]
 
-    B --> SC[Search Config\nbeam_width, max_depth]
-    P --> KRR[Knowledge Packs\nqagent_base_pack, risk_conservative_pack,\ncomms, zk_tau_invariants]
-    O --> RANK[Ranking Logic\nobjective indices, sort_key]
-    OUT --> EXPORT[AgentPatch / bundles]
+    B --> SC[Search Config]
+    P --> KRR[Knowledge Packs]
+    O --> RANK[Ranking Logic]
+    OUT --> EXPORT[Exports]
 
     SC --> SYNTH[QAgentSynthesizer]
     KRR --> SYNTH
@@ -67,7 +53,7 @@ flowchart TB
 
 ---
 
-## 3. Parameter Space vs. Safe Region
+## 2. Parameter Space vs. Safe Region
 
 Another way to see parameterization is as a big space of possible
 configurations, with only a **safe, bounded region** allowed by
@@ -83,7 +69,7 @@ graph LR
         A5((candidate E))
     end
 
-    subgraph SAFE[Safe Region\n(I1–I5 + KRR)]
+    subgraph SAFE[Safe Region (I1-I5 + KRR)]
         S1((safe 1))
         S2((safe 2))
         S3((safe 3))
@@ -101,7 +87,7 @@ graph LR
 
 **Key idea:**
 
-- Parameterization is not just “more knobs” – it is a **constrained
+- Parameterization is not just "more knobs" – it is a **constrained
   surface** of allowed configurations.
 - KRR packs + Tau invariants **cut out** unsafe areas of the space.
 - The synthesizer only ever explores and exports candidates inside the
@@ -109,12 +95,12 @@ graph LR
 
 ---
 
-## 4. Synthesizer Concept
+## 3. Synthesizer Concept
 
 The synthesizer is a **bounded beam search** over candidate patches,
 pruned by KRR and ranked by metrics.
 
-### 4.1 Search Tree with Pruning
+### 3.1 Search Tree with Pruning
 
 ```mermaid
 graph TD
@@ -145,34 +131,27 @@ graph TD
 - KRR and budgets prune branches early.
 - Remaining leaves are **ranked** by metrics & objectives.
 
-### 4.2 Beam Search Timeline
+### 3.2 Beam Search Timeline
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant Synth as QAgentSynthesizer
-    participant Beam as Beam Frontier
-    participant KRR as STRIKE/IKL
+    participant Beam as BeamFrontier
+    participant KRR as STRIKE_IKL
     participant Eval as Evaluator
 
     Client->>Synth: synthesize(config)
-    Synth->>Beam: init frontier with base candidate
+    Synth->>Beam: init frontier
 
-    loop depth 0..max_depth
-        Beam->>KRR: evaluate_with_krr(facts(cand))
-        KRR-->>Beam: allowed? + reasons
+    Synth->>Beam: expand children
+    Beam->>KRR: evaluate_with_krr(facts)
+    KRR-->>Beam: allowed? + reasons
+    Beam->>Eval: evaluate_patch
+    Eval-->>Beam: metrics
+    Beam-->>Synth: accepted candidates
 
-        alt allowed
-            Beam->>Eval: evaluate_patch(patch)
-            Eval-->>Beam: metrics
-        else pruned
-            Beam-->>Synth: record explanation
-        end
-
-        Synth->>Beam: expand children, apply beam_width
-    end
-
-    Synth-->>Client: ranked (candidate, metrics) list
+    Synth-->>Client: ranked candidates + metrics
 ```
 
 - **Depth** and **beam_width** come from budgets / config.
@@ -181,7 +160,7 @@ sequenceDiagram
 
 ---
 
-## 5. How Parameterization Guides Synth
+## 4. How Parameterization Guides Synth
 
 We can combine the views above into a single picture:
 
@@ -228,11 +207,11 @@ flowchart LR
 
 ---
 
-## 6. Using These Diagrams
+## 5. Using These Diagrams
 
 - For **conceptual onboarding**, start with:
-  - 2.1 Parameter Layers Overview
-  - 4.1 Search Tree with Pruning
+  - 1.1 Parameter Layers Overview
+  - 3.1 Search Tree with Pruning
 - For **deep dives**, pair this document with:
   - `docs/MODULAR_SYNTH_AND_AUTO_QAGENT.md`
   - `docs/IDI_SYNTH_API.md`

@@ -348,8 +348,7 @@ sequenceDiagram
         Beam->>KRR: facts(cand) for each candidate
         KRR-->>Beam: allowed? + reasons
         Beam-->>Synth: accepted candidates + scores
-        Synth->>Beam: expand via successor_fn,
-            score_fn, apply beam_width
+        Synth->>Beam: expand via successor_fn, score_fn, apply beam_width
     end
 
     Synth-->>Client: ranked (candidate, metrics) list
