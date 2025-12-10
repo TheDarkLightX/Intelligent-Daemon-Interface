@@ -157,6 +157,10 @@ archive/                     # Archived content (Alignment Theorem, Lean proofs)
 - [Tau Agent Factory](idi/devkit/tau_factory/README.md) - Agent generation guide
 - [Pattern Landscape](idi/devkit/tau_factory/PATTERN_LANDSCAPE.md) - Complete pattern taxonomy
 - [Implementation Status](idi/devkit/tau_factory/IMPLEMENTATION_STATUS.md) - Current progress (26/26 patterns, 100% complete ✅)
+- [Modular Synth & Auto-QAgent](docs/MODULAR_SYNTH_AND_AUTO_QAGENT.md) - Synth/Auto-QAgent overview
+- [idi.synth API](docs/IDI_SYNTH_API.md) - Stable synth API surface
+- [Modular Synth Quality & Testing](docs/MODULAR_SYNTH_QUALITY_AND_TESTING.md) - Invariants and test strategy
+- [Parameterization & Synth Visual Guide](docs/PARAMETERIZATION_AND_SYNTH_VISUALS.md) - Visual-first explanation of parameters and search
 
 ### Pattern Documentation
 - [Ensemble & DAO Patterns](idi/devkit/tau_factory/ENSEMBLE_PATTERNS.md) - Voting and consensus patterns

@@ -1,0 +1,31 @@
+{
+  "agent_family": "qagent",
+  "profiles": ["conservative"],
+  "packs": {
+    "include": ["qagent_base", "risk_conservative"],
+    "extra": []
+  },
+  "objectives": [
+    {"id": "avg_reward", "direction": "maximize"},
+    {"id": "risk_stability", "direction": "maximize"}
+  ],
+  "training": {
+    "envs": [
+      {"id": "default", "weight": 1.0}
+    ],
+    "curriculum": {
+      "enabled": false
+    },
+    "budget": {
+      "max_agents": 8,
+      "max_generations": 3,
+      "max_episodes_per_agent": 64,
+      "wallclock_hours": 0.5
+    }
+  },
+  "eval_mode": "synthetic",
+  "outputs": {
+    "num_final_agents": 3,
+    "bundle_format": "wire_v1"
+  }
+}

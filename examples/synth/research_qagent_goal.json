@@ -1,0 +1,33 @@
+{
+  "agent_family": "qagent",
+  "profiles": ["conservative", "experimental"],
+  "packs": {
+    "include": ["qagent_base", "risk_conservative", "comms_base"],
+    "extra": []
+  },
+  "objectives": [
+    {"id": "avg_reward", "direction": "maximize"},
+    {"id": "risk_stability", "direction": "maximize"},
+    {"id": "min_reward", "direction": "maximize"}
+  ],
+  "training": {
+    "envs": [
+      {"id": "synthetic_market", "weight": 0.7},
+      {"id": "volatile_market", "weight": 0.3}
+    ],
+    "curriculum": {
+      "enabled": true
+    },
+    "budget": {
+      "max_agents": 16,
+      "max_generations": 4,
+      "max_episodes_per_agent": 128,
+      "wallclock_hours": 1.0
+    }
+  },
+  "eval_mode": "real",
+  "outputs": {
+    "num_final_agents": 5,
+    "bundle_format": "wire_v1"
+  }
+}

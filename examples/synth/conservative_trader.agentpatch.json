@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "id": "conservative-trader-v1",
+    "name": "Conservative Q-Table Trader",
+    "description": "A low-risk Q-table agent optimized for stability over returns. Uses small state discretization and conservative exploration.",
+    "version": "1.0.0",
+    "tags": ["qagent", "conservative", "production"]
+  },
+  "agent_type": "qtable",
+  "payload": {
+    "num_price_bins": 8,
+    "num_inventory_bins": 8,
+    "learning_rate": 0.05,
+    "discount_factor": 0.99,
+    "epsilon_start": 0.3,
+    "epsilon_end": 0.05,
+    "epsilon_decay_steps": 2000
+  },
+  "spec_backend": "tau",
+  "spec_params": {
+    "max_state_cells": 64,
+    "min_discount": 0.95,
+    "max_leverage": 1.0
+  },
+  "zk_profile": {
+    "proof_system": "risc0",
+    "privacy_level": "standard",
+    "require_trace_proof": true
+  }
+}
