@@ -44,6 +44,10 @@ class MessageType(Enum):
     STATE_REQUEST = "state_request"
     STATE_RESPONSE = "state_response"
     
+    # State Sync
+    SYNC_REQUEST = "sync_request"
+    SYNC_RESPONSE = "sync_response"
+    
     # Discovery
     PEER_EXCHANGE = "peer_exchange"
     PING = "ping"
@@ -323,6 +327,83 @@ class StateResponse(Message):
             leaderboard_root=data.get("leaderboard_root", ""),
             leaderboard=data.get("leaderboard"),
             active_policy_hash=data.get("active_policy_hash"),
+        )
+
+
+# =============================================================================
+# Sync Messages
+# =============================================================================
+
+@dataclass
+class SyncRequest(Message):
+    """
+    Request contributions for state sync.
+    
+    Used to request a batch of contributions by log index range.
+    """
+    type: MessageType = field(default=MessageType.SYNC_REQUEST, init=False)
+    
+    goal_id: str = ""
+    from_index: int = 0  # Start log index (inclusive)
+    to_index: int = 0    # End log index (exclusive)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "goal_id": self.goal_id,
+            "from_index": self.from_index,
+            "to_index": self.to_index,
+        })
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "SyncRequest":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            goal_id=data["goal_id"],
+            from_index=data.get("from_index", 0),
+            to_index=data.get("to_index", 0),
+        )
+
+
+@dataclass
+class SyncResponse(Message):
+    """
+    Response with contributions for state sync.
+    
+    Contains serialized contributions in order.
+    """
+    type: MessageType = field(default=MessageType.SYNC_RESPONSE, init=False)
+    
+    goal_id: str = ""
+    from_index: int = 0
+    contributions: List[Dict[str, Any]] = field(default_factory=list)
+    has_more: bool = False  # True if more contributions available
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "goal_id": self.goal_id,
+            "from_index": self.from_index,
+            "contributions": self.contributions,
+            "has_more": self.has_more,
+        })
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "SyncResponse":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            goal_id=data["goal_id"],
+            from_index=data.get("from_index", 0),
+            contributions=data.get("contributions", []),
+            has_more=data.get("has_more", False),
         )
 
 

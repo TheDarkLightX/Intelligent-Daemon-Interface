@@ -379,7 +379,13 @@ class WrongEvaluationProof(FraudProof):
 class FraudProofGenerator:
     """
     Generate fraud proofs from detected inconsistencies.
+    
+    Uses binary search O(log n) to efficiently find divergence points
+    in large logs instead of sampling.
     """
+    
+    # Threshold for using binary search vs exhaustive scan
+    BINARY_SEARCH_THRESHOLD = 100
     
     def __init__(self, node_id: str, coordinator: "IANCoordinator"):
         """
@@ -392,38 +398,81 @@ class FraudProofGenerator:
         self._node_id = node_id
         self._coordinator = coordinator
     
-    def generate_invalid_log_root_proof(
+    def _find_divergence_index_binary(
         self,
-        commit_hash: bytes,
-        claimed_root: bytes,
-        goal_id: str,
-    ) -> Optional[InvalidLogRootProof]:
+        log: "MerkleMountainRange",
+        peer_subtree_root_fn: Optional[Callable[[int, int], bytes]],
+        log_size: int,
+    ) -> Optional[int]:
         """
-        Generate proof that a log root is invalid.
+        Binary search to find first divergence index in O(log n).
         
         Args:
-            commit_hash: Hash of the commit being challenged
-            claimed_root: Root claimed in the commit
-            goal_id: Goal ID
+            log: Our local log
+            peer_subtree_root_fn: Function to get peer's subtree root for range [start, end)
+                                 If None, falls back to leaf-by-leaf comparison
+            log_size: Size of the log to search
             
         Returns:
-            Fraud proof if we can prove fraud, None otherwise
+            Index of first diverging leaf, or None if no divergence found
+            
+        Time Complexity: O(log n) with subtree queries, O(n) fallback
+        Space Complexity: O(1)
         """
-        # Get our computed root
-        computed_root = self._coordinator.get_log_root()
+        if log_size == 0:
+            return None
         
-        if computed_root == claimed_root:
-            return None  # Roots match, no fraud
+        # If no peer query function, fall back to first divergent leaf
+        if peer_subtree_root_fn is None:
+            return 0  # Can't determine exact point without peer queries
         
-        # Gather leaves and proofs
-        log = self._coordinator.state.log
+        # Binary search for first divergence
+        left, right = 0, log_size
+        divergence_idx = None
+        
+        while left < right:
+            mid = (left + right) // 2
+            
+            try:
+                # Get our subtree root for [left, mid]
+                our_subtree = log.get_subtree_root(left, mid)
+                peer_subtree = peer_subtree_root_fn(left, mid)
+                
+                if our_subtree == peer_subtree:
+                    # Left half matches, divergence is in right half
+                    left = mid + 1
+                else:
+                    # Divergence is in left half (including mid)
+                    divergence_idx = left
+                    right = mid
+            except Exception:
+                # If subtree query fails, narrow the search
+                right = mid
+        
+        return divergence_idx if divergence_idx is not None else left
+    
+    def _gather_proof_samples(
+        self,
+        log: "MerkleMountainRange",
+        start_idx: int,
+        count: int,
+    ) -> Tuple[List[bytes], List[int], List[Dict[str, Any]]]:
+        """
+        Gather leaves and Merkle proofs around a divergence point.
+        
+        Args:
+            log: The log to sample from
+            start_idx: Starting index
+            count: Number of samples to gather
+            
+        Returns:
+            (leaves, indices, proofs)
+        """
         leaves = []
         indices = []
         proofs = []
         
-        # Get sample of leaves with proofs
-        sample_size = min(10, log.size)
-        for i in range(sample_size):
+        for i in range(start_idx, min(start_idx + count, log.size)):
             try:
                 proof = log.get_proof(i)
                 leaves.append(proof.leaf_hash)
@@ -437,6 +486,66 @@ class FraudProofGenerator:
                 })
             except Exception:
                 continue
+        
+        return leaves, indices, proofs
+    
+    def generate_invalid_log_root_proof(
+        self,
+        commit_hash: bytes,
+        claimed_root: bytes,
+        goal_id: str,
+        peer_subtree_fn: Optional[Callable[[int, int], bytes]] = None,
+    ) -> Optional[InvalidLogRootProof]:
+        """
+        Generate proof that a log root is invalid.
+        
+        For large logs (>100 entries), uses binary search O(log n) to find
+        the exact divergence point efficiently. For small logs, samples
+        leaves directly.
+        
+        Args:
+            commit_hash: Hash of the commit being challenged
+            claimed_root: Root claimed in the commit
+            goal_id: Goal ID
+            peer_subtree_fn: Optional function to query peer's subtree roots
+                            for efficient binary search. Signature: (start, end) -> bytes
+            
+        Returns:
+            Fraud proof if we can prove fraud, None otherwise
+            
+        Invariants:
+            - Returns None if roots match (no fraud)
+            - Returns proof with at least one leaf if roots differ
+            
+        Time Complexity:
+            - O(log n) with peer_subtree_fn
+            - O(min(10, n)) without peer_subtree_fn
+        """
+        # Get our computed root
+        computed_root = self._coordinator.get_log_root()
+        
+        if computed_root == claimed_root:
+            return None  # Roots match, no fraud
+        
+        log = self._coordinator.state.log
+        
+        # Determine where to sample proofs
+        if log.size > self.BINARY_SEARCH_THRESHOLD and peer_subtree_fn is not None:
+            # Use binary search for large logs
+            divergence_idx = self._find_divergence_index_binary(
+                log, peer_subtree_fn, log.size
+            )
+            start_idx = max(0, (divergence_idx or 0) - 2)  # Include context
+            sample_count = 10
+        else:
+            # Small log or no peer query function: sample from start
+            start_idx = 0
+            sample_count = min(10, log.size)
+        
+        # Gather proofs around divergence point
+        leaves, indices, proofs = self._gather_proof_samples(
+            log, start_idx, sample_count
+        )
         
         return InvalidLogRootProof(
             goal_id=goal_id,

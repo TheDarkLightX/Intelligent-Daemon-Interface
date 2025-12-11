@@ -864,18 +864,36 @@ class PeerScore:
     
     def decay(self, hours_since_last_decay: float = 1.0) -> None:
         """
-        Decay score towards neutral over time.
+        Exponential decay of score towards neutral over time.
         
-        Good peers slowly lose reputation if inactive.
-        Bad peers slowly regain reputation.
+        Uses exponential decay formula: score = neutral + (score - neutral) * e^(-λt)
+        
+        Properties:
+        - Good peers slowly lose reputation if inactive
+        - Bad peers slowly regain reputation  
+        - Exponential decay ensures bad actors recover slowly
+        - Half-life is approximately 70 hours (ln(2)/0.01)
+        
+        Args:
+            hours_since_last_decay: Time since last decay in hours
+            
+        Invariants:
+            - Score always moves towards neutral (100.0)
+            - Score never crosses neutral
+            - Decay rate is proportional to distance from neutral
         """
-        neutral = 100.0
-        decay_rate = 0.01 * hours_since_last_decay  # 1% per hour
+        import math
         
-        if self.score > neutral:
-            self.score = max(neutral, self.score - (self.score - neutral) * decay_rate)
-        elif self.score < neutral:
-            self.score = min(neutral, self.score + (neutral - self.score) * decay_rate)
+        neutral = 100.0
+        # Decay constant: λ = 0.01 per hour → half-life ≈ 69.3 hours
+        decay_lambda = 0.01
+        
+        # Exponential decay: new_distance = old_distance * e^(-λt)
+        decay_factor = math.exp(-decay_lambda * hours_since_last_decay)
+        
+        # Apply decay towards neutral
+        distance_from_neutral = self.score - neutral
+        self.score = neutral + (distance_from_neutral * decay_factor)
 
 
 class PeerScoreManager:
