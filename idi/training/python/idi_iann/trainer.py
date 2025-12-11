@@ -90,8 +90,15 @@ class StepResult:
     aux: Dict[str, Any]
 
 
+ProgressCallback = Callable[[int, int, float], None]  # (episode, total_episodes, reward)
+
+
 class QTrainer:
-    """Runs tabular Q-learning and emits Tau-ready traces."""
+    """Runs tabular Q-learning and emits Tau-ready traces.
+    
+    Supports progress callbacks for GUI integration and can be run
+    in background threads for non-blocking training.
+    """
 
     def __init__(
         self,
@@ -100,6 +107,7 @@ class QTrainer:
         use_crypto_env: bool = False,
         seed: Optional[int] = 0,
         env_factory: Optional[Callable[[TrainingConfig, bool, int], object]] = None,
+        progress_callback: Optional[ProgressCallback] = None,
     ):
         self._config = config
         self._seed = seed if seed is not None else secrets.randbelow(2**32)
@@ -120,13 +128,35 @@ class QTrainer:
         ) if config.episodic and config.episodic.enabled else None
         self._episode_rewards: List[float] = []
         self._comm_action_counts: Dict[str, int] = {a: 0 for a in self._communication.actions}
+        self._progress_callback = progress_callback
+        self._cancelled = False
 
     def run(self) -> Tuple[LookupPolicy, TraceBatch]:
-        """Train across episodes and return the learned policy and generated traces."""
-        for _ in range(self._config.episodes):
+        """Train across episodes and return the learned policy and generated traces.
+        
+        Supports progress callbacks and cancellation for GUI integration.
+        Call cancel() from another thread to stop training early.
+        """
+        total_episodes = self._config.episodes
+        for episode in range(total_episodes):
+            if self._cancelled:
+                break
             self._run_episode()
+            # Report progress after each episode
+            if self._progress_callback:
+                last_reward = self._episode_rewards[-1] if self._episode_rewards else 0.0
+                self._progress_callback(episode + 1, total_episodes, last_reward)
         trace = self._rollout()
         return self._policy, trace
+    
+    def cancel(self) -> None:
+        """Cancel training (can be called from another thread)."""
+        self._cancelled = True
+    
+    @property
+    def is_cancelled(self) -> bool:
+        """Check if training was cancelled."""
+        return self._cancelled
 
     def _run_episode(self) -> None:
         """Run a single training episode."""
@@ -363,3 +393,220 @@ try:
     from idi.contracts.streams import get_contract
 except Exception:
     get_contract = None
+
+
+# =============================================================================
+# Concurrent Training Support
+# =============================================================================
+
+def train_single(
+    config: TrainingConfig,
+    seed: int,
+    use_crypto_env: bool = False,
+) -> Tuple[LookupPolicy, TraceBatch, Dict[str, float]]:
+    """Run a single training session (for use with concurrent executors).
+    
+    Args:
+        config: Training configuration
+        seed: Random seed for reproducibility
+        use_crypto_env: Whether to use crypto market environment
+        
+    Returns:
+        Tuple of (policy, trace, stats)
+    """
+    trainer = QTrainer(config, seed=seed, use_crypto_env=use_crypto_env)
+    policy, trace = trainer.run()
+    stats = trainer.stats()
+    return policy, trace, stats
+
+
+def train_parallel(
+    config: TrainingConfig,
+    num_runs: int = 4,
+    *,
+    use_crypto_env: bool = False,
+    max_workers: int | None = None,
+    seeds: list[int] | None = None,
+) -> list[Tuple[LookupPolicy, TraceBatch, Dict[str, float]]]:
+    """Run multiple training sessions in parallel with different seeds.
+    
+    This function enables parallel exploration of the policy space by
+    running independent training sessions with different random seeds.
+    Useful for finding robust policies or hyperparameter tuning.
+    
+    Args:
+        config: Training configuration (shared across all runs)
+        num_runs: Number of parallel training runs
+        use_crypto_env: Whether to use crypto market environment
+        max_workers: Maximum number of worker processes (default: num_runs)
+        seeds: Optional list of seeds (default: auto-generated)
+        
+    Returns:
+        List of (policy, trace, stats) tuples, one per run
+        
+    Example:
+        results = train_parallel(config, num_runs=4)
+        best_run = max(results, key=lambda r: r[2]["mean_reward"])
+        best_policy, best_trace, best_stats = best_run
+        
+    Performance:
+        - Uses ProcessPoolExecutor to bypass the GIL for CPU-bound training
+        - Each process has its own QTrainer instance and RNG state
+        - Memory scales linearly with num_runs (each process has full Q-table)
+        
+    Thread Safety:
+        - Each training run is completely independent
+        - No shared state between processes
+    """
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    import secrets
+    
+    if num_runs < 1:
+        return []
+    
+    # Generate seeds if not provided
+    if seeds is None:
+        seeds = [secrets.randbelow(2**32) for _ in range(num_runs)]
+    elif len(seeds) < num_runs:
+        # Extend with random seeds if not enough provided
+        seeds = list(seeds) + [secrets.randbelow(2**32) for _ in range(num_runs - len(seeds))]
+    
+    workers = max_workers if max_workers is not None else num_runs
+    
+    # Pre-allocate results list to maintain order
+    results: list[Tuple[LookupPolicy, TraceBatch, Dict[str, float]] | None] = [None] * num_runs
+    
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        # Submit all training tasks with their index
+        future_to_idx = {
+            executor.submit(train_single, config, seeds[i], use_crypto_env): i
+            for i in range(num_runs)
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                # Create empty result on failure
+                results[idx] = (LookupPolicy(), TraceBatch(), {"error": str(e), "mean_reward": float("-inf")})
+    
+    return [r for r in results if r is not None]
+
+
+def select_best_policy(
+    results: list[Tuple[LookupPolicy, TraceBatch, Dict[str, float]]],
+    metric: str = "mean_reward",
+) -> Tuple[LookupPolicy, TraceBatch, Dict[str, float]]:
+    """Select the best policy from parallel training results.
+    
+    Args:
+        results: List of (policy, trace, stats) tuples from train_parallel
+        metric: Stats key to maximize (default: "mean_reward")
+        
+    Returns:
+        Best (policy, trace, stats) tuple by the given metric
+    """
+    if not results:
+        raise ValueError("No results to select from")
+    
+    return max(results, key=lambda r: r[2].get(metric, float("-inf")))
+
+
+async def train_async(
+    config: TrainingConfig,
+    *,
+    use_crypto_env: bool = False,
+    seed: Optional[int] = None,
+    progress_callback: Optional[ProgressCallback] = None,
+) -> Tuple[LookupPolicy, TraceBatch, Dict[str, float]]:
+    """Async wrapper for training that runs in a background thread.
+    
+    This function is designed for integration with async frameworks
+    (FastAPI, aiohttp, etc.) where blocking the event loop is undesirable.
+    
+    Args:
+        config: Training configuration
+        use_crypto_env: Whether to use crypto market environment
+        seed: Random seed for reproducibility
+        progress_callback: Optional callback for progress updates
+        
+    Returns:
+        Tuple of (policy, trace, stats)
+        
+    Example:
+        async def train_endpoint():
+            policy, trace, stats = await train_async(config)
+            return {"mean_reward": stats["mean_reward"]}
+    """
+    import asyncio
+    
+    def _run_training():
+        trainer = QTrainer(
+            config,
+            seed=seed,
+            use_crypto_env=use_crypto_env,
+            progress_callback=progress_callback,
+        )
+        policy, trace = trainer.run()
+        return policy, trace, trainer.stats()
+    
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _run_training)
+
+
+def run_training_in_thread(
+    config: TrainingConfig,
+    *,
+    use_crypto_env: bool = False,
+    seed: Optional[int] = None,
+    progress_callback: Optional[ProgressCallback] = None,
+    on_complete: Optional[Callable[[LookupPolicy, TraceBatch, Dict[str, float]], None]] = None,
+) -> Tuple["threading.Thread", QTrainer]:
+    """Run training in a background thread with progress updates.
+    
+    Designed for GUI integration where the main thread must remain responsive.
+    
+    Args:
+        config: Training configuration
+        use_crypto_env: Whether to use crypto market environment
+        seed: Random seed for reproducibility
+        progress_callback: Callback(episode, total, reward) for progress updates
+        on_complete: Callback(policy, trace, stats) when training finishes
+        
+    Returns:
+        Tuple of (thread, trainer) - trainer can be used to cancel training
+        
+    Example (Tkinter):
+        def update_progress(ep, total, reward):
+            progress_bar["value"] = ep / total * 100
+            root.update_idletasks()
+            
+        def on_done(policy, trace, stats):
+            messagebox.showinfo("Done", f"Reward: {stats['mean_reward']:.2f}")
+            
+        thread, trainer = run_training_in_thread(
+            config,
+            progress_callback=update_progress,
+            on_complete=on_done,
+        )
+        # To cancel: trainer.cancel()
+    """
+    import threading
+    
+    trainer = QTrainer(
+        config,
+        seed=seed,
+        use_crypto_env=use_crypto_env,
+        progress_callback=progress_callback,
+    )
+    
+    def _run():
+        policy, trace = trainer.run()
+        if on_complete:
+            on_complete(policy, trace, trainer.stats())
+    
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    return thread, trainer

@@ -201,6 +201,8 @@ class WizardController:
         
         Returns:
             Complete AgentSchema ready for spec generation
+            
+        Complexity: O(n) where n = number of selected inputs
         """
         # Build streams from selected inputs
         streams = []
@@ -222,16 +224,20 @@ class WizardController:
             if selected and input_name in input_options:
                 streams.append(input_options[input_name])
         
+        # Use set for O(1) membership testing instead of repeated list comprehensions
+        stream_names: set[str] = {s.name for s in streams}
+        
         # Determine buy/sell inputs for FSM
-        # Check if inputs are selected (dict lookup with default False)
         buy_input = "q_buy" if self.data.selected_inputs.get("q_buy", False) else "price_up"
         sell_input = "q_sell" if self.data.selected_inputs.get("q_sell", False) else "price_down"
         
-        # Ensure fallback inputs are added if not already selected
-        if buy_input not in [s.name for s in streams] and buy_input in input_options:
+        # Ensure fallback inputs are added if not already selected (O(1) lookup)
+        if buy_input not in stream_names and buy_input in input_options:
             streams.append(input_options[buy_input])
-        if sell_input not in [s.name for s in streams] and sell_input in input_options:
+            stream_names.add(buy_input)
+        if sell_input not in stream_names and sell_input in input_options:
             streams.append(input_options[sell_input])
+            stream_names.add(sell_input)
         
         # Add required outputs
         streams.append(StreamConfig(name="position", stream_type="sbf", is_input=False))
@@ -249,18 +255,16 @@ class WizardController:
                 if selected and input_name in input_options:
                     agent_inputs.append(input_name)
             
-            # Ensure at least 2 agents for ensemble
+            # Ensure at least 2 agents for ensemble (use stream_names set for O(1) lookup)
             if len(agent_inputs) < 2:
-                # Add fallback agents
-                if "agent1" not in [s.name for s in streams]:
-                    streams.append(StreamConfig(name="agent1", stream_type="sbf"))
-                    agent_inputs.append("agent1")
-                if "agent2" not in [s.name for s in streams]:
-                    streams.append(StreamConfig(name="agent2", stream_type="sbf"))
-                    agent_inputs.append("agent2")
-                if len(agent_inputs) < 3 and "agent3" not in [s.name for s in streams]:
-                    streams.append(StreamConfig(name="agent3", stream_type="sbf"))
-                    agent_inputs.append("agent3")
+                # Add fallback agents using set-based membership check
+                for fallback_agent in ("agent1", "agent2", "agent3"):
+                    if len(agent_inputs) >= 3:
+                        break
+                    if fallback_agent not in stream_names:
+                        streams.append(StreamConfig(name=fallback_agent, stream_type="sbf"))
+                        stream_names.add(fallback_agent)
+                        agent_inputs.append(fallback_agent)
             
             # Limit to total if specified
             if self.data.ensemble_total:

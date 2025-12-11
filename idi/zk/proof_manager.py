@@ -22,10 +22,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
-from .secure_errors import SecureError, handle_file_operation_error, handle_json_parse_error
-
 # Security constants
 MAX_RECEIPT_SIZE_BYTES = 512 * 1024  # 512KB limit for receipt files
+PROVER_TIMEOUT_SECONDS = 300  # 5 minutes timeout for external prover
 
 
 def _validate_path_safety(path: Path, base_dir: Optional[Path] = None) -> None:
@@ -57,45 +56,6 @@ def _validate_path_safety(path: Path, base_dir: Optional[Path] = None) -> None:
 # Default Risc0 command template (invokes prebuilt host binary directly).
 # The actual binary path is prefixed in `_get_default_prover_command`.
 _DEFAULT_RISC0_CMD = "prove --manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
-
-
-def _detect_risc0_available() -> bool:
-    """Check if Risc0 prover is available and built.
-    
-    Returns True if:
-    - cargo is available
-    - Risc0 workspace exists
-    - idi_risc0_host package can be found
-    """
-    try:
-        # Check if cargo is available
-        result = subprocess.run(
-            ["cargo", "--version"],
-            capture_output=True,
-            check=False,
-            timeout=5,
-        )
-        if result.returncode != 0:
-            return False
-        
-        # Check if Risc0 workspace exists
-        # Try to find the workspace from common locations
-        import os
-        current_file = Path(__file__)
-        risc0_workspace = current_file.parent / "risc0" / "Cargo.toml"
-        
-        if not risc0_workspace.exists():
-            # Try relative to project root
-            project_root = current_file.parent.parent.parent
-            risc0_workspace = project_root / "idi" / "zk" / "risc0" / "Cargo.toml"
-            if not risc0_workspace.exists():
-                return False
-        
-        # Check if the package exists in the workspace
-        # This is a lightweight check - actual build verification would be expensive
-        return True
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        return False
 
 
 def _get_default_prover_command() -> Optional[str]:
@@ -222,7 +182,8 @@ def generate_proof(
         # Split command safely (handles quoted arguments, escapes, etc.)
         cmd_parts = shlex.split(cmd_str)
         # Security: Never use shell=True with user-controlled input
-        subprocess.run(cmd_parts, check=True)
+        # Security: Enforce timeout to prevent hangs from malicious/broken provers
+        subprocess.run(cmd_parts, check=True, timeout=PROVER_TIMEOUT_SECONDS)
     else:
         proof_path.write_text(digest, encoding="utf-8")
 
@@ -546,3 +507,115 @@ def verify_zk_receipt(
             VerificationErrorCode.INTERNAL_ERROR,
             f"OS error during verification: {e}",
         )
+
+
+# =============================================================================
+# Concurrent Verification Support
+# =============================================================================
+
+def verify_proof_single(bundle: ProofBundle, use_risc0: bool = False) -> bool:
+    """Wrapper for single proof verification (for use with thread pools).
+    
+    Args:
+        bundle: ProofBundle to verify
+        use_risc0: Whether to use Risc0 ZK verification
+        
+    Returns:
+        True if proof is valid, False otherwise
+    """
+    try:
+        return verify_proof(bundle, use_risc0=use_risc0)
+    except Exception:
+        return False
+
+
+def verify_proofs_parallel(
+    bundles: list[ProofBundle],
+    *,
+    use_risc0: bool = False,
+    max_workers: int | None = None,
+) -> list[bool]:
+    """Verify multiple proof bundles in parallel using a thread pool.
+    
+    This function distributes proof verification across multiple threads,
+    allowing independent proofs to be verified concurrently. This is
+    particularly useful for batch verification of transaction proofs.
+    
+    Args:
+        bundles: List of ProofBundle instances to verify
+        use_risc0: Whether to use Risc0 ZK verification for all proofs
+        max_workers: Maximum number of worker threads (default: min(len(bundles), 4))
+        
+    Returns:
+        List of boolean results in the same order as input bundles
+        
+    Example:
+        bundles = [bundle1, bundle2, bundle3]
+        results = verify_proofs_parallel(bundles, use_risc0=True)
+        # results[i] corresponds to bundles[i]
+        
+    Performance:
+        - Uses ThreadPoolExecutor for I/O-bound operations (file reads, subprocess)
+        - Subprocess calls (Risc0 verifier) release the GIL, enabling true parallelism
+        - For CPU-bound-only verification, consider ProcessPoolExecutor instead
+        
+    Thread Safety:
+        - Each verification operates on independent files
+        - No shared mutable state between verifications
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    if not bundles:
+        return []
+    
+    # Default to 4 workers or number of bundles, whichever is smaller
+    workers = max_workers if max_workers is not None else min(len(bundles), 4)
+    
+    # Pre-allocate results list to maintain order
+    results: list[bool | None] = [None] * len(bundles)
+    
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        # Submit all verification tasks with their index
+        future_to_idx = {
+            executor.submit(verify_proof_single, bundle, use_risc0): idx
+            for idx, bundle in enumerate(bundles)
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                results[idx] = future.result()
+            except Exception:
+                results[idx] = False
+    
+    # Convert None to False (shouldn't happen, but defensive)
+    return [r if r is not None else False for r in results]
+
+
+async def verify_proofs_async(
+    bundles: list[ProofBundle],
+    *,
+    use_risc0: bool = False,
+    max_workers: int | None = None,
+) -> list[bool]:
+    """Async version of parallel proof verification.
+    
+    Wraps the thread pool execution in an async interface for use
+    in async/await codebases (e.g., FastAPI, aiohttp servers).
+    
+    Args:
+        bundles: List of ProofBundle instances to verify
+        use_risc0: Whether to use Risc0 ZK verification
+        max_workers: Maximum number of worker threads
+        
+    Returns:
+        List of boolean results in the same order as input bundles
+    """
+    import asyncio
+    
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None,
+        lambda: verify_proofs_parallel(bundles, use_risc0=use_risc0, max_workers=max_workers)
+    )
