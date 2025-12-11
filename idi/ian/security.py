@@ -107,7 +107,9 @@ class InputValidator:
     
     def validate_agent_pack(self, pack: AgentPack) -> ValidationResult:
         """Validate AgentPack fields."""
-        # Version
+        # Version - must be non-empty and within length limit
+        if not pack.version:
+            return ValidationResult.fail("version", "Version cannot be empty")
         if len(pack.version) > self._limits.MAX_PACK_VERSION_LEN:
             return ValidationResult.fail(
                 "version",
@@ -284,7 +286,7 @@ class RateLimiter:
         self,
         capacity: int = DEFAULT_LIMITS.RATE_LIMIT_TOKENS,
         refill_rate: float = DEFAULT_LIMITS.RATE_LIMIT_REFILL_PER_SECOND,
-        max_buckets: int = 10_000,
+        max_buckets: int = 100_000,
     ) -> None:
         self._capacity = capacity
         self._refill_rate = refill_rate
@@ -293,6 +295,8 @@ class RateLimiter:
         self._last_cleanup = time.monotonic()
         # Upper bound on the number of tracked contributors to prevent
         # unbounded memory growth in adversarial settings.
+        # Increased to 100k to reduce Sybil attack surface where attackers
+        # cycle through contributor IDs to evict legitimate users' buckets.
         self._max_buckets = max_buckets
     
     def _get_bucket(self, contributor_id: str) -> TokenBucket:
@@ -457,8 +461,14 @@ class SybilResistance:
         for cid in expired:
             del self._pending_challenges[cid]
     
-    def verify_pow(self, contributor_id: str, pow: ProofOfWork) -> bool:
-        """Verify a proof-of-work submission."""
+    def verify_pow(self, contributor_id: str, proof: ProofOfWork) -> bool:
+        """Verify a proof-of-work submission.
+        
+        Args:
+            contributor_id: ID of the contributor
+            proof: The ProofOfWork object to verify (renamed from 'pow' to avoid
+                   shadowing Python's built-in pow() function)
+        """
         if not self._enabled:
             return True
         
@@ -471,13 +481,13 @@ class SybilResistance:
             del self._pending_challenges[contributor_id]
             return False
         
-        if pow.challenge != challenge:
+        if proof.challenge != challenge:
             return False
         
-        if pow.difficulty < self._difficulty:
+        if proof.difficulty < self._difficulty:
             return False
         
-        if not pow.verify():
+        if not proof.verify():
             return False
         
         # Clear used challenge
@@ -556,10 +566,15 @@ class SecureCoordinator:
     def process_contribution(
         self,
         contrib: Contribution,
-        pow: Optional[ProofOfWork] = None,
+        proof_of_work: Optional[ProofOfWork] = None,
     ):
         """
         Process a contribution with all security checks.
+        
+        Args:
+            contrib: The contribution to process
+            proof_of_work: Optional PoW proof (renamed from 'pow' to avoid
+                          shadowing Python's built-in pow() function)
         
         Returns the same result type as IANCoordinator.process_contribution.
         """
@@ -588,7 +603,7 @@ class SecureCoordinator:
             
             # 3. Proof-of-work (if enabled)
             if self._sybil.is_enabled():
-                if pow is None:
+                if proof_of_work is None:
                     challenge = self._sybil.get_challenge(contrib.contributor_id)
                     return ProcessResult(
                         accepted=False,
@@ -596,7 +611,7 @@ class SecureCoordinator:
                         reason=f"Proof-of-work required. Challenge: {challenge.hex()}",
                     )
                 
-                if not self._sybil.verify_pow(contrib.contributor_id, pow):
+                if not self._sybil.verify_pow(contrib.contributor_id, proof_of_work):
                     return ProcessResult(
                         accepted=False,
                         rejection_type=RejectionReason.POW_INVALID,

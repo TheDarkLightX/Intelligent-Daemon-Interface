@@ -550,12 +550,13 @@ class TauBridge:
         """
         state = self.get_state(goal_id)
         
-        # Check cooldown
+        # Check cooldown - always enforced regardless of governance setting
+        # to prevent rapid policy churn that could destabilize the network
         now_ms = int(time.time() * 1000)
         cooldown_ms = self.config.upgrade_cooldown_seconds * 1000
         cooldown_ok = (now_ms - state.last_upgrade_timestamp_ms) >= cooldown_ms
         
-        if not cooldown_ok and self.config.require_governance_for_upgrade:
+        if not cooldown_ok:
             return False, f"Upgrade cooldown not elapsed ({self.config.upgrade_cooldown_seconds}s)"
         
         tx = IanUpgradeTx.from_contribution_meta(

@@ -150,26 +150,45 @@ class MerkleMountainRange:
             Index of the new leaf (0-indexed)
             
         Complexity: O(log N) hash operations
+        
+        Algorithm:
+            1. Add new leaf as rightmost peak
+            2. While last two peaks have same height, merge them
+            3. This maintains the invariant that peaks are ordered by decreasing height
+            
+        Correctness:
+            We collect left sibling positions BEFORE merging to avoid
+            the bug where re-reading from _nodes after appending a parent
+            would return the wrong node.
         """
         leaf_hash = _hash_leaf(leaf_data)
         self._leaf_data.append(leaf_data)
         self._nodes.append(leaf_hash)
         
-        current_hash = leaf_hash
-        current_height = 0
-        
-        # Merge with existing peaks if they have the same height
-        # This is determined by counting trailing 1-bits in the leaf count
+        # Determine how many merges needed based on trailing 1-bits
+        # Example: leaf_count=3 (binary 11) -> 2 trailing ones -> 2 merges
         merge_count = _count_trailing_ones(self._leaf_count)
         
-        for _ in range(merge_count):
-            # Get left sibling (previous peak at same height)
-            left_sibling = self._nodes[len(self._nodes) - 2]
-            # Create parent
-            parent_hash = _hash_internal(left_sibling, current_hash)
-            self._nodes.append(parent_hash)
-            current_hash = parent_hash
-            current_height += 1
+        if merge_count > 0:
+            # CRITICAL: Collect left sibling positions BEFORE any merging
+            # to avoid reading newly-appended parents instead of actual siblings
+            left_positions = []
+            pos = len(self._nodes) - 2  # Start at position before new leaf
+            
+            for level in range(merge_count):
+                # At height `level`, the left sibling is at current pos
+                # Then we need to skip back over a complete subtree of height `level`
+                left_positions.append(pos)
+                # Move back: skip (2^(level+1) - 1) nodes to get past the complete subtree
+                pos -= (1 << (level + 1)) - 1
+            
+            # Now merge using pre-computed positions
+            current_hash = leaf_hash
+            for level, left_pos in enumerate(left_positions):
+                left_sibling = self._nodes[left_pos]
+                parent_hash = _hash_internal(left_sibling, current_hash)
+                self._nodes.append(parent_hash)
+                current_hash = parent_hash
         
         leaf_index = self._leaf_count
         self._leaf_count += 1

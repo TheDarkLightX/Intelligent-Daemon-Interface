@@ -375,7 +375,11 @@ class GoalSpec:
     upgrade_cooldown_seconds: int = 86400  # 24 hours between upgrades
     
     def compute_score(self, metrics: Metrics) -> float:
-        """Compute scalar score from metrics using ranking weights."""
+        """Compute scalar score from metrics using ranking weights.
+        
+        All metrics with configured weights are included in the score.
+        Missing optional metrics (None values) are skipped.
+        """
         score = 0.0
         if "reward" in self.ranking_weights:
             score += self.ranking_weights["reward"] * metrics.reward
@@ -385,6 +389,9 @@ class GoalSpec:
             score += self.ranking_weights["complexity"] * metrics.complexity
         if "sharpe_ratio" in self.ranking_weights and metrics.sharpe_ratio is not None:
             score += self.ranking_weights["sharpe_ratio"] * metrics.sharpe_ratio
+        # Include max_drawdown if weight is configured and metric is available
+        if "max_drawdown" in self.ranking_weights and metrics.max_drawdown is not None:
+            score += self.ranking_weights["max_drawdown"] * metrics.max_drawdown
         return score
     
     def to_dict(self) -> Dict[str, Any]:
