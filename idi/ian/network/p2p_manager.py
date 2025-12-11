@@ -34,6 +34,7 @@ from .node import NodeIdentity, NodeInfo
 
 if TYPE_CHECKING:
     from .consensus import ConsensusCoordinator
+    from .tls import TLSConfig
 
 logger = logging.getLogger(__name__)
 
@@ -215,9 +216,11 @@ class P2PManager:
         self,
         identity: NodeIdentity,
         config: Optional[P2PConfig] = None,
+        tls_config: Optional["TLSConfig"] = None,
     ):
         self._identity = identity
         self._config = config or P2PConfig()
+        self._tls_config = tls_config
         
         # Peer sessions by node_id
         self._peers: Dict[str, PeerSession] = {}
@@ -257,10 +260,16 @@ class P2PManager:
         
         # Start server
         try:
+            ssl_ctx = None
+            if self._tls_config is not None:
+                # Use TLS for inbound connections (mTLS recommended)
+                ssl_ctx = self._tls_config.create_server_context()
+
             self._server = await asyncio.start_server(
                 self._handle_inbound_connection,
                 self._config.listen_host,
                 self._config.listen_port,
+                ssl=ssl_ctx,
             )
             
             addr = self._server.sockets[0].getsockname()
@@ -335,11 +344,25 @@ class P2PManager:
             return False, "max peers reached"
         
         try:
-            # Connect
+            # Connect (optionally using TLS)
+            ssl_ctx = None
+            if self._tls_config is not None:
+                ssl_ctx = self._tls_config.create_client_context()
+
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(address, port),
+                asyncio.open_connection(address, port, ssl=ssl_ctx),
                 timeout=self._config.connection_timeout,
             )
+            
+            # Optional certificate pinning
+            if self._tls_config is not None and self._tls_config.pinned_certs:
+                ssl_object = writer.get_extra_info('ssl_object')
+                if ssl_object is not None:
+                    peer_cert = ssl_object.getpeercert(binary_form=True)
+                    if peer_cert and not self._tls_config.verify_pinned(peer_cert):
+                        writer.close()
+                        await writer.wait_closed()
+                        return False, "peer certificate not pinned"
             
             # Create session (node_id may be updated after handshake)
             session_id = node_id or f"pending_{addr_key}"

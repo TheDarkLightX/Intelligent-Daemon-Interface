@@ -10,37 +10,44 @@ Complete API documentation for the IAN (Intelligent Agent Network) decentralized
 4. [Python SDK](#python-sdk)
 5. [Configuration](#configuration)
 6. [Error Codes](#error-codes)
+7. [WebSocket API](#websocket-api)
 
 ---
 
 ## Overview
 
-IAN provides multiple interfaces for interaction:
+IAN exposes multiple interfaces for interaction:
 
-| Interface | Port | Purpose |
-|-----------|------|---------|
-| HTTP API | 8080 | Health, metrics, node info |
-| P2P TCP | 9000 | Peer communication |
-| WebSocket | 9001 | Real-time subscriptions |
+| Interface | Default Port | Purpose |
+|-----------|--------------|---------|
+| HTTP REST (`/api/v1/*`) | 8080 | Public API for contributions and queries |
+| Health / Metrics | 8080 | Liveness, readiness, Prometheus metrics |
+| P2P TCP | 9000 | Node-to-node gossip and state sync |
+| WebSocket | 9001 | Real-time subscriptions (optional) |
 
 ### Authentication
 
-- **P2P**: Ed25519 signature-based authentication with challenge-response handshake
-- **HTTP**: Optional API key via `X-API-Key` header
-- **WebSocket**: Token-based authentication on connect
+- **HTTP**: Optional API key via `X-API-Key` header (if configured in `ApiConfig.api_key`).
+- **P2P**: Ed25519 signatures on messages and NodeIdentity; challenge-response handshake at the P2P layer.
+- **WebSocket**: Token-based authentication on connect (pattern; implementation depends on deployment).
 
 ---
 
 ## HTTP API
 
-### Health Endpoints
+There are **two HTTP surfaces**:
+
+1. `HealthServer` (built-in): `/health`, `/ready`, `/metrics`, `/status` — used by the node lifecycle and K8s.
+2. `IANApiServer` (aiohttp-based, optional): `/api/v1/*` REST API defined in `idi.ian.network.api` and `openapi.yaml`.
+
+### 1. Health & Readiness (HealthServer)
 
 #### GET /health
 
-Liveness check - is the node process running?
+Liveness check – is the node process running?
 
 **Response:**
-```
+```http
 HTTP/1.1 200 OK
 Content-Type: text/plain
 
@@ -49,18 +56,26 @@ OK
 
 #### GET /ready
 
-Readiness check - is the node synced and ready to serve?
+Readiness check – is the node synced and ready to serve?
 
 **Response (Ready):**
-```
+```http
 HTTP/1.1 200 OK
 Content-Type: text/plain
 
 READY
 ```
 
-**Response (Not Ready):**
+**Response (Degraded):**
+```http
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+DEGRADED: Sync lag: 6 blocks
 ```
+
+**Response (Not Ready):**
+```http
 HTTP/1.1 503 Service Unavailable
 Content-Type: text/plain
 
@@ -72,7 +87,7 @@ NOT READY: Sync lag: 15 blocks; Low peer count: 2
 Prometheus-compatible metrics.
 
 **Response:**
-```
+```http
 HTTP/1.1 200 OK
 Content-Type: text/plain; version=0.0.4
 
@@ -114,7 +129,241 @@ Detailed node status as JSON.
 
 ---
 
-### Node Info Endpoints
+### 2. REST API (`IANApiServer`)
+
+These endpoints are provided by `idi.ian.network.api.IANApiServer` and documented by `idi/ian/network/openapi.yaml`.
+
+#### 2.1 Contribution
+
+##### POST /api/v1/contribute
+
+Submit a contribution.
+
+**Request body (JSON):**
+```json
+{
+  "goal_id": "MY_GOAL",
+  "agent_pack": {
+    "version": "1.0",
+    "parameters": "SGVsbG8gV29ybGQ=",
+    "metadata": {"strategy": "momentum"}
+  },
+  "proofs": {},
+  "contributor_id": "alice",
+  "seed": 12345
+}
+```
+
+- `parameters` is base64-encoded bytes.
+- `proofs` is an optional map of proof bundles (base64 strings).
+
+**Success response (wrapped in `ApiResponse`):**
+```json
+{
+  "success": true,
+  "data": {
+    "accepted": true,
+    "reason": "ACCEPTED",
+    "rejection_type": null,
+    "metrics": {
+      "reward": 1.23,
+      "risk": 0.10,
+      "complexity": 0.40
+    },
+    "log_index": 1520,
+    "score": 95.5
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+**Error responses:**
+
+- **400 Bad Request** – malformed input, missing fields, invalid values.
+- **401 Unauthorized** – missing/invalid `X-API-Key` when API key is configured.
+- **429 Too Many Requests** – per-IP rate limit exceeded.
+- **500 Internal Server Error** – unexpected internal failure.
+
+Example 429:
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Rate limited",
+  "timestamp": 1702300000000
+}
+```
+
+##### Authentication
+
+If `ApiConfig.api_key` is set, all write operations require:
+
+```http
+X-API-Key: your_secret_key
+```
+
+#### 2.2 Leaderboard
+
+##### GET /api/v1/leaderboard/{goal_id}
+
+Get top-K leaderboard entries for a goal.
+
+**Query parameters:**
+- `limit` (int, optional, default 100, max 1000)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "goal_id": "MY_GOAL",
+    "entries": [
+      {
+        "rank": 1,
+        "pack_hash": "abc123...",
+        "contributor_id": "contributor-abc",
+        "score": 99.5,
+        "log_index": 1520,
+        "timestamp_ms": 1702300000000
+      }
+    ],
+    "total": 150
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+#### 2.3 Status
+
+##### GET /api/v1/status/{goal_id}
+
+Get high-level statistics for a goal.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "goal_id": "MY_GOAL",
+    "log_size": 1520,
+    "leaderboard_size": 150,
+    "total_contributions": 2000,
+    "accepted_contributions": 1800,
+    "rejected_contributions": 200,
+    "log_root": "abc123...",
+    "leaderboard_root": "def456..."
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+#### 2.4 Log Info
+
+##### GET /api/v1/log/{goal_id}
+
+Get log root and size for a goal.
+
+**Query parameters:**
+- `from` (int, optional, default 0)
+- `limit` (int, optional, default 100, max 1000)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "goal_id": "MY_GOAL",
+    "log_root": "abc123...",
+    "log_size": 1520,
+    "from_index": 0,
+    "limit": 100
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+#### 2.5 Active Policy
+
+##### GET /api/v1/policy/{goal_id}
+
+Get the current best (active) policy for a goal.
+
+**Response (no active policy):**
+```json
+{
+  "success": true,
+  "data": {
+    "goal_id": "MY_GOAL",
+    "active_policy": null
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+**Response (active policy present):**
+```json
+{
+  "success": true,
+  "data": {
+    "goal_id": "MY_GOAL",
+    "active_policy": {
+      "pack_hash": "abc123...",
+      "contributor_id": "contributor-xyz",
+      "score": 99.9,
+      "log_index": 1519,
+      "timestamp_ms": 1702300000000
+    }
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+#### 2.6 Membership Proof
+
+##### GET /api/v1/proof/{goal_id}/{log_index}
+
+Get a Merkle Mountain Range membership proof for a log entry.
+
+**Path parameters:**
+- `goal_id` – goal identifier
+- `log_index` – 0-based log index (must be within `[0, log_size)`).
+
+**Success response:**
+```json
+{
+  "success": true,
+  "data": {
+    "goal_id": "MY_GOAL",
+    "log_index": 1520,
+    "leaf_hash": "abc123...",
+    "siblings": [
+      {"hash": "hash1", "is_right": true},
+      {"hash": "hash2", "is_right": false}
+    ],
+    "peaks_bag": ["peak1", "peak2"],
+    "mmr_size": 2048,
+    "log_root": "rootabc..."
+  },
+  "error": null,
+  "timestamp": 1702300000000
+}
+```
+
+**Error (out of bounds):**
+- `404 Not Found` with error message `"Log index X out of bounds [0, N)"`.
+
+---
+
+### Node Info Endpoints (HealthServer)
+
+These endpoints are served by `HealthServer` on the same port as `/health` and `/ready`.
+They are enabled when a `DecentralizedNode` registers providers on the health server.
 
 #### GET /info
 
@@ -124,164 +373,64 @@ Get node information.
 ```json
 {
   "node_id": "a1b2c3d4e5f6...",
-  "goal_id": "my-goal-123",
-  "version": "1.0.0",
+  "public_key": "base64-ed25519-key",
+  "addresses": [
+    "tcp://192.168.1.100:9000"
+  ],
   "capabilities": {
     "accepts_contributions": true,
     "serves_leaderboard": true,
-    "serves_log_proofs": true
+    "serves_log_proofs": true,
+    "goal_ids": ["my-goal-123"],
+    "protocol_version": "1.0",
+    "software_version": "0.1.0"
   },
-  "addresses": [
-    "tcp://192.168.1.100:9000"
-  ]
+  "timestamp": 1702300000000,
+  "consensus_state": "ACTIVE",
+  "running": true,
+  "goal_id": "my-goal-123"
 }
 ```
 
 #### GET /peers
 
-List connected peers.
+List connected peers with reputation summary.
 
 **Response:**
-```json
-{
-  "peers": [
-    {
-      "node_id": "peer1...",
-      "address": "tcp://10.0.0.1:9000",
-      "connected_at": 1702300000,
-      "score": 150.0,
-      "state": "ACTIVE"
-    }
-  ],
-  "total": 12,
-  "trusted": 5,
-  "banned": 1
-}
-```
-
----
-
-### Contribution Endpoints
-
-#### POST /contribution
-
-Submit a contribution.
-
-**Request:**
 ```json
 {
   "goal_id": "my-goal-123",
-  "contributor_id": "contributor-abc",
-  "content": {
-    "code": "def solve(): return 42",
-    "metadata": {"language": "python"}
+  "total": 2,
+  "stats": {
+    "total": 2,
+    "banned": 0,
+    "trusted": 1,
+    "low_score": 0,
+    "avg_score": 120.5
   },
-  "signature": "base64-encoded-signature"
-}
-```
-
-**Response (Success):**
-```json
-{
-  "accepted": true,
-  "pack_hash": "abc123...",
-  "log_index": 1520,
-  "metrics": {
-    "score": 95.5,
-    "latency_ms": 12.3
-  }
-}
-```
-
-**Response (Rejected):**
-```json
-{
-  "accepted": false,
-  "reason": "DUPLICATE",
-  "message": "Contribution already exists in log"
-}
-```
-
-#### GET /contribution/{pack_hash}
-
-Get contribution by pack hash.
-
-**Response:**
-```json
-{
-  "pack_hash": "abc123...",
-  "log_index": 1520,
-  "contributor_id": "contributor-abc",
-  "timestamp_ms": 1702300000000,
-  "metrics": {
-    "score": 95.5
-  }
-}
-```
-
----
-
-### Leaderboard Endpoints
-
-#### GET /leaderboard
-
-Get current leaderboard.
-
-**Query Parameters:**
-- `limit` (int, default 10): Number of entries
-- `offset` (int, default 0): Offset for pagination
-
-**Response:**
-```json
-{
-  "entries": [
+  "peers": [
     {
-      "rank": 1,
-      "pack_hash": "abc123...",
-      "contributor_id": "contributor-abc",
-      "score": 99.5,
-      "timestamp_ms": 1702300000000
+      "node_id": "peer1...",
+      "public_key": "base64-ed25519-key",
+      "addresses": [
+        "tcp://10.0.0.1:9000"
+      ],
+      "capabilities": {
+        "accepts_contributions": true,
+        "serves_leaderboard": true,
+        "serves_log_proofs": true,
+        "goal_ids": ["my-goal-123"],
+        "protocol_version": "1.0",
+        "software_version": "0.1.0"
+      },
+      "timestamp": 1702300000000,
+      "peer_score": {
+        "score": 150.0,
+        "banned": false,
+        "trusted": true
+      }
     }
-  ],
-  "total": 150,
-  "leaderboard_root": "def456..."
-}
-```
-
----
-
-### Proof Endpoints
-
-#### GET /proof/log/{index}
-
-Get Merkle proof for log entry.
-
-**Response:**
-```json
-{
-  "log_index": 1520,
-  "pack_hash": "abc123...",
-  "proof": {
-    "root": "rootabc...",
-    "path": ["hash1", "hash2", "hash3"],
-    "leaf_index": 1520
-  }
-}
-```
-
-#### GET /proof/leaderboard/{pack_hash}
-
-Get Merkle proof for leaderboard entry.
-
-**Response:**
-```json
-{
-  "pack_hash": "abc123...",
-  "proof": {
-    "root": "lbrootabc...",
-    "path": ["hash1", "hash2"],
-    "position": 0
-  }
+  ]
 }
 ```
 
@@ -289,72 +438,68 @@ Get Merkle proof for leaderboard entry.
 
 ## P2P Protocol
 
+The P2P protocol is implemented in `idi.ian.network.protocol` and `idi.ian.network.p2p_manager`.
+
 ### Message Types
 
-| Type | Code | Direction | Purpose |
+`protocol.py` defines the following logical message types:
+
+| Type | Enum | Direction | Purpose |
 |------|------|-----------|---------|
-| `HANDSHAKE` | 0x01 | Both | Initial connection |
-| `HANDSHAKE_ACK` | 0x02 | Both | Handshake response |
-| `PING` | 0x10 | Both | Keepalive |
-| `PONG` | 0x11 | Both | Keepalive response |
-| `CONTRIBUTION_ANNOUNCE` | 0x20 | Out | Announce new contribution |
-| `CONTRIBUTION_REQUEST` | 0x21 | Out | Request contribution data |
-| `CONTRIBUTION_RESPONSE` | 0x22 | In | Contribution data |
-| `STATE_REQUEST` | 0x30 | Out | Request state info |
-| `STATE_RESPONSE` | 0x31 | In | State info |
-| `SYNC_REQUEST` | 0x40 | Out | Request log range |
-| `SYNC_RESPONSE` | 0x41 | In | Log entries |
-| `PEER_EXCHANGE` | 0x50 | Both | Share peer list |
-| `FRAUD_PROOF` | 0x60 | Out | Submit fraud proof |
+| `ContributionAnnounce` | `CONTRIBUTION_ANNOUNCE` | Gossip | Announce new contribution |
+| `ContributionRequest` | `CONTRIBUTION_REQUEST` | Request | Request full contribution data |
+| `ContributionResponse` | `CONTRIBUTION_RESPONSE` | Response | Return contribution data |
+| `StateRequest` | `STATE_REQUEST` | Request | Request coordinator state |
+| `StateResponse` | `STATE_RESPONSE` | Response | Return coordinator state |
+| `PeerExchange` | `PEER_EXCHANGE` | Both | Exchange peer lists |
+| `Ping` | `PING` | Both | Liveness check |
+| `Pong` | `PONG` | Both | Liveness response |
 
-### Message Format
+### Wire Format (Current Implementation)
 
-```
-+--------+--------+--------+--------+
-| Magic  | Type   | Length (4 bytes)|
-+--------+--------+--------+--------+
-| Payload (variable length)         |
-+-----------------------------------+
-| Signature (64 bytes, optional)    |
-+-----------------------------------+
+The **current** wire format is a simple length-prefixed JSON frame:
+
+```text
++----------------------+--------------------------+
+| Length (4 bytes, BE) | JSON payload (UTF-8)     |
++----------------------+--------------------------+
 ```
 
-- **Magic**: `0x49414E` ("IAN")
-- **Type**: Message type byte
-- **Length**: Payload length (big-endian uint32)
-- **Payload**: JSON or bytecode encoded data
-- **Signature**: Ed25519 signature over (type + length + payload)
+- `Length` – big-endian uint32 of JSON payload size.
+- `JSON payload` – `Message.to_dict()` output, including:
+  - `type`: string enum value (e.g. `"contribution_announce"`).
+  - `sender_id`, `timestamp`, `nonce`.
+  - Optional `signature` (base64) and type-specific fields.
 
-### Handshake Protocol
+**Example:**
+```python
+from idi.ian.network.protocol import Ping, Message
 
+ping = Ping(sender_id="node_abc123")
+wire = ping.to_wire()
+parsed = Message.from_wire(wire)
+assert isinstance(parsed, Ping)
 ```
-Client                          Server
-  |                               |
-  |------ HANDSHAKE ------------->|
-  |   {node_id, version, nonce}   |
-  |                               |
-  |<----- HANDSHAKE_ACK ----------|
-  |   {node_id, version,          |
-  |    challenge, signature}      |
-  |                               |
-  |------ CHALLENGE_RESPONSE ---->|
-  |   {signed_challenge}          |
-  |                               |
-  |<----- CONNECTION_READY -------|
-  |   {verified: true}            |
-```
+
+> **Note:** Earlier design docs referenced a binary header with `Magic` and `Type` bytes. That design is reserved for a potential future Protocol v2. The current implementation uses the simpler JSON framing above.
+
+### Authentication & Handshake
+
+- Each message includes a `nonce` and optional `signature` over the JSON fields.
+- `NodeIdentity` (Ed25519) is used to sign and verify messages.
+- `P2PManager` performs a handshake using signed node info and `Ping`/`Pong` messages; there is no separate `HANDSHAKE` message type yet.
 
 ### Rate Limiting
 
-- Default: 100 messages/second per peer
-- Burst: 20 messages
-- Violations result in score penalty and potential disconnect
+- Per-peer token-bucket limiter (see `TokenBucketRateLimiter` in `p2p_manager.py`).
+- Configurable via `P2PConfig.max_messages_per_second` and `rate_limit_burst`.
+- Violations increment peer statistics and can interact with peer scoring.
 
 ---
 
 ## Python SDK
 
-### Basic Usage
+### Basic Usage (Decentralized Node)
 
 ```python
 from idi.ian.network import DecentralizedNode, DecentralizedNodeConfig
@@ -396,8 +541,8 @@ contrib = Contribution(
     content={"code": "solution"},
 )
 
-result = await node.submit_contribution(contrib)
-print(f"Accepted: {result.accepted}, Index: {result.log_index}")
+success, reason = await node.submit_contribution(contrib)
+print(f"Accepted: {success}, Reason: {reason}")
 
 # Stop node
 await node.stop()
@@ -414,7 +559,7 @@ from idi.ian.network import (
 )
 
 # Circuit breaker for external APIs
-breaker = CircuitBreaker("tau_api", failure_threshold=5)
+breaker = CircuitBreaker("tau_api")
 
 async with breaker:
     result = await call_tau_api()
@@ -429,8 +574,17 @@ scores.load()
 scores.record_event("peer123", "valid_message")
 scores.save()
 
-# TLS configuration
-tls = TLSConfig.generate(node_id="mynode", output_dir="/data/certs")
+# TLS configuration for P2P
+identity = NodeIdentity.generate()
+config = P2PConfig(listen_port=9000)
+
+tls = TLSConfig.generate(node_id=identity.node_id, output_dir="/data/certs")
+
+p2p = P2PManager(
+    identity=identity,
+    config=config,
+    tls_config=tls,  # Enables TLS for P2P
+)
 ```
 
 ---
@@ -440,22 +594,25 @@ tls = TLSConfig.generate(node_id="mynode", output_dir="/data/certs")
 ### DecentralizedNodeConfig
 
 ```python
+from dataclasses import dataclass, field
+from typing import List, Optional
+
 @dataclass
 class DecentralizedNodeConfig:
     # Network
     listen_address: str = "0.0.0.0"
     listen_port: int = 9000
-    seed_addresses: List[str] = []
+    seed_addresses: List[str] = field(default_factory=list)
     max_peers: int = 50
     
     # Consensus
-    consensus: ConsensusConfig = ConsensusConfig()
+    consensus: ConsensusConfig = field(default_factory=ConsensusConfig)
     
     # Economics
-    economics: EconomicConfig = EconomicConfig()
+    economics: EconomicConfig = field(default_factory=EconomicConfig)
     
     # Evaluation
-    evaluation: EvaluationQuorumConfig = EvaluationQuorumConfig()
+    evaluation: EvaluationQuorumConfig = field(default_factory=EvaluationQuorumConfig)
     
     # Tau integration
     tau_commit_interval: float = 300.0  # 5 minutes
@@ -478,7 +635,7 @@ class DecentralizedNodeConfig:
     log_level: str = "INFO"
 ```
 
-### Environment Variables
+### Environment Variables (Typical)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -494,7 +651,14 @@ class DecentralizedNodeConfig:
 
 ## Error Codes
 
-### Contribution Rejection Reasons
+### Contribution Rejection Reasons (Logical)
+
+The coordinator can reject contributions for various reasons. These are exposed via:
+
+- `data.reason` – human-readable string.
+- `data.rejection_type` – enum value (see `openapi.yaml`).
+
+Common reasons include:
 
 | Code | Reason | Description |
 |------|--------|-------------|
@@ -506,16 +670,15 @@ class DecentralizedNodeConfig:
 | `SCORE_TOO_LOW` | Low score | Below minimum threshold |
 | `RATE_LIMITED` | Rate limit | Too many submissions |
 
-### P2P Error Codes
+### P2P Error Conditions
 
-| Code | Error | Description |
-|------|-------|-------------|
-| `E_TIMEOUT` | Timeout | Request timed out |
-| `E_RATE_LIMIT` | Rate limited | Too many messages |
-| `E_INVALID_MSG` | Invalid message | Malformed message |
-| `E_AUTH_FAIL` | Auth failed | Handshake failed |
-| `E_PEER_BANNED` | Peer banned | Peer is banned |
-| `E_CIRCUIT_OPEN` | Circuit open | Circuit breaker open |
+P2P errors are not currently exposed as a separate error code enum, but typical conditions include:
+
+- Timeout waiting for response.
+- Rate limited by per-peer limiter.
+- Invalid message (malformed JSON or signature failure).
+- Authentication failure (invalid NodeIdentity signature).
+- Peer banned by reputation system.
 
 ### HTTP Status Codes
 
@@ -524,22 +687,23 @@ class DecentralizedNodeConfig:
 | 200 | Success |
 | 400 | Bad request (invalid input) |
 | 401 | Unauthorized (missing/invalid API key) |
-| 404 | Not found |
-| 429 | Rate limited |
+| 404 | Not found (e.g., invalid log index) |
+| 429 | Too Many Requests (rate limited) |
 | 500 | Internal server error |
 | 503 | Service unavailable (not ready) |
 
 ---
 
-## WebSocket API
+## WebSocket API (Conceptual)
 
-### Connection
+A WebSocket interface can be exposed via `websocket_transport.py` (or a gateway) to stream events.
+
+**Example (conceptual):**
 
 ```javascript
 const ws = new WebSocket("ws://localhost:9001/subscribe");
 
 ws.onopen = () => {
-  // Subscribe to events
   ws.send(JSON.stringify({
     type: "subscribe",
     channels: ["contributions", "leaderboard"]
@@ -552,7 +716,7 @@ ws.onmessage = (event) => {
 };
 ```
 
-### Event Types
+### Possible Event Types
 
 | Event | Channel | Description |
 |-------|---------|-------------|
@@ -563,17 +727,4 @@ ws.onmessage = (event) => {
 | `sync_progress` | sync | Sync progress update |
 | `tau_commit` | tau | Committed to Tau Net |
 
-### Event Format
-
-```json
-{
-  "type": "contribution_added",
-  "timestamp": 1702300000000,
-  "data": {
-    "pack_hash": "abc123...",
-    "log_index": 1520,
-    "contributor_id": "contributor-abc",
-    "score": 95.5
-  }
-}
-```
+> WebSocket APIs are deployment-dependent and may be provided via a separate gateway service in front of the node.

@@ -516,11 +516,15 @@ class HealthServer:
     - GET /ready - Readiness check (is the node synced and serving?)
     - GET /metrics - Prometheus metrics
     - GET /status - Detailed status JSON
+    - GET /info - Node info (if info provider registered)
+    - GET /peers - Peer info (if peers provider registered)
     
     Usage:
         health = HealthServer(port=8080)
         health.register_check("sync", check_sync_status)
         health.register_check("peers", check_peer_count)
+        health.set_info_provider(get_node_info_dict)
+        health.set_peers_provider(get_peers_dict)
         await health.start()
     """
     
@@ -537,6 +541,8 @@ class HealthServer:
         self._server: Optional[asyncio.Server] = None
         self._running = False
         self._start_time = time.time()
+        self._info_provider: Optional[Callable[[], Dict[str, Any]]] = None
+        self._peers_provider: Optional[Callable[[], Dict[str, Any]]] = None
     
     def register_check(
         self,
@@ -549,6 +555,14 @@ class HealthServer:
     def set_metrics(self, metrics: NodeMetrics) -> None:
         """Set the metrics instance to expose."""
         self._metrics = metrics
+    
+    def set_info_provider(self, provider: Callable[[], Dict[str, Any]]) -> None:
+        """Set provider for node info (/info endpoint)."""
+        self._info_provider = provider
+    
+    def set_peers_provider(self, provider: Callable[[], Dict[str, Any]]) -> None:
+        """Set provider for peers info (/peers endpoint)."""
+        self._peers_provider = provider
     
     async def start(self) -> None:
         """Start the health server."""
@@ -605,6 +619,10 @@ class HealthServer:
                 response = self._handle_metrics()
             elif path == "/status":
                 response = self._handle_status()
+            elif path == "/info":
+                response = self._handle_info()
+            elif path == "/peers":
+                response = self._handle_peers()
             else:
                 response = self._http_response(404, "Not Found")
             
@@ -694,6 +712,32 @@ class HealthServer:
             content_type="application/json",
         )
     
+    def _handle_info(self) -> str:
+        """Node info as JSON (if provider is set)."""
+        if not self._info_provider:
+            return self._http_response(404, "Not Found", content_type="application/json")
+        
+        try:
+            info = self._info_provider() or {}
+            body = json.dumps(info, indent=2)
+            return self._http_response(200, body, content_type="application/json")
+        except Exception as e:
+            error_body = json.dumps({"error": str(e)}, indent=2)
+            return self._http_response(500, error_body, content_type="application/json")
+    
+    def _handle_peers(self) -> str:
+        """Peer info as JSON (if provider is set)."""
+        if not self._peers_provider:
+            return self._http_response(404, "Not Found", content_type="application/json")
+        
+        try:
+            peers = self._peers_provider() or {}
+            body = json.dumps(peers, indent=2)
+            return self._http_response(200, body, content_type="application/json")
+        except Exception as e:
+            error_body = json.dumps({"error": str(e)}, indent=2)
+            return self._http_response(500, error_body, content_type="application/json")
+    
     def _http_response(
         self,
         status_code: int,
@@ -701,7 +745,12 @@ class HealthServer:
         content_type: str = "text/plain",
     ) -> str:
         """Build HTTP response."""
-        status_text = {200: "OK", 503: "Service Unavailable", 404: "Not Found"}.get(status_code, "")
+        status_text = {
+            200: "OK",
+            404: "Not Found",
+            500: "Internal Server Error",
+            503: "Service Unavailable",
+        }.get(status_code, "")
         return (
             f"HTTP/1.1 {status_code} {status_text}\r\n"
             f"Content-Type: {content_type}\r\n"

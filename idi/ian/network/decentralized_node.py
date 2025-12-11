@@ -227,6 +227,11 @@ class DecentralizedNode:
         # Setup callbacks
         self._setup_callbacks()
         self._setup_health_checks()
+
+        # Register info/peers providers for health server
+        if self._health_server:
+            self._health_server.set_info_provider(self._build_node_info)
+            self._health_server.set_peers_provider(self._build_peers_info)
     
     def _setup_callbacks(self) -> None:
         """Wire up component callbacks."""
@@ -822,6 +827,38 @@ class DecentralizedNode:
             addresses=addresses,
             capabilities=capabilities,
         )
+
+    def _build_node_info(self) -> Dict[str, Any]:
+        """Provider used by HealthServer for /info."""
+        info = self.get_node_info().to_dict()
+        info.update(
+            {
+                "consensus_state": self._consensus.get_state().name,
+                "running": self._running,
+                "goal_id": self._goal_id,
+            }
+        )
+        return info
+
+    def _build_peers_info(self) -> Dict[str, Any]:
+        """Provider used by HealthServer for /peers."""
+        peers: List[Dict[str, Any]] = []
+        for node_id, node_info in self._connected_peers.items():
+            entry = node_info.to_dict()
+            score = self._peer_scores.get_score(node_id)
+            entry["peer_score"] = {
+                "score": score.score,
+                "banned": score.is_banned(),
+                "trusted": score.is_trusted(),
+            }
+            peers.append(entry)
+        
+        return {
+            "goal_id": self._goal_id,
+            "total": len(peers),
+            "peers": peers,
+            "stats": self._peer_scores.get_stats(),
+        }
     
     def get_stats(self) -> Dict[str, Any]:
         """Get node statistics."""

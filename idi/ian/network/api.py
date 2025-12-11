@@ -511,7 +511,20 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
         body = await request.json()
         api_key = request.headers.get("X-API-Key")
         resp = handlers.handle_contribute(body, get_ip(request), api_key)
-        status = 200 if resp.success else (401 if "API key" in (resp.error or "") else 400)
+
+        if resp.success:
+            status = 200
+        else:
+            error = resp.error or ""
+            if "API key" in error:
+                status = 401
+            elif "Rate limited" in error:
+                status = 429
+            elif error.startswith("Internal error:"):
+                status = 500
+            else:
+                status = 400
+
         return json_response(resp, status)
     
     async def leaderboard(request: web.Request) -> web.Response:

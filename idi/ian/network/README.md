@@ -112,7 +112,8 @@ discovery.handle_peer_exchange(peer_exchange_message)
 
 ### `transport.py` — TCP Transport
 
-Manages TCP connections with connection limits and read timeouts.
+Manages TCP connections with connection limits and read timeouts. Used as the
+underlying transport for the P2P manager.
 
 ```python
 from idi.ian.network.transport import TCPTransport
@@ -139,6 +140,30 @@ transport.on_message = lambda conn_id, data: handle_message(data)
 - **Per-IP limits:** Mitigates single-source DoS
 - **Read timeouts:** 60-second timeout on reads prevents slow-loris attacks
 - **IPv6 support:** Handles `[::1]:port` format addresses
+
+### `tls.py` and TLS-Enabled P2P
+
+For encrypted P2P connections, use `TLSConfig` together with `P2PManager`:
+
+```python
+from idi.ian.network import P2PConfig, P2PManager, TLSConfig
+
+identity = NodeIdentity.generate()
+config = P2PConfig(listen_port=9000)
+
+tls_config = TLSConfig.generate(node_id=identity.node_id, output_dir="/data/certs")
+
+p2p = P2PManager(
+    identity=identity,
+    config=config,
+    tls_config=tls_config,  # Enables TLS for inbound and outbound
+)
+
+await p2p.start()
+```
+
+You can optionally configure certificate pinning via `TLSConfig.pinned_certs`
+so that only peers with specific certificates are accepted.
 
 ### `api.py` — REST API
 
