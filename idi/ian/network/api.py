@@ -31,6 +31,13 @@ from collections import OrderedDict
 from dataclasses import dataclass, asdict
 from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 
+try:
+    # Optional structured tracing support
+    from .resilience import set_correlation_id, new_correlation_id
+except ImportError:  # pragma: no cover - resilience not required for API
+    set_correlation_id = None
+    new_correlation_id = None
+
 if TYPE_CHECKING:
     from idi.ian.coordinator import IANCoordinator
     from idi.ian.security import SecureCoordinator
@@ -502,12 +509,23 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
     def get_ip(request: web.Request) -> str:
         return request.headers.get("X-Forwarded-For", request.remote or "unknown").split(",")[0].strip()
     
+    def _bind_trace(request: web.Request) -> None:
+        """Bind or create a correlation/trace ID for this request."""
+        if new_correlation_id is None:
+            return
+        incoming = request.headers.get("X-Trace-Id")
+        if incoming and set_correlation_id is not None:
+            set_correlation_id(incoming)
+        else:
+            new_correlation_id()
+    
     # Helper for JSON responses
     def json_response(resp: ApiResponse, status: int = 200) -> web.Response:
         return web.json_response(resp.to_dict(), status=status)
     
     # Routes
     async def contribute(request: web.Request) -> web.Response:
+        _bind_trace(request)
         body = await request.json()
         api_key = request.headers.get("X-API-Key")
         resp = handlers.handle_contribute(body, get_ip(request), api_key)
@@ -528,6 +546,7 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
         return json_response(resp, status)
     
     async def leaderboard(request: web.Request) -> web.Response:
+        _bind_trace(request)
         goal_id = request.match_info["goal_id"]
         try:
             limit = int(request.query.get("limit", 100))
@@ -538,11 +557,13 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
         return json_response(resp)
     
     async def status(request: web.Request) -> web.Response:
+        _bind_trace(request)
         goal_id = request.match_info["goal_id"]
         resp = handlers.handle_status(goal_id, get_ip(request))
         return json_response(resp)
     
     async def log(request: web.Request) -> web.Response:
+        _bind_trace(request)
         goal_id = request.match_info["goal_id"]
         try:
             from_index = int(request.query.get("from", 0))
@@ -555,11 +576,13 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
         return json_response(resp)
     
     async def policy(request: web.Request) -> web.Response:
+        _bind_trace(request)
         goal_id = request.match_info["goal_id"]
         resp = handlers.handle_policy(goal_id, get_ip(request))
         return json_response(resp)
     
     async def proof(request: web.Request) -> web.Response:
+        _bind_trace(request)
         goal_id = request.match_info["goal_id"]
         try:
             log_index = int(request.match_info["log_index"])
@@ -572,14 +595,17 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
         return json_response(resp, status)
     
     async def health(request: web.Request) -> web.Response:
+        _bind_trace(request)
         resp = handlers.handle_health()
         return json_response(resp)
     
     async def metrics(request: web.Request) -> web.Response:
+        _bind_trace(request)
         text = handlers.handle_metrics()
         return web.Response(text=text, content_type="text/plain")
     
     async def openapi(request: web.Request) -> web.Response:
+        _bind_trace(request)
         spec = handlers.handle_openapi()
         return web.json_response(spec)
     

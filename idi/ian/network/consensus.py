@@ -461,6 +461,10 @@ class ConsensusCoordinator:
                 groups[key] = []
             groups[key].append(state)
         
+        # Guard against empty groups (defensive)
+        if not groups:
+            return None
+        
         # Find largest group
         largest_group = max(groups.values(), key=len)
         
@@ -621,6 +625,10 @@ class ConsensusCoordinator:
     @property
     def consensus_state(self) -> ConsensusState:
         """Get current consensus state."""
+        return self._consensus_state
+    
+    def get_state(self) -> ConsensusState:
+        """Get current consensus state (method form for compatibility)."""
         return self._consensus_state
     
     @property

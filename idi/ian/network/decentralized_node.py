@@ -512,6 +512,17 @@ class DecentralizedNode:
         Returns:
             Response message if applicable
         """
+        # Bind or propagate trace ID for this message
+        try:
+            from .resilience import set_correlation_id, new_correlation_id
+            # Use message nonce as trace seed if available, else generate new
+            if hasattr(message, 'nonce') and message.nonce:
+                set_correlation_id(message.nonce[:8])
+            else:
+                new_correlation_id()
+        except ImportError:
+            pass  # Tracing not available
+        
         try:
             if message.type == MessageType.CONTRIBUTION_ANNOUNCE:
                 from .protocol import ContributionAnnounce
@@ -569,6 +580,17 @@ class DecentralizedNode:
                 )
                 
                 if should_commit and self._consensus.can_commit_to_tau():
+                    # Generate trace ID for this commit operation
+                    try:
+                        from .resilience import new_correlation_id, get_correlation_id
+                        trace_id = new_correlation_id()
+                        logger.info(
+                            f"Initiating Tau commit (trace={trace_id}, "
+                            f"contributions={self._contributions_since_commit})"
+                        )
+                    except ImportError:
+                        pass  # Tracing not available
+                    
                     await self._commit_to_tau()
                     
             except asyncio.CancelledError:
@@ -652,21 +674,53 @@ class DecentralizedNode:
                 logger.error(f"Peer state check error: {e}")
     
     async def _check_peer_states_for_fraud(self) -> None:
-        """Check peer states for potential fraud."""
-        # Get peer states
+        """Check peer states for potential fraud and generate proofs."""
+        our_log_root = self._base_coordinator.get_log_root()
+        our_log_size = self._base_coordinator.state.log.size
+        our_lb_root = self._base_coordinator.get_leaderboard_root()
+        
         for peer_id, state in self._consensus._peer_states.items():
-            # Compare to our state
-            our_log_root = self._base_coordinator.get_log_root()
-            our_lb_root = self._base_coordinator.get_leaderboard_root()
+            # Skip if peer matches our state
+            if state.log_root == our_log_root and state.leaderboard_root == our_lb_root:
+                continue
             
-            # If peer has different root at same size, potential fraud
-            if state.log_size == self._base_coordinator.state.log.size:
-                if state.log_root != our_log_root:
-                    logger.warning(
-                        f"Potential fraud: peer {peer_id[:16]}... has different "
-                        f"log root at size {state.log_size}"
-                    )
-                    # TODO: Generate and submit fraud proof
+            # Log root divergence at same size = potential fraud
+            if state.log_size == our_log_size and state.log_root != our_log_root:
+                logger.warning(
+                    f"Fraud detected: peer {peer_id[:16]}... has different "
+                    f"log root at size {state.log_size} "
+                    f"(ours: {our_log_root.hex()[:16]}, theirs: {state.log_root.hex()[:16]})"
+                )
+                
+                # Generate fraud proof
+                proof = self._fraud_generator.generate_invalid_log_root_proof(
+                    commit_hash=state.log_root,  # Use peer's root as commit hash
+                    claimed_root=state.log_root,
+                    goal_id=self._goal_id,
+                )
+                
+                if proof:
+                    # Verify locally before submitting
+                    valid, reason = self._fraud_verifier.verify(proof)
+                    if valid:
+                        # Sign the proof
+                        if self._identity.has_private_key():
+                            proof.challenger_signature = self._identity.sign(
+                                proof.signing_payload()
+                            )
+                        
+                        # Submit to challenge queue
+                        await self._challenges.submit_challenge(proof)
+                        self._metrics.increment("fraud_proofs_generated")
+                        logger.info(
+                            f"Fraud proof queued for peer {peer_id[:16]}... "
+                            f"(type: {proof.fraud_type.value})"
+                        )
+                    else:
+                        logger.debug(f"Generated proof failed verification: {reason}")
+                
+                # Record negative event for peer
+                self._peer_scores.record_event(peer_id, "invalid_message")
     
     async def _challenge_finalization_loop(self) -> None:
         """Background loop for finalizing challenges."""
