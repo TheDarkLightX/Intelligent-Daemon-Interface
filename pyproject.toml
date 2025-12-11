@@ -1,4 +1,7 @@
 [project]
+
+[project.scripts]
+ian-demo = "idi.ian.cli:main"
 name = "idi"
 version = "0.1.0"
 description = "Intelligent Daemon Interface - ZK proof integration for Tau Net"
@@ -13,8 +16,13 @@ dependencies = [
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
     "mypy>=1.5.0",
     "ruff>=0.1.0",
+    "mutmut>=2.4.0",
+    "pandas>=2.0.0",
+    "hypothesis>=6.0.0",
+    "cryptography>=41.0.0",
 ]
 
 [build-system]
@@ -22,11 +30,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
-testpaths = ["idi"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
@@ -56,3 +64,14 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
+
+[tool.mutmut]
+paths_to_mutate = [
+    "idi/zk/proof_manager.py",
+    "idi/zk/bundle_verify.py",
+    "idi/zk/wire.py",
+    "idi/zk/verification.py",
+]
+# Note: mutmut runs the runner from the 'mutants' directory.
+# Use a relative path back to the real tests.
+runner = "../.venv/bin/python -m pytest ../idi/zk/tests -q"

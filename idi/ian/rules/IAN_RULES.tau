@@ -1,0 +1,137 @@
+# IAN Rules for Tau Net Integration
+# Copyright IDI Project
+#
+# These rules define the state transition logic for IAN on Tau Net.
+# This is a TESTABLE Tau specification using proper temporal logic syntax.
+#
+# Transaction Types:
+# - IAN_GOAL_REGISTER: Register a new goal
+# - IAN_LOG_COMMIT: Commit log state periodically
+# - IAN_UPGRADE: Upgrade active policy
+#
+# Design: Each transaction type is an input stream, state updates are output streams.
+
+# =============================================================================
+# IAN_GOAL_REGISTER Rule
+# =============================================================================
+#
+# Preconditions:
+#   - goal_id not already registered
+#   - goal_spec_hash is 32 bytes
+#   - signature is valid (if governance required)
+#
+# Effects:
+#   - ian_registered[goal_id] := true
+#   - ian_active_policy[goal_id] := 0x00...00
+#   - ian_log_root[goal_id] := 0x00...00
+#   - ian_lb_root[goal_id] := 0x00...00
+#   - ian_upgrade_count[goal_id] := 0
+#
+# Pseudo-tau:
+# defs (
+#     ian_goal_register_valid[t] =
+#         tx_type[t] == "IAN_GOAL_REGISTER" &
+#         ian_registered[goal_id][t-1]' &  # not already registered
+#         valid_signature[t];
+#
+#     ian_registered[goal_id][t] =
+#         ian_registered[goal_id][t-1] |
+#         (ian_goal_register_valid[t] & tx_goal_id[t] == goal_id);
+# )
+
+# =============================================================================
+# IAN_LOG_COMMIT Rule
+# =============================================================================
+#
+# Preconditions:
+#   - goal_id is registered
+#   - log_root is 32 bytes
+#   - leaderboard_root is 32 bytes
+#   - prev_commit_hash matches ian_last_commit[goal_id] (chain integrity)
+#   - timestamp > ian_last_commit_ts[goal_id]
+#
+# Effects:
+#   - ian_log_root[goal_id] := log_root
+#   - ian_lb_root[goal_id] := leaderboard_root
+#   - ian_last_commit[goal_id] := tx_hash
+#   - ian_last_commit_ts[goal_id] := timestamp
+#
+# Pseudo-tau:
+# defs (
+#     ian_log_commit_valid[t] =
+#         tx_type[t] == "IAN_LOG_COMMIT" &
+#         ian_registered[goal_id][t-1] &
+#         prev_commit_hash[t] == ian_last_commit[goal_id][t-1];
+#
+#     ian_log_root[goal_id][t] =
+#         (ian_log_commit_valid[t] & tx_goal_id[t] == goal_id) ?
+#             tx_log_root[t] : ian_log_root[goal_id][t-1];
+# )
+
+# =============================================================================
+# IAN_UPGRADE Rule
+# =============================================================================
+#
+# Preconditions:
+#   - goal_id is registered
+#   - pack_hash is 32 bytes
+#   - log_root matches current ian_log_root[goal_id]
+#   - score > 0
+#   - cooldown_ok OR governance_signatures has quorum
+#   - prev_pack_hash matches ian_active_policy[goal_id]
+#
+# Effects:
+#   - ian_active_policy[goal_id] := pack_hash
+#   - ian_upgrade_count[goal_id] := ian_upgrade_count[goal_id] + 1
+#   - ian_last_upgrade_ts[goal_id] := timestamp
+#
+# Pseudo-tau:
+# defs (
+#     ian_cooldown_elapsed[goal_id][t] =
+#         timestamp[t] - ian_last_upgrade_ts[goal_id][t-1] >= UPGRADE_COOLDOWN_MS;
+#
+#     ian_governance_approved[t] =
+#         count(governance_signatures[t]) >= GOVERNANCE_QUORUM;
+#
+#     ian_upgrade_valid[t] =
+#         tx_type[t] == "IAN_UPGRADE" &
+#         ian_registered[goal_id][t-1] &
+#         tx_log_root[t] == ian_log_root[goal_id][t-1] &
+#         tx_prev_pack_hash[t] == ian_active_policy[goal_id][t-1] &
+#         (ian_cooldown_elapsed[goal_id][t] | ian_governance_approved[t]);
+#
+#     ian_active_policy[goal_id][t] =
+#         (ian_upgrade_valid[t] & tx_goal_id[t] == goal_id) ?
+#             tx_pack_hash[t] : ian_active_policy[goal_id][t-1];
+#
+#     ian_upgrade_count[goal_id][t] =
+#         ian_upgrade_count[goal_id][t-1] +
+#         (ian_upgrade_valid[t] & tx_goal_id[t] == goal_id ? 1 : 0);
+# )
+
+# =============================================================================
+# Invariants
+# =============================================================================
+#
+# I1: Upgrade chain integrity
+#     forall t: ian_upgrade_valid[t] =>
+#         tx_prev_pack_hash[t] == ian_active_policy[goal_id][t-1]
+#
+# I2: Log commit chain integrity
+#     forall t: ian_log_commit_valid[t] =>
+#         tx_prev_commit_hash[t] == ian_last_commit[goal_id][t-1]
+#
+# I3: Monotonic upgrade count
+#     forall t: ian_upgrade_count[goal_id][t] >= ian_upgrade_count[goal_id][t-1]
+#
+# I4: Registration immutability
+#     forall t: ian_registered[goal_id][t-1] => ian_registered[goal_id][t]
+
+# =============================================================================
+# Constants
+# =============================================================================
+#
+# UPGRADE_COOLDOWN_MS = 86400000  # 24 hours in milliseconds
+# GOVERNANCE_QUORUM = 3  # Minimum signatures for governance approval
+# MAX_GOAL_ID_LENGTH = 64
+# HASH_SIZE = 32  # bytes

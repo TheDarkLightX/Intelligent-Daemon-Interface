@@ -1,0 +1,227 @@
+# IAN Multi-Node Development Cluster
+# docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # Seed Node (Bootstrap node for peer discovery)
+  # ===========================================================================
+  ian-seed:
+    build:
+      context: ../..
+      dockerfile: idi/ian/deploy/Dockerfile
+      target: development
+    container_name: ian-seed
+    hostname: ian-seed
+    ports:
+      - "8000:8000"   # REST API
+      - "9000:9000"   # P2P TCP
+      - "9001:9001"   # WebSocket
+    environment:
+      - IAN_NODE_TYPE=seed
+      - IAN_LISTEN_HOST=0.0.0.0
+      - IAN_P2P_PORT=9000
+      - IAN_WS_PORT=9001
+      - IAN_API_PORT=8000
+      - IAN_LOG_LEVEL=DEBUG
+      - IAN_GOAL_ID=DEMO_TRADING_AGENT
+    volumes:
+      - ian-seed-data:/app/data
+      - ian-seed-keys:/app/keys
+    networks:
+      - ian-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # Node 1 (Full node)
+  # ===========================================================================
+  ian-node-1:
+    build:
+      context: ../..
+      dockerfile: idi/ian/deploy/Dockerfile
+      target: development
+    container_name: ian-node-1
+    hostname: ian-node-1
+    ports:
+      - "8001:8000"
+      - "9010:9000"
+      - "9011:9001"
+    environment:
+      - IAN_NODE_TYPE=full
+      - IAN_SEED_NODES=ian-seed:9000
+      - IAN_LISTEN_HOST=0.0.0.0
+      - IAN_P2P_PORT=9000
+      - IAN_LOG_LEVEL=DEBUG
+      - IAN_GOAL_ID=DEMO_TRADING_AGENT
+    volumes:
+      - ian-node1-data:/app/data
+      - ian-node1-keys:/app/keys
+    depends_on:
+      ian-seed:
+        condition: service_healthy
+    networks:
+      - ian-network
+
+  # ===========================================================================
+  # Node 2 (Full node)
+  # ===========================================================================
+  ian-node-2:
+    build:
+      context: ../..
+      dockerfile: idi/ian/deploy/Dockerfile
+      target: development
+    container_name: ian-node-2
+    hostname: ian-node-2
+    ports:
+      - "8002:8000"
+      - "9020:9000"
+      - "9021:9001"
+    environment:
+      - IAN_NODE_TYPE=full
+      - IAN_SEED_NODES=ian-seed:9000
+      - IAN_LISTEN_HOST=0.0.0.0
+      - IAN_P2P_PORT=9000
+      - IAN_LOG_LEVEL=DEBUG
+      - IAN_GOAL_ID=DEMO_TRADING_AGENT
+    volumes:
+      - ian-node2-data:/app/data
+      - ian-node2-keys:/app/keys
+    depends_on:
+      ian-seed:
+        condition: service_healthy
+    networks:
+      - ian-network
+
+  # ===========================================================================
+  # Node 3 (Evaluator node)
+  # ===========================================================================
+  ian-evaluator:
+    build:
+      context: ../..
+      dockerfile: idi/ian/deploy/Dockerfile
+      target: development
+    container_name: ian-evaluator
+    hostname: ian-evaluator
+    ports:
+      - "8003:8000"
+      - "9030:9000"
+    environment:
+      - IAN_NODE_TYPE=evaluator
+      - IAN_SEED_NODES=ian-seed:9000
+      - IAN_SERVE_EVALUATIONS=true
+      - IAN_LOG_LEVEL=DEBUG
+      - IAN_GOAL_ID=DEMO_TRADING_AGENT
+    volumes:
+      - ian-evaluator-data:/app/data
+      - ian-evaluator-keys:/app/keys
+    depends_on:
+      ian-seed:
+        condition: service_healthy
+    networks:
+      - ian-network
+
+  # ===========================================================================
+  # Tau Testnet (Mock for development)
+  # ===========================================================================
+  tau-testnet:
+    image: python:3.12-slim
+    container_name: tau-testnet
+    hostname: tau-testnet
+    ports:
+      - "10330:10330"
+    command: >
+      python -c "
+      import asyncio
+      import json
+      
+      async def handle_client(reader, writer):
+          addr = writer.get_extra_info('peername')
+          print(f'Connected: {addr}')
+          while True:
+              try:
+                  data = await reader.readline()
+                  if not data:
+                      break
+                  msg = data.decode().strip()
+                  if msg.startswith('sendtx'):
+                      writer.write(b'SUCCESS: Transaction queued.\\r\\n')
+                      await writer.drain()
+              except:
+                  break
+          writer.close()
+          await writer.wait_closed()
+      
+      async def main():
+          server = await asyncio.start_server(handle_client, '0.0.0.0', 10330)
+          print('Tau mock server running on :10330')
+          async with server:
+              await server.serve_forever()
+      
+      asyncio.run(main())
+      "
+    networks:
+      - ian-network
+
+  # ===========================================================================
+  # Prometheus (Metrics)
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ian-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - ian-network
+
+  # ===========================================================================
+  # Grafana (Dashboards)
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ian-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - ian-network
+
+# ===========================================================================
+# Networks
+# ===========================================================================
+networks:
+  ian-network:
+    driver: bridge
+
+# ===========================================================================
+# Volumes
+# ===========================================================================
+volumes:
+  ian-seed-data:
+  ian-seed-keys:
+  ian-node1-data:
+  ian-node1-keys:
+  ian-node2-data:
+  ian-node2-keys:
+  ian-evaluator-data:
+  ian-evaluator-keys:
+  prometheus-data:
+  grafana-data:

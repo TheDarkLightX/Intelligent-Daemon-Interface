@@ -1,0 +1,103 @@
+# IAN Challenge Rules
+#
+# Validates IAN_CHALLENGE transactions (fraud proofs).
+# Allows anyone to challenge invalid commits during the challenge period.
+#
+# Preconditions:
+#   - Challenge period not expired (within 1440 blocks of commit)
+#   - Challenger has posted challenge bond
+#   - Commit exists and is not already resolved
+#   - Fraud proof is valid (verified by rule logic)
+#
+# Postconditions (if valid):
+#   - Committer bond slashed
+#   - Challenger receives reward
+#   - State reverted to previous commit
+#   - Challenge marked resolved
+#
+# Postconditions (if invalid):
+#   - Challenger bond slashed (griefing prevention)
+#   - Challenge marked resolved
+#
+# Input streams:
+#   i50: operation type (should be "IAN_CHALLENGE" = 5)
+#   i51: goal_id (hash)
+#   i52: challenged_commit_hash (hash of commit being challenged)
+#   i53: fraud_type (1=invalid_log, 2=invalid_lb, 3=skip, 4=order, 5=eval)
+#   i54: commit_height (block height when commit was made)
+#   i55: current_height (current block height)
+#   i56: challenger_bond (amount posted by challenger)
+#   i57: claimed_root (root claimed in commit)
+#   i58: computed_root (root computed from fraud proof)
+#   i59: proof_valid (1 if fraud proof verifies, 0 otherwise)
+#
+# Output streams:
+#   o50: result (1=challenge accepted, 0=rejected)
+#   o51: slash_committer (1=yes, 0=no)
+#   o52: slash_challenger (1=yes, 0=no)
+#   o53: error_code
+
+# --- Validation Rules ---
+
+# 1. Operation type must be IAN_CHALLENGE (5)
+
+# 2. Challenge period must not have expired
+# Challenge period = 1440 blocks
+# (i55[t] - i54[t] <= 1440)
+
+# 3. Challenger must have posted minimum bond
+# Minimum challenge bond = 100 TAU = 100_000_000 base units
+
+# 4. Fraud proof must be valid
+# For INVALID_LOG_ROOT: claimed_root != computed_root
+# (i53[t] = 1) implies (i57[t] != i58[t])
+
+# --- Implementation ---
+
+# Challenge period: 1440 blocks
+# Challenge bond: 100 TAU = 0x5F5E100 base units
+
+# Valid challenge: within period and proof valid
+always (
+  o50[t] = (
+    (
+      (i50[t] = { #x05 }:bv) &                     # IAN_CHALLENGE type
+      ((i55[t] - i54[t]) <= { #x5A0 }:bv) &       # Within challenge period
+      (i56[t] >= { #x5F5E100 }:bv) &              # Challenger bond >= 100 TAU
+      (i59[t] = { #b1 }:bv)                        # Fraud proof valid
+    )
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
+
+# Slash committer if challenge valid
+always (
+  o51[t] = o50[t]  # Slash committer iff challenge accepted
+).
+
+# Slash challenger if challenge invalid (griefing)
+always (
+  o52[t] = (
+    (
+      (i50[t] = { #x05 }:bv) &                     # Is a challenge
+      ((i55[t] - i54[t]) <= { #x5A0 }:bv) &       # Within period
+      (i59[t] = { #b0 }:bv)                        # But proof invalid
+    )
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
+
+# Error codes
+# 1 = challenge period expired
+# 2 = insufficient challenger bond
+# 3 = invalid fraud proof
+always (
+  o53[t] = (
+    ((i55[t] - i54[t]) > { #x5A0 }:bv) ? { #x01 }:bv :
+    (i56[t] < { #x5F5E100 }:bv) ? { #x02 }:bv :
+    (i59[t] = { #b0 }:bv) ? { #x03 }:bv :
+    { #x00 }:bv
+  )
+).

@@ -1,0 +1,92 @@
+# IAN State Streams - State definitions for IAN on Tau Net
+#
+# These streams hold the canonical IAN state on L1.
+# All IAN L2 nodes can read these values for finality.
+#
+# Stream naming convention:
+#   ian_<entity>_<attribute>[<key>]
+#
+# Note: This is pseudocode representing intended Tau Language semantics.
+# Actual syntax may vary based on Tau Language specification.
+
+# =============================================================================
+# Goal Registry
+# =============================================================================
+
+# Goal existence predicate
+# ian_goal_exists(GoalID) := true iff goal is registered
+# Input: i10 = goal_id (string hash)
+# Output: o10 = 1 if exists, 0 otherwise
+
+# Goal metadata stream
+# ian_goals[goal_id] := {spec_hash, name, governance_config, registered_at}
+# Updated on IAN_GOAL_REGISTER transactions
+
+# =============================================================================
+# Per-Goal State
+# =============================================================================
+
+# Log root - MMR root hash
+# ian_log_root[goal_id] := 32-byte hash
+# Updated on IAN_LOG_COMMIT transactions
+# Input: i11 = goal_id, i12 = new_root
+# Output: o11 = previous_root
+
+# Log size - Number of contributions in log
+# ian_log_size[goal_id] := integer
+# Updated alongside log_root
+
+# Leaderboard root - Merkle root of leaderboard
+# ian_lb_root[goal_id] := 32-byte hash
+# Updated on IAN_LOG_COMMIT transactions
+
+# Active policy - Hash of current best policy
+# ian_active_policy[goal_id] := {pack_hash, score, log_index, upgrade_height}
+# Updated on IAN_UPGRADE transactions
+
+# Upgrade count - Number of upgrades for this goal
+# ian_upgrade_count[goal_id] := integer
+# Incremented on each IAN_UPGRADE
+
+# Last commit timestamp
+# ian_last_commit[goal_id] := timestamp_ms
+# Updated on IAN_LOG_COMMIT
+
+# =============================================================================
+# Committer State
+# =============================================================================
+
+# Committer bond - Amount staked by committer
+# ian_committer_bond[committer_pubkey][goal_id] := {amount, status, locked_until}
+# Updated on bond deposit/withdrawal/slash
+
+# Committer slash count
+# ian_committer_slashes[committer_pubkey] := integer
+# Incremented on each slash
+
+# =============================================================================
+# Challenge State
+# =============================================================================
+
+# Pending challenges
+# ian_challenge[commit_hash] := {challenger, fraud_type, submitted_at, resolved}
+# Created on IAN_CHALLENGE, resolved after challenge period
+
+# Challenge bond
+# ian_challenge_bond[commit_hash] := {challenger, amount, returned}
+
+# =============================================================================
+# Constants (configurable via governance)
+# =============================================================================
+
+# Minimum bond required to commit
+# ian_min_committer_bond := 1_000_000_000 (1000 TAU)
+
+# Challenge period duration (blocks)
+# ian_challenge_period := 1440 (~24 hours)
+
+# Slash percentage
+# ian_slash_pct := 50 (50%)
+
+# Upgrade cooldown (blocks)
+# ian_upgrade_cooldown := 1440 (~24 hours)

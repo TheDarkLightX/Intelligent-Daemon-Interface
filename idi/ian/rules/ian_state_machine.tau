@@ -1,0 +1,104 @@
+# IAN State Machine - Tau Net Integration
+# Copyright IDI Project
+#
+# This is a TESTABLE Tau specification for IAN state transitions.
+# Uses proper temporal logic syntax compatible with tau-lang.
+#
+# Transaction Types (input signals):
+# - tx_register: Goal registration transaction
+# - tx_commit: Log commit transaction  
+# - tx_upgrade: Policy upgrade transaction
+#
+# State (output streams):
+# - registered: Goal is registered
+# - active_policy: Current policy hash (as bitvector)
+# - log_committed: Log has been committed
+# - upgrade_count: Number of upgrades (2-bit counter for demo)
+
+# === INPUT STREAMS (Transaction signals) ===
+sbf tx_register = ifile("inputs/tx_register.in").     # 1 = goal register tx
+sbf tx_commit = ifile("inputs/tx_commit.in").         # 1 = log commit tx
+sbf tx_upgrade = ifile("inputs/tx_upgrade.in").       # 1 = upgrade tx
+
+# Validation signals (from external verification)
+sbf valid_signature = ifile("inputs/valid_sig.in").   # 1 = signature valid
+sbf valid_proof = ifile("inputs/valid_proof.in").     # 1 = merkle proof valid
+sbf cooldown_ok = ifile("inputs/cooldown_ok.in").     # 1 = upgrade cooldown elapsed
+sbf governance_ok = ifile("inputs/governance_ok.in"). # 1 = governance approved
+
+# Hash inputs (32-bit truncated for testing)
+bv[32] in_log_root = ifile("inputs/log_root.in").     # New log root
+bv[32] in_pack_hash = ifile("inputs/pack_hash.in").   # New policy hash
+
+# === OUTPUT STREAMS (State) ===
+sbf registered = ofile("outputs/registered.out").     # Goal registered
+sbf log_committed = ofile("outputs/log_committed.out").
+sbf upgraded = ofile("outputs/upgraded.out").         # Upgrade occurred this tick
+
+# State tracking
+bv[32] log_root = ofile("outputs/log_root.out").      # Current log root
+bv[32] active_policy = ofile("outputs/active_policy.out"). # Current policy
+bv[2] upgrade_count = ofile("outputs/upgrade_count.out").  # Upgrade counter
+
+# Chain integrity
+bv[32] last_commit_hash = ofile("outputs/last_commit.out").
+bv[32] prev_policy = ofile("outputs/prev_policy.out").
+
+# === HELPER PREDICATES ===
+# Check if bitvector is zero
+is_zero_32(x) := x = {0}:bv[32].
+is_zero_2(x) := x = {0}:bv[2].
+
+# === IAN STATE MACHINE SPECIFICATION ===
+r (
+    # === GOAL REGISTRATION ===
+    # Once registered, stays registered (monotonic)
+    # Requires valid signature on first registration
+    (registered[t] = registered[t-1] | 
+                     (tx_register[t] & registered[t-1]' & valid_signature[t])) &&
+    
+    # === LOG COMMIT ===
+    # Accept commit if: registered AND valid proof
+    (log_committed[t] = tx_commit[t] & registered[t-1] & valid_proof[t]) &&
+    
+    # Update log root on commit
+    (log_root[t] = log_committed[t] ? in_log_root[t] : log_root[t-1]) &&
+    
+    # Track commit chain (last commit hash = hash of this commit)
+    (last_commit_hash[t] = log_committed[t] ? in_log_root[t] : last_commit_hash[t-1]) &&
+    
+    # === POLICY UPGRADE ===
+    # Accept upgrade if:
+    #   - registered
+    #   - valid proof (log root matches)
+    #   - cooldown elapsed OR governance approved
+    (upgraded[t] = tx_upgrade[t] & 
+                   registered[t-1] & 
+                   valid_proof[t] &
+                   (cooldown_ok[t] | governance_ok[t])) &&
+    
+    # Update active policy on upgrade
+    (active_policy[t] = upgraded[t] ? in_pack_hash[t] : active_policy[t-1]) &&
+    
+    # Track previous policy for chain integrity
+    (prev_policy[t] = upgraded[t] ? active_policy[t-1] : prev_policy[t-1]) &&
+    
+    # Increment upgrade counter (wraps at 4 for 2-bit)
+    (upgrade_count[t] = upgraded[t] ? 
+                        (upgrade_count[t-1] + {1}:bv[2]) : 
+                        upgrade_count[t-1])
+)
+
+# === INVARIANTS (for verification) ===
+#
+# I1: Registration is monotonic
+#     forall t: registered[t-1] => registered[t]
+#
+# I2: Upgrade requires registration
+#     forall t: upgraded[t] => registered[t-1]
+#
+# I3: Commit requires registration
+#     forall t: log_committed[t] => registered[t-1]
+#
+# I4: Upgrade count is monotonically increasing (mod 4)
+#     forall t: upgraded[t] => upgrade_count[t] = (upgrade_count[t-1] + 1) mod 4

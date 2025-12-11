@@ -1,0 +1,331 @@
+# IAN Kubernetes Deployment
+# kubectl apply -f deployment.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ian
+  labels:
+    app.kubernetes.io/name: ian
+    app.kubernetes.io/part-of: ian-network
+
+---
+# ===========================================================================
+# ConfigMap - Shared configuration
+# ===========================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ian-config
+  namespace: ian
+data:
+  IAN_LOG_LEVEL: "INFO"
+  IAN_GOAL_ID: "DEMO_TRADING_AGENT"
+  IAN_P2P_PORT: "9000"
+  IAN_WS_PORT: "9001"
+  IAN_API_PORT: "8000"
+  IAN_TAU_HOST: "tau-testnet.ian.svc.cluster.local"
+  IAN_TAU_PORT: "10330"
+
+---
+# ===========================================================================
+# Secret - Sensitive configuration
+# ===========================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ian-secrets
+  namespace: ian
+type: Opaque
+stringData:
+  IAN_API_KEY: "changeme-in-production"
+  # Add node private keys here (base64 encoded)
+
+---
+# ===========================================================================
+# PersistentVolumeClaim - Node data storage
+# ===========================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ian-node-data
+  namespace: ian
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# ===========================================================================
+# Service - Seed Node (Headless for StatefulSet)
+# ===========================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ian-seed
+  namespace: ian
+  labels:
+    app: ian-seed
+spec:
+  clusterIP: None
+  selector:
+    app: ian-seed
+  ports:
+    - name: api
+      port: 8000
+      targetPort: 8000
+    - name: p2p
+      port: 9000
+      targetPort: 9000
+    - name: websocket
+      port: 9001
+      targetPort: 9001
+
+---
+# ===========================================================================
+# StatefulSet - Seed Nodes
+# ===========================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ian-seed
+  namespace: ian
+spec:
+  serviceName: ian-seed
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ian-seed
+  template:
+    metadata:
+      labels:
+        app: ian-seed
+        ian.network/role: seed
+    spec:
+      containers:
+        - name: ian-node
+          image: ian-node:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: api
+              containerPort: 8000
+            - name: p2p
+              containerPort: 9000
+            - name: websocket
+              containerPort: 9001
+          envFrom:
+            - configMapRef:
+                name: ian-config
+            - secretRef:
+                name: ian-secrets
+          env:
+            - name: IAN_NODE_TYPE
+              value: "seed"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: IAN_NODE_ID
+              value: "$(POD_NAME)"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+
+---
+# ===========================================================================
+# Service - IAN Nodes (LoadBalancer for API)
+# ===========================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ian-api
+  namespace: ian
+  labels:
+    app: ian-node
+spec:
+  type: LoadBalancer
+  selector:
+    app: ian-node
+  ports:
+    - name: api
+      port: 80
+      targetPort: 8000
+    - name: websocket
+      port: 443
+      targetPort: 9001
+
+---
+# ===========================================================================
+# Deployment - IAN Full Nodes
+# ===========================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ian-node
+  namespace: ian
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ian-node
+  template:
+    metadata:
+      labels:
+        app: ian-node
+        ian.network/role: full
+    spec:
+      containers:
+        - name: ian-node
+          image: ian-node:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: api
+              containerPort: 8000
+            - name: p2p
+              containerPort: 9000
+            - name: websocket
+              containerPort: 9001
+          envFrom:
+            - configMapRef:
+                name: ian-config
+            - secretRef:
+                name: ian-secrets
+          env:
+            - name: IAN_NODE_TYPE
+              value: "full"
+            - name: IAN_SEED_NODES
+              value: "ian-seed-0.ian-seed.ian:9000,ian-seed-1.ian-seed.ian:9000,ian-seed-2.ian-seed.ian:9000"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          emptyDir: {}
+
+---
+# ===========================================================================
+# HorizontalPodAutoscaler - Auto-scaling
+# ===========================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ian-node-hpa
+  namespace: ian
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ian-node
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# ===========================================================================
+# NetworkPolicy - Security
+# ===========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ian-network-policy
+  namespace: ian
+spec:
+  podSelector:
+    matchLabels:
+      app: ian-node
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow API access from anywhere
+    - ports:
+        - port: 8000
+        - port: 9001
+    # Allow P2P from within cluster
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: ian-network
+      ports:
+        - port: 9000
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+    # Allow P2P to other nodes
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: ian-network
+      ports:
+        - port: 9000
+    # Allow Tau Net
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 10330

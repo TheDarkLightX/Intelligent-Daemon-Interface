@@ -1,0 +1,540 @@
+openapi: 3.0.3
+info:
+  title: IAN API
+  description: |
+    REST API for the Intelligent Augmentation Network (IAN).
+    
+    IAN provides decentralized coordination for agent contributions with:
+    - Append-only experiment logs (Merkle Mountain Range)
+    - Top-K leaderboards with optional Pareto ranking
+    - Deterministic contribution processing
+    - Tau Net integration for consensus
+    
+    ## Authentication
+    
+    If configured, requests must include the `X-API-Key` header.
+    
+    ## Rate Limiting
+    
+    Per-IP rate limiting is enforced. Default: 100 requests/minute.
+    Returns `429 Too Many Requests` when exceeded.
+  version: 1.0.0
+  contact:
+    name: IDI Project
+  license:
+    name: See repository LICENSE
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Contributions
+    description: Submit and query agent contributions
+  - name: Leaderboard
+    description: View goal leaderboards
+  - name: State
+    description: Query goal state and logs
+  - name: Proofs
+    description: Merkle membership proofs
+  - name: Operations
+    description: Health and metrics endpoints
+
+paths:
+  /api/v1/contribute:
+    post:
+      tags: [Contributions]
+      summary: Submit a contribution
+      description: |
+        Submit an agent contribution for evaluation and potential inclusion
+        in the leaderboard.
+        
+        The contribution goes through:
+        1. Deduplication check
+        2. Structure validation
+        3. Invariant checks
+        4. Proof verification (if required)
+        5. Sandboxed evaluation
+        6. Threshold check
+        7. Log append & leaderboard update
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributionRequest'
+            example:
+              goal_id: "MY_TRADING_GOAL"
+              agent_pack:
+                version: "1.0"
+                parameters: "SGVsbG8gV29ybGQ="
+                metadata:
+                  strategy: "momentum"
+              proofs: {}
+              contributor_id: "alice"
+              seed: 12345
+      responses:
+        '200':
+          description: Contribution processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/leaderboard/{goal_id}:
+    get:
+      tags: [Leaderboard]
+      summary: Get goal leaderboard
+      description: Returns the top-K contributions ranked by score.
+      parameters:
+        - name: goal_id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "MY_TRADING_GOAL"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+          description: Maximum entries to return
+      responses:
+        '200':
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+        '429':
+          description: Rate limited
+
+  /api/v1/status/{goal_id}:
+    get:
+      tags: [State]
+      summary: Get goal status
+      description: Returns statistics about a goal's processing state.
+      parameters:
+        - name: goal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Goal status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '429':
+          description: Rate limited
+
+  /api/v1/log/{goal_id}:
+    get:
+      tags: [State]
+      summary: Get log info
+      description: Returns information about the experiment log.
+      parameters:
+        - name: goal_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Starting log index
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+          description: Maximum entries
+      responses:
+        '200':
+          description: Log info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogResponse'
+        '429':
+          description: Rate limited
+
+  /api/v1/policy/{goal_id}:
+    get:
+      tags: [State]
+      summary: Get active policy
+      description: Returns the current best (active) policy for the goal.
+      parameters:
+        - name: goal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Active policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyResponse'
+        '429':
+          description: Rate limited
+
+  /api/v1/proof/{goal_id}/{log_index}:
+    get:
+      tags: [Proofs]
+      summary: Get membership proof
+      description: |
+        Returns a Merkle membership proof for a contribution in the log.
+        
+        The proof can be used to verify that a contribution exists in the
+        log without trusting the API server.
+      parameters:
+        - name: goal_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: log_index
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: Membership proof
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofResponse'
+        '404':
+          description: Log index out of bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limited
+
+  /health:
+    get:
+      tags: [Operations]
+      summary: Health check
+      description: Returns server health status.
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /metrics:
+    get:
+      tags: [Operations]
+      summary: Prometheus metrics
+      description: Returns metrics in Prometheus text format.
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP ian_contributions_total Total contributions processed
+                # TYPE ian_contributions_total counter
+                ian_contributions_total 1234
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (optional, if configured)
+
+  schemas:
+    ContributionRequest:
+      type: object
+      required:
+        - goal_id
+        - agent_pack
+        - contributor_id
+      properties:
+        goal_id:
+          type: string
+          description: Target goal ID
+        agent_pack:
+          type: object
+          required:
+            - version
+            - parameters
+          properties:
+            version:
+              type: string
+              description: Agent pack version
+            parameters:
+              type: string
+              format: byte
+              description: Base64-encoded agent parameters
+            metadata:
+              type: object
+              additionalProperties: true
+              description: Optional metadata
+        proofs:
+          type: object
+          additionalProperties:
+            type: string
+            format: byte
+          description: Optional proof bundles (base64)
+        contributor_id:
+          type: string
+          description: Contributor identifier
+        seed:
+          type: integer
+          description: Random seed for deterministic evaluation
+
+    ContributionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            accepted:
+              type: boolean
+              description: Whether contribution was accepted
+            reason:
+              type: string
+              description: Acceptance/rejection reason
+            rejection_type:
+              type: string
+              nullable: true
+              enum: [DUPLICATE, INVALID_STRUCTURE, INVARIANT_VIOLATION, PROOF_FAILURE, EVALUATION_TIMEOUT, EVALUATION_ERROR, BELOW_THRESHOLD, VALIDATION_ERROR, RATE_LIMITED, POW_REQUIRED, POW_INVALID]
+            metrics:
+              type: object
+              nullable: true
+              properties:
+                reward:
+                  type: number
+                risk:
+                  type: number
+                complexity:
+                  type: number
+            log_index:
+              type: integer
+              nullable: true
+            score:
+              type: number
+              nullable: true
+        timestamp:
+          type: integer
+          description: Response timestamp (ms)
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            goal_id:
+              type: string
+            entries:
+              type: array
+              items:
+                type: object
+                properties:
+                  rank:
+                    type: integer
+                  pack_hash:
+                    type: string
+                    description: Hex-encoded pack hash
+                  contributor_id:
+                    type: string
+                  score:
+                    type: number
+                  log_index:
+                    type: integer
+                  timestamp_ms:
+                    type: integer
+            total:
+              type: integer
+        timestamp:
+          type: integer
+
+    StatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            goal_id:
+              type: string
+            log_size:
+              type: integer
+            leaderboard_size:
+              type: integer
+            total_contributions:
+              type: integer
+            accepted_contributions:
+              type: integer
+            rejected_contributions:
+              type: integer
+            log_root:
+              type: string
+              description: Hex-encoded log Merkle root
+            leaderboard_root:
+              type: string
+              description: Hex-encoded leaderboard root
+        timestamp:
+          type: integer
+
+    LogResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            goal_id:
+              type: string
+            log_root:
+              type: string
+            log_size:
+              type: integer
+            from_index:
+              type: integer
+            limit:
+              type: integer
+        timestamp:
+          type: integer
+
+    PolicyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            goal_id:
+              type: string
+            active_policy:
+              type: object
+              nullable: true
+              properties:
+                pack_hash:
+                  type: string
+                contributor_id:
+                  type: string
+                score:
+                  type: number
+                log_index:
+                  type: integer
+                timestamp_ms:
+                  type: integer
+        timestamp:
+          type: integer
+
+    ProofResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            goal_id:
+              type: string
+            log_index:
+              type: integer
+            leaf_hash:
+              type: string
+              description: Hex-encoded leaf hash
+            siblings:
+              type: array
+              items:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                  is_right:
+                    type: boolean
+            peaks_bag:
+              type: array
+              items:
+                type: string
+              description: Other MMR peaks for root verification
+            mmr_size:
+              type: integer
+            log_root:
+              type: string
+        timestamp:
+          type: integer
+
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [healthy]
+            timestamp:
+              type: integer
+        timestamp:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        data:
+          type: object
+          nullable: true
+        error:
+          type: string
+          description: Error message
+        timestamp:
+          type: integer

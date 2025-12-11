@@ -1,0 +1,153 @@
+# IAN Economics Rules
+#
+# Manages bonding, slashing, and reward distribution.
+# Economic security ensures rational behavior from committers.
+#
+# Operations:
+#   - BOND_DEPOSIT: Add funds to committer bond
+#   - BOND_WITHDRAW: Request bond withdrawal (with lock period)
+#   - SLASH: Execute slashing (from challenge resolution)
+#   - REWARD: Distribute rewards to challenger
+#
+# Economic Parameters (configurable via governance):
+#   - min_committer_bond: 1000 TAU
+#   - max_committer_bond: 100000 TAU
+#   - challenge_bond: 100 TAU
+#   - slash_percentage: 50%
+#   - slash_escalation: 1.5x per repeat offense
+#   - challenger_reward: 25% of slashed amount
+#   - burn_percentage: 25% of slashed amount
+#   - treasury_percentage: 50% of slashed amount
+#   - bond_lock_period: 7 days (10080 blocks)
+#
+# Input streams (for SLASH operation):
+#   i60: operation type (6=SLASH)
+#   i61: committer_pubkey (hash)
+#   i62: goal_id (hash)
+#   i63: current_bond (integer)
+#   i64: slash_count (integer - previous slashes)
+#   i65: challenger_pubkey (hash)
+#   i66: challenge_bond (integer)
+#
+# Output streams:
+#   o60: result (1=success, 0=failure)
+#   o61: slash_amount (integer)
+#   o62: challenger_reward (integer)
+#   o63: burn_amount (integer)
+#   o64: treasury_amount (integer)
+#   o65: remaining_bond (integer)
+
+# --- Slashing Calculation ---
+
+# Base slash: 50% of bond
+# Escalation: 1.5x per previous slash
+# Max: 100%
+#
+# slash_pct = min(1.0, 0.5 * (1.5 ^ slash_count))
+# slash_amount = bond * slash_pct
+# challenger_reward = slash_amount * 0.25
+# burn_amount = slash_amount * 0.25
+# treasury_amount = slash_amount * 0.50
+
+# Implementation using bitvector arithmetic
+# Simplified: 50% slash without escalation for clarity
+
+# Calculate slash amount (50% of bond)
+always (
+  o61[t] = (
+    (i60[t] = { #x06 }:bv)  # SLASH operation
+    ? (i63[t] >> { #b1 }:bv)  # bond / 2 (50%)
+    : { #b0 }:bv
+  )
+).
+
+# Challenger reward (25% of slash = 12.5% of bond)
+always (
+  o62[t] = (
+    (i60[t] = { #x06 }:bv)
+    ? (o61[t] >> { #x02 }:bv)  # slash / 4 (25%)
+    : { #b0 }:bv
+  )
+).
+
+# Burn amount (25% of slash)
+always (
+  o63[t] = (
+    (i60[t] = { #x06 }:bv)
+    ? (o61[t] >> { #x02 }:bv)  # slash / 4 (25%)
+    : { #b0 }:bv
+  )
+).
+
+# Treasury amount (50% of slash = remaining)
+always (
+  o64[t] = (
+    (i60[t] = { #x06 }:bv)
+    ? (o61[t] - o62[t] - o63[t])  # slash - reward - burn
+    : { #b0 }:bv
+  )
+).
+
+# Remaining bond
+always (
+  o65[t] = (
+    (i60[t] = { #x06 }:bv)
+    ? (i63[t] - o61[t])  # bond - slash
+    : i63[t]
+  )
+).
+
+# Success if operation valid
+always (
+  o60[t] = (
+    (
+      (i60[t] = { #x06 }:bv) &  # SLASH operation
+      (i63[t] > { #b0 }:bv)     # Bond exists
+    )
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
+
+# --- Bond Deposit Validation ---
+# Input streams (for BOND_DEPOSIT, operation 7):
+#   i70: operation type (7=BOND_DEPOSIT)
+#   i71: committer_pubkey
+#   i72: goal_id
+#   i73: deposit_amount
+#   i74: current_bond
+#
+# Output:
+#   o70: result (1=success)
+#   o71: new_bond
+
+# Validate deposit >= 0 and won't exceed max
+# max_bond = 100000 TAU = 100_000_000_000_000
+
+always (
+  o70[t] = (
+    (
+      (i70[t] = { #x07 }:bv) &                              # BOND_DEPOSIT
+      (i73[t] > { #b0 }:bv) &                               # Positive deposit
+      ((i74[t] + i73[t]) <= { #x5AF3107A4000 }:bv)         # Under max (100K TAU)
+    )
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
+
+always (
+  o71[t] = (
+    (o70[t] = { #b1 }:bv)
+    ? (i74[t] + i73[t])
+    : i74[t]
+  )
+).
+
+# --- Bond Withdrawal Request ---
+# Lock period: 7 days = 10080 blocks
+# Operation type 8 = BOND_WITHDRAW_REQUEST
+# Operation type 9 = BOND_WITHDRAW_FINALIZE
+
+# Withdrawal request: lock bond for 10080 blocks
+# Withdrawal finalize: release if lock period elapsed

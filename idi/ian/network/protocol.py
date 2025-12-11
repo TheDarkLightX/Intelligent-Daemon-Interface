@@ -1,0 +1,391 @@
+"""
+IAN P2P Protocol - Message definitions and serialization.
+
+Message Types:
+1. ContributionAnnounce - Gossip new contributions
+2. ContributionRequest/Response - Fetch contribution bodies
+3. StateRequest/Response - Sync coordinator state
+4. PeerExchange - Share peer lists
+
+Wire Format:
+- Length-prefixed JSON for simplicity
+- Future: Protocol Buffers or MessagePack for efficiency
+
+Security:
+- All messages include sender signature
+- Recipients verify signatures before processing
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import time
+from dataclasses import dataclass, field, asdict
+from enum import Enum, auto
+from typing import Any, Dict, List, Optional, Union
+
+from idi.ian.models import GoalID, Contribution, ContributionMeta
+
+
+# =============================================================================
+# Message Types
+# =============================================================================
+
+class MessageType(Enum):
+    """P2P message types."""
+    # Gossip
+    CONTRIBUTION_ANNOUNCE = "contribution_announce"
+    
+    # Request/Response
+    CONTRIBUTION_REQUEST = "contribution_request"
+    CONTRIBUTION_RESPONSE = "contribution_response"
+    STATE_REQUEST = "state_request"
+    STATE_RESPONSE = "state_response"
+    
+    # Discovery
+    PEER_EXCHANGE = "peer_exchange"
+    PING = "ping"
+    PONG = "pong"
+
+
+# =============================================================================
+# Message Base
+# =============================================================================
+
+@dataclass
+class Message:
+    """
+    Base P2P message.
+    
+    All messages include:
+    - type: Message type
+    - sender_id: Node ID of sender
+    - timestamp: Unix timestamp (ms)
+    - nonce: Random nonce for uniqueness
+    - signature: Sender signature (optional)
+    """
+    type: MessageType
+    sender_id: str
+    timestamp: int = field(default_factory=lambda: int(time.time() * 1000))
+    nonce: str = field(default_factory=lambda: base64.b64encode(hashlib.sha256(str(time.time_ns()).encode()).digest()[:8]).decode())
+    signature: Optional[bytes] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": self.type.value,
+            "sender_id": self.sender_id,
+            "timestamp": self.timestamp,
+            "nonce": self.nonce,
+            "signature": base64.b64encode(self.signature).decode() if self.signature else None,
+        }
+    
+    def signing_payload(self) -> bytes:
+        """Get payload for signing (excludes signature)."""
+        data = self.to_dict()
+        data.pop("signature", None)
+        return json.dumps(data, sort_keys=True).encode()
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Message":
+        msg_type = MessageType(data["type"])
+        
+        # Dispatch to specific message type
+        type_map = {
+            MessageType.CONTRIBUTION_ANNOUNCE: ContributionAnnounce,
+            MessageType.CONTRIBUTION_REQUEST: ContributionRequest,
+            MessageType.CONTRIBUTION_RESPONSE: ContributionResponse,
+            MessageType.STATE_REQUEST: StateRequest,
+            MessageType.STATE_RESPONSE: StateResponse,
+            MessageType.PEER_EXCHANGE: PeerExchange,
+            MessageType.PING: Ping,
+            MessageType.PONG: Pong,
+        }
+        
+        msg_cls = type_map.get(msg_type, Message)
+        return msg_cls._from_dict_impl(data)
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "Message":
+        return cls(
+            type=MessageType(data["type"]),
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+        )
+    
+    def to_wire(self) -> bytes:
+        """Serialize to wire format (length-prefixed JSON)."""
+        json_bytes = json.dumps(self.to_dict()).encode()
+        length = len(json_bytes)
+        return length.to_bytes(4, 'big') + json_bytes
+    
+    @classmethod
+    def from_wire(cls, data: bytes) -> "Message":
+        """Deserialize from wire format."""
+        length = int.from_bytes(data[:4], 'big')
+        json_bytes = data[4:4 + length]
+        return cls.from_dict(json.loads(json_bytes))
+    
+    def message_id(self) -> str:
+        """Unique message ID for deduplication."""
+        return f"{self.sender_id}:{self.nonce}"
+
+
+# =============================================================================
+# Contribution Messages
+# =============================================================================
+
+@dataclass
+class ContributionAnnounce(Message):
+    """
+    Announce a new contribution (gossip).
+    
+    Contains metadata only - peers request full body if interested.
+    """
+    type: MessageType = field(default=MessageType.CONTRIBUTION_ANNOUNCE, init=False)
+    
+    goal_id: str = ""
+    contribution_hash: str = ""  # SHA-256 of full contribution
+    contributor_id: str = ""
+    score: Optional[float] = None
+    log_index: Optional[int] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "goal_id": self.goal_id,
+            "contribution_hash": self.contribution_hash,
+            "contributor_id": self.contributor_id,
+            "score": self.score,
+            "log_index": self.log_index,
+        })
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "ContributionAnnounce":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            goal_id=data["goal_id"],
+            contribution_hash=data["contribution_hash"],
+            contributor_id=data["contributor_id"],
+            score=data.get("score"),
+            log_index=data.get("log_index"),
+        )
+    
+    @classmethod
+    def from_contribution(cls, sender_id: str, contrib: Contribution, meta: ContributionMeta) -> "ContributionAnnounce":
+        """Create announce from contribution and metadata."""
+        contrib_bytes = json.dumps(contrib.to_dict(), sort_keys=True).encode()
+        contrib_hash = hashlib.sha256(contrib_bytes).hexdigest()
+        
+        return cls(
+            sender_id=sender_id,
+            goal_id=str(contrib.goal_id),
+            contribution_hash=contrib_hash,
+            contributor_id=contrib.contributor_id,
+            score=meta.score,
+            log_index=meta.log_index,
+        )
+
+
+@dataclass
+class ContributionRequest(Message):
+    """Request full contribution body by hash."""
+    type: MessageType = field(default=MessageType.CONTRIBUTION_REQUEST, init=False)
+    
+    contribution_hash: str = ""
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data["contribution_hash"] = self.contribution_hash
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "ContributionRequest":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            contribution_hash=data["contribution_hash"],
+        )
+
+
+@dataclass
+class ContributionResponse(Message):
+    """Response with full contribution body."""
+    type: MessageType = field(default=MessageType.CONTRIBUTION_RESPONSE, init=False)
+    
+    contribution_hash: str = ""
+    contribution: Optional[Dict[str, Any]] = None  # Serialized Contribution
+    found: bool = True
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "contribution_hash": self.contribution_hash,
+            "contribution": self.contribution,
+            "found": self.found,
+        })
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "ContributionResponse":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            contribution_hash=data["contribution_hash"],
+            contribution=data.get("contribution"),
+            found=data.get("found", True),
+        )
+
+
+# =============================================================================
+# State Sync Messages
+# =============================================================================
+
+@dataclass
+class StateRequest(Message):
+    """Request coordinator state for a goal."""
+    type: MessageType = field(default=MessageType.STATE_REQUEST, init=False)
+    
+    goal_id: str = ""
+    include_log: bool = False
+    include_leaderboard: bool = True
+    from_log_index: int = 0  # For incremental sync
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "goal_id": self.goal_id,
+            "include_log": self.include_log,
+            "include_leaderboard": self.include_leaderboard,
+            "from_log_index": self.from_log_index,
+        })
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "StateRequest":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            goal_id=data["goal_id"],
+            include_log=data.get("include_log", False),
+            include_leaderboard=data.get("include_leaderboard", True),
+            from_log_index=data.get("from_log_index", 0),
+        )
+
+
+@dataclass
+class StateResponse(Message):
+    """Response with coordinator state."""
+    type: MessageType = field(default=MessageType.STATE_RESPONSE, init=False)
+    
+    goal_id: str = ""
+    log_root: str = ""
+    log_size: int = 0
+    leaderboard_root: str = ""
+    leaderboard: Optional[List[Dict[str, Any]]] = None
+    active_policy_hash: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "goal_id": self.goal_id,
+            "log_root": self.log_root,
+            "log_size": self.log_size,
+            "leaderboard_root": self.leaderboard_root,
+            "leaderboard": self.leaderboard,
+            "active_policy_hash": self.active_policy_hash,
+        })
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "StateResponse":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            goal_id=data["goal_id"],
+            log_root=data.get("log_root", ""),
+            log_size=data.get("log_size", 0),
+            leaderboard_root=data.get("leaderboard_root", ""),
+            leaderboard=data.get("leaderboard"),
+            active_policy_hash=data.get("active_policy_hash"),
+        )
+
+
+# =============================================================================
+# Discovery Messages
+# =============================================================================
+
+@dataclass
+class PeerExchange(Message):
+    """Exchange peer lists."""
+    type: MessageType = field(default=MessageType.PEER_EXCHANGE, init=False)
+    
+    peers: List[Dict[str, Any]] = field(default_factory=list)  # List of NodeInfo dicts
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data["peers"] = self.peers
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "PeerExchange":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            peers=data.get("peers", []),
+        )
+
+
+@dataclass
+class Ping(Message):
+    """Ping message for liveness check."""
+    type: MessageType = field(default=MessageType.PING, init=False)
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "Ping":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+        )
+
+
+@dataclass
+class Pong(Message):
+    """Pong response to ping."""
+    type: MessageType = field(default=MessageType.PONG, init=False)
+    
+    ping_nonce: str = ""  # Nonce of the ping being responded to
+    
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data["ping_nonce"] = self.ping_nonce
+        return data
+    
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "Pong":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            ping_nonce=data.get("ping_nonce", ""),
+        )

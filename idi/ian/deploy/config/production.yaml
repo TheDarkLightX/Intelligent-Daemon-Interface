@@ -1,0 +1,162 @@
+# IAN Production Configuration
+# Optimized settings for production deployment
+
+# ===========================================================================
+# Node Settings
+# ===========================================================================
+node:
+  # Node type: seed, full, evaluator, light
+  type: full
+  
+  # Data directory for persistent state
+  data_dir: /app/data
+  
+  # Key directory for identity keys
+  key_dir: /app/keys
+  
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  log_level: INFO
+  
+  # Metrics
+  metrics_enabled: true
+  metrics_port: 9100
+
+# ===========================================================================
+# Network Settings
+# ===========================================================================
+network:
+  # P2P TCP transport
+  p2p:
+    host: 0.0.0.0
+    port: 9000
+    max_peers: 50
+    connection_timeout: 10.0
+    
+  # WebSocket transport
+  websocket:
+    enabled: true
+    host: 0.0.0.0
+    port: 9001
+    max_connections: 1000
+    
+  # REST API
+  api:
+    host: 0.0.0.0
+    port: 8000
+    cors_origins:
+      - "*"
+    rate_limit:
+      enabled: true
+      requests_per_minute: 60
+      
+  # Peer discovery
+  discovery:
+    seed_nodes: []  # Set via environment or override
+    bootstrap_timeout: 30.0
+    peer_exchange_interval: 60.0
+
+# ===========================================================================
+# Consensus Settings
+# ===========================================================================
+consensus:
+  # State verification interval
+  state_check_interval: 30.0
+  
+  # Max contributions before forcing state check
+  max_divergence: 10
+  
+  # Quorum threshold (2/3)
+  quorum_threshold: 0.67
+  
+  # Processing
+  process_interval: 1.0
+  max_batch_size: 50
+
+# ===========================================================================
+# Tau Integration
+# ===========================================================================
+tau:
+  # Tau Net connection
+  host: localhost
+  port: 10330
+  
+  # Commit settings
+  commit_interval: 300  # 5 minutes
+  commit_threshold: 100  # Or after 100 contributions
+  
+  # Transaction settings
+  fee_limit: 1000
+  expiration_seconds: 300
+
+# ===========================================================================
+# Economic Settings
+# ===========================================================================
+economics:
+  # Committer bonds
+  min_committer_bond: 1000000000  # 1000 TAU
+  max_committer_bond: 100000000000  # 100000 TAU
+  
+  # Slashing
+  slash_percentage: 0.50
+  slash_escalation: 1.5
+  
+  # Challenger rewards
+  challenger_reward_percentage: 0.25
+  burn_percentage: 0.25
+  
+  # Lock periods
+  bond_lock_period_seconds: 604800  # 7 days
+  challenge_period_seconds: 3600  # 1 hour
+
+# ===========================================================================
+# Evaluation Settings
+# ===========================================================================
+evaluation:
+  # Serve evaluations (evaluator nodes only)
+  serve_evaluations: false
+  
+  # Quorum settings
+  min_evaluators: 3
+  quorum_threshold: 0.67
+  
+  # Tolerance for agreement
+  reward_tolerance: 0.05
+  risk_tolerance: 0.05
+  
+  # Timeouts
+  evaluation_timeout: 300.0
+
+# ===========================================================================
+# Security Settings
+# ===========================================================================
+security:
+  # API authentication
+  api_key_required: true
+  
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    max_requests_per_second: 100
+    
+  # PoW challenge for new contributors
+  pow_enabled: true
+  pow_difficulty: 20
+  
+  # Input validation
+  max_agent_pack_size: 10485760  # 10 MB
+  max_parameters_size: 1048576  # 1 MB
+
+# ===========================================================================
+# Logging Settings
+# ===========================================================================
+logging:
+  level: INFO
+  format: json
+  output: stdout
+  
+  # Per-module levels
+  modules:
+    idi.ian.coordinator: INFO
+    idi.ian.network: INFO
+    idi.ian.consensus: INFO
+    aiohttp: WARNING

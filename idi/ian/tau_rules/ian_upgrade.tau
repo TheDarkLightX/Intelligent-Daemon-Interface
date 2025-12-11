@@ -1,0 +1,87 @@
+# IAN Upgrade Rules
+#
+# Validates IAN_UPGRADE transactions.
+# Updates the active policy when a new contribution achieves top score.
+#
+# Preconditions:
+#   - Goal must be registered
+#   - New score must be > current active policy score
+#   - log_index must be valid (exists in committed log)
+#   - Governance approval if required
+#   - Cooldown period elapsed since last upgrade
+#
+# Postconditions:
+#   - ian_active_policy[goal_id] updated
+#   - ian_upgrade_count[goal_id] incremented
+#
+# Input streams:
+#   i40: operation type (should be "IAN_UPGRADE" = 4)
+#   i41: goal_id (hash)
+#   i42: pack_hash (32-byte hash of new policy)
+#   i43: new_score (fixed-point integer, scaled by 1e6)
+#   i44: log_index (integer - position in log)
+#   i45: log_root (must match current ian_log_root)
+#   i46: current_score (current active policy score, scaled)
+#   i47: last_upgrade_height (block height of last upgrade)
+#   i48: current_height (current block height)
+#   i49: governance_required (0=no, 1=yes)
+#   i4A: governance_approved (0=no, 1=yes)
+#
+# Output streams:
+#   o40: result (1=success, 0=failure)
+#   o41: error_code (if failure)
+#       1 = score not higher
+#       2 = cooldown not elapsed
+#       3 = governance not approved
+#       4 = invalid log_root
+
+# --- Validation Rules ---
+
+# 1. Operation type must be IAN_UPGRADE (4)
+# (i40[t] = 4)
+
+# 2. New score must be strictly greater than current score
+# (i43[t] > i46[t])
+
+# 3. Cooldown must have elapsed
+# Cooldown = 1440 blocks (~24 hours)
+# (i48[t] - i47[t] >= 1440) OR (governance_approved)
+# i.e., governance can bypass cooldown
+
+# 4. Governance approval if required
+# (!i49[t]) OR (i4A[t])
+
+# --- Implementation ---
+
+# Cooldown period in blocks
+# 1440 blocks ≈ 24 hours at ~60 second blocks
+
+# Valid upgrade: all checks pass
+always (
+  o40[t] = (
+    (
+      (i40[t] = { #x04 }:bv) &                    # IAN_UPGRADE type
+      (i43[t] > i46[t]) &                          # New score > current
+      (
+        ((i48[t] - i47[t]) >= { #x5A0 }:bv) |     # Cooldown (1440) elapsed
+        (i4A[t] = { #b1 }:bv)                      # OR governance approved
+      ) &
+      (
+        (i49[t] = { #b0 }:bv) |                    # Governance not required
+        (i4A[t] = { #b1 }:bv)                      # OR governance approved
+      )
+    )
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
+
+# Error code output
+always (
+  o41[t] = (
+    (i43[t] <= i46[t]) ? { #x01 }:bv :           # Score not higher
+    (((i48[t] - i47[t]) < { #x5A0 }:bv) & (i4A[t] = { #b0 }:bv)) ? { #x02 }:bv :  # Cooldown
+    ((i49[t] = { #b1 }:bv) & (i4A[t] = { #b0 }:bv)) ? { #x03 }:bv :  # Governance
+    { #x00 }:bv                                   # No error
+  )
+).

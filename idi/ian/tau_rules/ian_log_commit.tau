@@ -1,0 +1,79 @@
+# IAN Log Commit Rules
+#
+# Validates IAN_LOG_COMMIT transactions.
+# Committers submit state roots (log_root, lb_root) to L1 for finality.
+#
+# Preconditions:
+#   - Goal must be registered
+#   - Committer must have sufficient bond
+#   - prev_commit_hash must match last commit (or null for first)
+#   - log_size must be >= previous log_size
+#
+# Postconditions:
+#   - ian_log_root[goal_id] updated
+#   - ian_lb_root[goal_id] updated
+#   - ian_last_commit[goal_id] updated
+#   - Challenge period begins
+#
+# Input streams:
+#   i30: operation type (should be "IAN_LOG_COMMIT" = 3)
+#   i31: goal_id (hash)
+#   i32: log_root (32-byte hash)
+#   i33: log_size (integer)
+#   i34: leaderboard_root (32-byte hash)
+#   i35: leaderboard_size (integer)
+#   i36: prev_commit_hash (32-byte hash or 0)
+#   i37: committer_bond (integer - current bond amount)
+#   i38: current_log_size (integer - from chain state)
+#
+# Output streams:
+#   o30: result (1=success, 0=failure)
+#   o31: new_commit_hash (hash of this commit)
+#   o32: error_code (if failure)
+
+# --- Validation Rules ---
+
+# 1. Operation type must be IAN_LOG_COMMIT (3)
+# (i30[t] = 3)
+
+# 2. Goal must exist (checked via ian_goal_exists)
+# Goal existence would be pre-validated
+
+# 3. Committer must have sufficient bond
+# (i37[t] >= ian_min_committer_bond)
+# where ian_min_committer_bond = 1_000_000_000 (1000 TAU)
+
+# 4. New log_size must be >= current log_size (no rollback)
+# (i33[t] >= i38[t])
+
+# 5. prev_commit_hash must match (or be 0 for first commit)
+# This ensures commits are chained
+
+# --- Implementation ---
+
+# Simplified rule checking bond and size constraints
+# Using bitvector arithmetic
+
+# Minimum bond constant (1000 TAU = 1_000_000_000 base units)
+# For simplicity, using scaled value that fits in bitvector
+
+# Valid commit: all checks pass
+# o30[t] = 1 if:
+#   - i30[t] = 3 (operation type)
+#   - i37[t] >= min_bond
+#   - i33[t] >= i38[t] (log size increasing)
+
+always (
+  o30[t] = (
+    (
+      (i30[t] = { #x03 }:bv) &           # IAN_LOG_COMMIT type
+      (i37[t] >= { #x3B9ACA00 }:bv) &    # Bond >= 1B (1000 TAU)
+      (i33[t] >= i38[t])                  # Log size non-decreasing
+    )
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
+
+# Compute commit hash for chaining (conceptual)
+# o31[t] = hash(goal_id || log_root || timestamp)

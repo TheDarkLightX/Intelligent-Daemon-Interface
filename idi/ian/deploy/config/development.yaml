@@ -1,0 +1,99 @@
+# IAN Development Configuration
+# Relaxed settings for local development
+
+# ===========================================================================
+# Node Settings
+# ===========================================================================
+node:
+  type: full
+  data_dir: ./data
+  key_dir: ./keys
+  log_level: DEBUG
+  metrics_enabled: false
+
+# ===========================================================================
+# Network Settings
+# ===========================================================================
+network:
+  p2p:
+    host: 127.0.0.1
+    port: 9000
+    max_peers: 10
+    connection_timeout: 5.0
+    
+  websocket:
+    enabled: true
+    host: 127.0.0.1
+    port: 9001
+    max_connections: 100
+    
+  api:
+    host: 127.0.0.1
+    port: 8000
+    cors_origins:
+      - "*"
+    rate_limit:
+      enabled: false
+      
+  discovery:
+    seed_nodes: []
+    bootstrap_timeout: 10.0
+
+# ===========================================================================
+# Consensus Settings (Faster for testing)
+# ===========================================================================
+consensus:
+  state_check_interval: 10.0
+  max_divergence: 5
+  quorum_threshold: 0.67
+  process_interval: 0.5
+  max_batch_size: 20
+
+# ===========================================================================
+# Tau Integration (Mock)
+# ===========================================================================
+tau:
+  host: localhost
+  port: 10330
+  commit_interval: 60  # 1 minute for testing
+  commit_threshold: 10
+
+# ===========================================================================
+# Economic Settings (Lower for testing)
+# ===========================================================================
+economics:
+  min_committer_bond: 100  # Low for testing
+  max_committer_bond: 10000
+  slash_percentage: 0.50
+  bond_lock_period_seconds: 60  # 1 minute for testing
+  challenge_period_seconds: 60
+
+# ===========================================================================
+# Evaluation Settings
+# ===========================================================================
+evaluation:
+  serve_evaluations: true
+  min_evaluators: 1  # Allow single evaluator for testing
+  quorum_threshold: 0.5
+  evaluation_timeout: 60.0
+
+# ===========================================================================
+# Security Settings (Relaxed for development)
+# ===========================================================================
+security:
+  api_key_required: false
+  rate_limit:
+    enabled: false
+  pow_enabled: false
+  max_agent_pack_size: 104857600  # 100 MB for testing
+
+# ===========================================================================
+# Logging Settings
+# ===========================================================================
+logging:
+  level: DEBUG
+  format: text
+  output: stdout
+  modules:
+    idi.ian: DEBUG
+    aiohttp: INFO

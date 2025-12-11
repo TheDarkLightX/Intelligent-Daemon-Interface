@@ -1,0 +1,71 @@
+# IAN Goal Registration Rules
+#
+# Validates IAN_GOAL_REGISTER transactions.
+# A goal must be registered before any commits or upgrades can occur.
+#
+# Preconditions:
+#   - Goal ID must be unique (not already registered)
+#   - Goal spec hash must be non-zero
+#   - Name must be non-empty
+#
+# Postconditions:
+#   - ian_goals[goal_id] is populated
+#   - ian_goal_exists(goal_id) returns true
+#
+# Input streams:
+#   i20: operation type (should be "IAN_GOAL_REGISTER")
+#   i21: goal_id (32-byte hash as hex string id)
+#   i22: goal_spec_hash (32-byte hash)
+#   i23: name_length (integer)
+#   i24: governance_type (0=none, 1=multisig, 2=token)
+#
+# Output streams:
+#   o20: result (1=success, 0=failure)
+#   o21: error_code (if failure)
+
+# --- Rule: Validate Goal Registration ---
+# Check that goal_id is not already registered
+# Note: This is Tau Language pseudocode
+
+# Check operation type is IAN_GOAL_REGISTER (type code 2)
+# (i20[t] = 2) implies validation proceeds
+
+# Check goal does not already exist
+# Conceptual: !ian_goal_exists(i21[t])
+
+# Check goal_spec_hash is non-zero (32 bytes, not all zeros)
+# (i22[t] != 0)
+
+# Check name has length > 0
+# (i23[t] > 0)
+
+# If all checks pass:
+#   - Update ian_goals[goal_id] := {spec_hash, name, governance, timestamp}
+#   - Set o20[t] = 1
+# Else:
+#   - Set o20[t] = 0
+#   - Set o21[t] = error_code
+
+# Simplified rule (conceptual Tau syntax):
+# always (
+#   (i20[t] = 2) ?  # IAN_GOAL_REGISTER
+#     (
+#       (!ian_goals_exists(i21[t]) && i22[t] != 0 && i23[t] > 0) ?
+#         (o20[t] = 1 && ian_goals_set(i21[t], i22[t], i23[t], i24[t]))
+#       : (o20[t] = 0)
+#     )
+#   : o20[t] = 0
+# ).
+
+# Actual implementation using Tau bitvector arithmetic:
+# Input i20 = operation type as bitvector
+# Output o20 = result as bitvector
+
+# Valid registration: echo 1, else 0
+always (
+  o20[t] = (
+    ((i20[t] = { #x02 }:bv) & (i22[t] != { #b0 }:bv) & (i23[t] > { #b0 }:bv))
+    ? { #b1 }:bv
+    : { #b0 }:bv
+  )
+).
