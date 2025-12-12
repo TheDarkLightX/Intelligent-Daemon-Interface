@@ -1,0 +1,17 @@
+# IDI core helper predicates
+#
+# Include (via cat) before the main `r (...)` block, or copy/paste selectively.
+
+defs
+(
+    idi_buy_en[t] = i5[t] & i7[t] &
+                    o0[t] & o0[t-1]' & o1[t-1]';  # entry + IDI request
+
+    idi_sell_en[t] = i6[t] & o0[t-1] & o0[t]' & o1[t-1];  # exit + IDI request
+
+    idi_emote_pos[t] = o0[t] & i9[t];
+    idi_emote_alert[t] = o0[t] & iA[t];
+    idi_emote_memory[t] = (i9[t] & idi_emote_memory[t-1]') |
+                          (idi_emote_memory[t-1] & iA[t]');
+)
+

@@ -1,0 +1,63 @@
+{
+  "fsm": {
+    "description": "Finite State Machine for position tracking",
+    "template": "(o{output_idx}[t] = i{buy_idx}[t] | (o{output_idx}[t-1] & i{sell_idx}[t]'))",
+    "requires": ["buy_input", "sell_input", "output"]
+  },
+  "counter": {
+    "description": "Toggle counter on event",
+    "template": "(o{output_idx}[t] = (i{event_idx}[t] & o{output_idx}[t-1]') | (i{event_idx}[t]' & o{output_idx}[t-1]))",
+    "requires": ["event_input", "output"]
+  },
+  "accumulator": {
+    "description": "Accumulate values over time",
+    "template": "(o{output_idx}[t] = o{output_idx}[t-1] + i{input_idx}[t]) && (o{output_idx}[0] = {{0}}:bv[{width}])",
+    "requires": ["input", "output", "width"]
+  },
+  "vote": {
+    "description": "Weighted voting from multiple signals",
+    "template": "(o{output_idx}[t] = i{input1_idx}[t] | i{input2_idx}[t] | i{input3_idx}[t])",
+    "requires": ["inputs", "output"]
+  },
+  "passthrough": {
+    "description": "Pass input directly to output",
+    "template": "(o{output_idx}[t] = i{input_idx}[t])",
+    "requires": ["input", "output"]
+  },
+  "majority": {
+    "description": "N-of-M majority voting (e.g., 2-of-3, 3-of-5)",
+    "template": "(o{output_idx}[t] = {majority_expr})",
+    "requires": ["inputs", "output", "threshold", "total"]
+  },
+  "unanimous": {
+    "description": "Unanimous consensus (all inputs must agree)",
+    "template": "(o{output_idx}[t] = {unanimous_expr})",
+    "requires": ["inputs", "output"]
+  },
+  "custom": {
+    "description": "Custom boolean expression",
+    "template": "(o{output_idx}[t] = {expression})",
+    "requires": ["inputs", "output", "expression"]
+  },
+  "quorum": {
+    "description": "Quorum checking (minimum votes required)",
+    "template": "(o{output_idx}[t] = {quorum_expr})",
+    "requires": ["inputs", "output", "threshold"]
+  },
+  "history_state": {
+    "description": "Remember last substate when returning to superstate",
+    "template": "(o{output_idx}[t] = ({superstate_entry} & (history != {0}:bv[{width}]) ? history : ({superstate_entry} ? {initial}:bv[{width}] : {substate})))",
+    "requires": ["substate_input", "superstate_entry", "output", "initial_substate"]
+  },
+  "decomposed_fsm": {
+    "description": "Hierarchical state decomposition into substates",
+    "template": "(o{output_idx}[t] = {fsm_logic})",
+    "requires": ["hierarchy", "transitions", "substate_outputs"]
+  },
+  "script_execution": {
+    "description": "Bitcoin Script execution engine (simplified)",
+    "template": "(o{output_idx}[t] = {stack_input})",
+    "requires": ["script_input", "stack_input", "output"]
+  }
+}
+

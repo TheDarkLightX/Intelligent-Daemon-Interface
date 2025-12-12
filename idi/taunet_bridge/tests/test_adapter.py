@@ -195,3 +195,19 @@ class TestTauNetZkAdapter:
         # Check that adapter has access to IDI modules
         assert hasattr(adapter, "_merkle_builder")
         assert isinstance(adapter._merkle_builder, MerkleTreeBuilder)
+
+    def test_require_proofs_rejects_missing_tx_hash(self, tmp_path):
+        """When require_proofs is enabled, proofs must carry a tx_hash."""
+        config = ZkConfig(enabled=True, proof_system="stub", require_proofs=True)
+        adapter = TauNetZkAdapter(config)
+        
+        # No need to create real files because the adapter should reject
+        # before attempting to read from disk when tx_hash is missing.
+        proof = LocalZkProofBundle(
+            proof_path=Path("/tmp/proof.bin"),
+            receipt_path=Path("/tmp/receipt.json"),
+            manifest_path=Path("/tmp/manifest.json"),
+            tx_hash=None,
+        )
+        
+        assert adapter.verify(proof) is False

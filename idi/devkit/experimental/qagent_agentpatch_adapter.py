@@ -5,8 +5,7 @@ from typing import Any, Mapping
 from idi.devkit.experimental.agent_patch import AgentPatch, AgentPatchMeta
 from idi.devkit.experimental.sape_q_patch import QAgentPatch, QPatchMeta, validate_patch_fast
 
-
-AGENT_TYPE_QTABLE = "q_table"
+AGENT_TYPE_QTABLE = "qtable"
 
 
 def qagent_patch_to_agent_patch(patch: QAgentPatch) -> AgentPatch:

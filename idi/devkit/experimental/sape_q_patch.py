@@ -4,18 +4,9 @@ from dataclasses import dataclass, field
 from statistics import mean, pstdev
 from typing import Callable, Dict, Iterable, List, Sequence, Set, Tuple
 
+from idi.devkit.experimental.qpatch_meta import QPatchMeta
 from idi.devkit.experimental.strike_krr import KnowledgeBase, evaluate_with_krr
 from idi.devkit.experimental.synth_krr_planner import build_kb_for_qpatch
-
-
-@dataclass(frozen=True)
-class QPatchMeta:
-    """Metadata for experimental patches, aligned with AgentPatch schema."""
-
-    name: str
-    description: str
-    version: str
-    tags: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

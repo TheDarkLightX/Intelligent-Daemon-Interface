@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Set, Tuple
 
 from idi.devkit.experimental.agent_patch import AgentPatchMeta
-from idi.devkit.experimental.sape_q_patch import QPatchMeta
+from idi.devkit.experimental.qpatch_meta import QPatchMeta
 from idi.devkit.experimental.strike_krr import (
     KnowledgeBase,
     KnowledgePack,

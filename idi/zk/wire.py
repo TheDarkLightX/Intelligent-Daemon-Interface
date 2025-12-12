@@ -35,6 +35,10 @@ MAX_ATTESTATION_BYTES = 512 * 1024         # 512KB
 MAX_MANIFEST_BYTES = 1 * 1024 * 1024       # 1MB
 MAX_STREAMS_BYTES = 8 * 1024 * 1024        # 8MB
 
+# Decompression size limits (zip bomb protection)
+MAX_UNCOMPRESSED_MEMBER_BYTES = 10 * 1024 * 1024   # 10MB per member
+MAX_UNCOMPRESSED_TOTAL_BYTES = 50 * 1024 * 1024    # 50MB total
+
 
 @dataclass
 class ZkProofBundleLocal:
@@ -337,8 +341,12 @@ def _unpack_streams(pack_bytes: bytes, dest_dir: Path) -> None:
     Args:
         pack_bytes: Compressed tar archive
         dest_dir: Destination directory
+        
+    Raises:
+        ValueError: If archive contains unsafe paths or exceeds size limits.
     """
     buf = io.BytesIO(pack_bytes)
+    total_extracted = 0
     
     with gzip.GzipFile(fileobj=buf, mode="rb") as gz:
         with tarfile.open(fileobj=gz, mode="r") as tar:
@@ -346,6 +354,22 @@ def _unpack_streams(pack_bytes: bytes, dest_dir: Path) -> None:
             for member in tar.getmembers():
                 if member.name.startswith("/") or ".." in member.name:
                     raise ValueError(f"Unsafe path in archive: {member.name}")
+                
+                # Security: Check individual member size (zip bomb protection)
+                if member.size > MAX_UNCOMPRESSED_MEMBER_BYTES:
+                    raise ValueError(
+                        f"Member '{member.name}' exceeds size limit "
+                        f"({member.size} > {MAX_UNCOMPRESSED_MEMBER_BYTES})"
+                    )
+                
+                # Security: Check cumulative size
+                total_extracted += member.size
+                if total_extracted > MAX_UNCOMPRESSED_TOTAL_BYTES:
+                    raise ValueError(
+                        f"Total extracted size exceeds limit "
+                        f"({total_extracted} > {MAX_UNCOMPRESSED_TOTAL_BYTES})"
+                    )
+                
                 if not member.name.endswith(".in"):
                     continue  # Skip non-.in files
                 
@@ -365,15 +389,35 @@ def _unpack_streams_to_dict(pack_bytes: bytes) -> Dict[str, bytes]:
         
     Returns:
         Dictionary of filename -> content
+        
+    Raises:
+        ValueError: If archive contains unsafe paths or exceeds size limits.
     """
     result: Dict[str, bytes] = {}
     buf = io.BytesIO(pack_bytes)
+    total_extracted = 0
     
     with gzip.GzipFile(fileobj=buf, mode="rb") as gz:
         with tarfile.open(fileobj=gz, mode="r") as tar:
             for member in tar.getmembers():
                 if member.name.startswith("/") or ".." in member.name:
                     raise ValueError(f"Unsafe path in archive: {member.name}")
+                
+                # Security: Check individual member size (zip bomb protection)
+                if member.size > MAX_UNCOMPRESSED_MEMBER_BYTES:
+                    raise ValueError(
+                        f"Member '{member.name}' exceeds size limit "
+                        f"({member.size} > {MAX_UNCOMPRESSED_MEMBER_BYTES})"
+                    )
+                
+                # Security: Check cumulative size
+                total_extracted += member.size
+                if total_extracted > MAX_UNCOMPRESSED_TOTAL_BYTES:
+                    raise ValueError(
+                        f"Total extracted size exceeds limit "
+                        f"({total_extracted} > {MAX_UNCOMPRESSED_TOTAL_BYTES})"
+                    )
+                
                 if not member.isfile():
                     continue
                 

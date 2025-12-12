@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from idi.zk.commitment import compute_commitment_bytes
-from idi.zk.verification import VerificationErrorCode, VerificationReport, validate_path_safety
+from idi.zk.verification import VerificationErrorCode, VerificationReport
 
 if TYPE_CHECKING:
     from idi.zk.wire import ZkProofBundleLocal, ZkProofBundleWireV1

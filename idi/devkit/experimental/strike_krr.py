@@ -19,6 +19,9 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 Atom = Tuple[str, Tuple[Any, ...]]
 
+# Iteration bound for closure computation (prevents infinite loops)
+MAX_CLOSURE_ITERATIONS = 1000
+
 
 @dataclass(frozen=True)
 class Constraint:
@@ -315,7 +318,10 @@ def build_risk_conservative_pack(
     # Learning rate too high for conservative profile.
     rules.append(
         Rule(
-            head=("violates_constraint", ("?p", "risk_lr", "learning rate too high")),
+            head=(
+                "violates_constraint",
+                ("?p", "risk_lr", "learning_rate too high for conservative profile"),
+            ),
             body=(("param_value", ("?p", "learning_rate", "?lr")),),
             constraints=(Constraint("lr_max", lr_constraint),),
         )
@@ -491,7 +497,15 @@ def run_strike_closure(
 
     active = _active_rules(kb, active_profiles)
     changed = True
+    iterations = 0
+
     while changed:
+        iterations += 1
+        if iterations > MAX_CLOSURE_ITERATIONS:
+            raise RuntimeError(
+                f"STRIKE closure exceeded {MAX_CLOSURE_ITERATIONS} iterations "
+                "(possible cyclic or divergent rules)"
+            )
         changed = False
         for rule in active:
             new_atoms = _apply_rule_once(rule, facts, params)

@@ -16,6 +16,13 @@ from idi.devkit.experimental.auto_qagent import (
     _aggregate_weighted_metrics,
     _compute_env_weights,
     _compute_eval_episodes,
+    _parse_eval_mode,
+    _parse_objectives,
+    _parse_outputs,
+    _parse_packs,
+    _parse_profiles,
+    _parse_training,
+    derive_synth_config,
     run_auto_qagent_synth,
     run_auto_qagent_synth_agentpatches,
 )
@@ -193,3 +200,64 @@ def test_auto_qagent_real_mode_agentpatch_export() -> None:
     for ap in patches:
         assert isinstance(ap, AgentPatch)
         validate_agent_patch(ap)
+
+
+def test_helper_parsers_match_from_dict_structures() -> None:
+    """Helper parsers should be consistent with from_dict.
+
+    This pins the semantics so refactors can safely split logic without
+    changing behavior.
+    """
+    raw = {
+        "agent_family": "qagent",
+        "profiles": ["conservative", "research"],
+        "packs": {"include": ["qagent_base"], "extra": ["risk_conservative"]},
+        "objectives": [
+            {"id": "avg_reward", "direction": "maximize"},
+            {"id": "risk_stability", "direction": "maximize"},
+        ],
+        "training": {
+            "envs": [
+                {"id": "env_a", "weight": 1.0},
+                {"id": "env_b", "weight": 3.0},
+            ],
+            "budget": {
+                "max_agents": 64,
+                "max_generations": 10,
+                "max_episodes_per_agent": 1000,
+                "wallclock_hours": 10.0,
+            },
+        },
+        "eval_mode": "synthetic",
+        "outputs": {"num_final_agents": 5, "bundle_format": "wire_v1"},
+    }
+
+    spec = AutoQAgentGoalSpec.from_dict(raw)
+
+    assert _parse_packs(raw) == spec.packs
+    assert _parse_objectives(raw) == spec.objectives
+    assert _parse_training(raw) == spec.training
+    assert _parse_outputs(raw) == spec.outputs
+    assert _parse_profiles(raw) == spec.profiles
+    assert _parse_eval_mode(raw) == spec.eval_mode
+
+
+def test_derive_synth_config_scales_with_budget() -> None:
+    """Synth config should scale with budget but remain bounded."""
+    small_budget = TrainingBudgetSpec(max_agents=4, max_generations=2)
+    medium_budget = TrainingBudgetSpec(max_agents=64, max_generations=10)
+    huge_budget = TrainingBudgetSpec(max_agents=10**6, max_generations=1000)
+
+    small_cfg = derive_synth_config(small_budget)
+    medium_cfg = derive_synth_config(medium_budget)
+    huge_cfg = derive_synth_config(huge_budget)
+
+    # Beam width should be at least 2 and capped to a small constant.
+    assert small_cfg.beam_width >= 2
+    assert medium_cfg.beam_width >= small_cfg.beam_width
+    assert huge_cfg.beam_width == medium_cfg.beam_width
+
+    # Depth should be at least 1 and capped to a small constant.
+    assert small_cfg.max_depth >= 1
+    assert medium_cfg.max_depth >= small_cfg.max_depth
+    assert huge_cfg.max_depth == medium_cfg.max_depth

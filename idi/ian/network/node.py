@@ -27,33 +27,19 @@ from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from .protocol import Message
 
-# Use cryptography library if available, otherwise fallback to hashlib-based signing
-# SECURITY: The fallback is INSECURE and should NEVER be used in production!
+# Ed25519 cryptography is a HARD REQUIREMENT - no fallback
+# This ensures all environments use real cryptographic signatures
 try:
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ed25519
     from cryptography.exceptions import InvalidSignature
-    HAS_CRYPTO = True
-except ImportError:
-    HAS_CRYPTO = False
-    import warnings
-    
-    # Check if we're in production mode - if so, refuse to run without crypto
-    _production_mode = os.environ.get("IAN_PRODUCTION", "").lower() in ("1", "true", "yes")
-    if _production_mode:
-        raise ImportError(
-            "SECURITY ERROR: cryptography library is required for production mode. "
-            "Install with: pip install cryptography"
-        )
-    
-    warnings.warn(
-        "⚠️  SECURITY WARNING: cryptography library not available. "
-        "Node identity will use INSECURE HMAC fallback that provides NO real signatures. "
-        "This is acceptable ONLY for local development/testing. "
-        "For production, install 'cryptography': pip install cryptography",
-        UserWarning,
-        stacklevel=2,
-    )
+    HAS_CRYPTO = True  # Always True now - kept for backwards compatibility
+except ImportError as e:
+    raise ImportError(
+        "SECURITY ERROR: The 'cryptography' library is required for Ed25519 signatures. "
+        "Install with: pip install cryptography\n"
+        "This is a hard requirement for all environments (dev, test, prod)."
+    ) from e
 
 
 # =============================================================================
@@ -163,13 +149,6 @@ class NodeIdentity:
             private_key: 32-byte Ed25519 private key (generates new if None)
             public_key: 32-byte Ed25519 public key (derived from private if None)
         """
-        if HAS_CRYPTO:
-            self._init_with_crypto(private_key, public_key)
-        else:
-            self._init_fallback(private_key, public_key)
-    
-    def _init_with_crypto(self, private_key: Optional[bytes], public_key: Optional[bytes]):
-        """Initialize using cryptography library."""
         if private_key:
             self._private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key)
             self._public_key = self._private_key.public_key()
@@ -186,21 +165,6 @@ class NodeIdentity:
         )
         
         # Node ID = first 20 bytes of SHA-256(public_key), hex encoded
-        self._node_id = hashlib.sha256(self._public_key_bytes).hexdigest()[:40]
-    
-    def _init_fallback(self, private_key: Optional[bytes], public_key: Optional[bytes]):
-        """Fallback initialization without cryptography library."""
-        if private_key:
-            self._private_key_bytes = private_key
-        else:
-            self._private_key_bytes = secrets.token_bytes(32)
-        
-        # Derive "public key" as hash of private key (not real Ed25519)
-        self._public_key_bytes = hashlib.sha256(self._private_key_bytes).digest()
-        self._private_key = self._private_key_bytes
-        self._public_key = self._public_key_bytes
-        
-        # Node ID
         self._node_id = hashlib.sha256(self._public_key_bytes).hexdigest()[:40]
     
     @property
@@ -233,12 +197,7 @@ class NodeIdentity:
         if not self.has_private_key():
             raise ValueError("Cannot sign without private key")
         
-        if HAS_CRYPTO:
-            return self._private_key.sign(data)
-        else:
-            # Fallback: HMAC-SHA256 (not a real signature, for testing only)
-            import hmac
-            return hmac.new(self._private_key_bytes, data, hashlib.sha256).digest() * 2
+        return self._private_key.sign(data)
     
     def verify(self, data: bytes, signature: bytes) -> bool:
         """
@@ -251,17 +210,11 @@ class NodeIdentity:
         Returns:
             True if valid, False otherwise
         """
-        if HAS_CRYPTO:
-            try:
-                self._public_key.verify(signature, data)
-                return True
-            except InvalidSignature:
-                return False
-        else:
-            # Fallback verification
-            import hmac
-            expected = hmac.new(self._private_key_bytes, data, hashlib.sha256).digest() * 2
-            return hmac.compare_digest(expected, signature)
+        try:
+            self._public_key.verify(signature, data)
+            return True
+        except InvalidSignature:
+            return False
     
     def sign_message(self, message: "Message") -> None:
         if not self.has_private_key():
@@ -273,15 +226,11 @@ class NodeIdentity:
     @classmethod
     def verify_with_public_key(cls, public_key: bytes, data: bytes, signature: bytes) -> bool:
         """Verify signature using a public key."""
-        if HAS_CRYPTO:
-            try:
-                pk = ed25519.Ed25519PublicKey.from_public_bytes(public_key)
-                pk.verify(signature, data)
-                return True
-            except (InvalidSignature, Exception):
-                return False
-        else:
-            # Fallback: cannot verify without cryptography support; treat as invalid
+        try:
+            pk = ed25519.Ed25519PublicKey.from_public_bytes(public_key)
+            pk.verify(signature, data)
+            return True
+        except (InvalidSignature, Exception):
             return False
     
     def create_node_info(
@@ -322,14 +271,11 @@ class NodeIdentity:
         
         path.parent.mkdir(parents=True, exist_ok=True)
         
-        if HAS_CRYPTO:
-            private_bytes = self._private_key.private_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PrivateFormat.Raw,
-                encryption_algorithm=serialization.NoEncryption(),
-            )
-        else:
-            private_bytes = self._private_key_bytes
+        private_bytes = self._private_key.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
         
         # Save as JSON with base64-encoded key
         data = {

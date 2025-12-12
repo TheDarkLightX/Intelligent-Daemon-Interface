@@ -1,0 +1,50 @@
+[
+  {
+    "name": "macro-regime",
+    "config": "idi/devkit/configs/regime_macro.json",
+    "out": "idi/artifacts/regime_macro",
+    "install_inputs": "idi/specs/V38_Minimal_Core/inputs",
+    "metadata": [
+      "layer=macro",
+      "purpose=regime_selector"
+    ]
+  },
+  {
+    "name": "micro-regime",
+    "config": "idi/devkit/configs/regime_micro.json",
+    "out": "idi/artifacts/regime_micro",
+    "metadata": [
+      "layer=micro",
+      "purpose=action_refinement"
+    ]
+  },
+  {
+    "name": "emote-balanced",
+    "config": "idi/devkit/configs/emote_balanced.json",
+    "out": "idi/artifacts/emote_balanced",
+    "metadata": [
+      "layer=emote",
+      "purpose=communication"
+    ]
+  },
+  {
+    "name": "layered-demo",
+    "config": "idi/devkit/configs/regime_macro.json",
+    "out": "idi/artifacts/layered_demo",
+    "install_inputs": "idi/specs/Q_Layered_Strategy/inputs",
+    "metadata": [
+      "layer=weights",
+      "purpose=layered_strategy_spec"
+    ]
+  },
+  {
+    "name": "conversational-macro",
+    "config": "idi/devkit/configs/conversational_macro.json",
+    "out": "idi/artifacts/conversational_macro",
+    "metadata": [
+      "layer=conversational",
+      "purpose=tile_comm_emote"
+    ]
+  }
+]
+

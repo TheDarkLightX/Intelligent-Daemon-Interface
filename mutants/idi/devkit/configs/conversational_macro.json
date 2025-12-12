@@ -1,0 +1,29 @@
+{
+  "episodes": 96,
+  "episode_length": 64,
+  "quantizer": {
+    "price_buckets": 4,
+    "volume_buckets": 4,
+    "trend_buckets": 4,
+    "scarcity_buckets": 8,
+    "mood_buckets": 4
+  },
+  "rewards": {
+    "pnl": 0.9,
+    "scarcity_alignment": 0.5,
+    "ethics_bonus": 0.8,
+    "communication_clarity": 0.3
+  },
+  "emote": {
+    "linger_ticks": 3
+  },
+  "tile_coder": {
+    "num_tilings": 4,
+    "tile_sizes": [4, 4, 4, 4, 4],
+    "offsets": [0, 1, 2, 3, 0]
+  },
+  "communication": {
+    "actions": ["silent", "positive", "alert", "persist"]
+  }
+}
+

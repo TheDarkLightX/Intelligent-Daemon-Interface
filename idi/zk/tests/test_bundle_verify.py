@@ -229,6 +229,22 @@ class TestVerifyProofBundleWire:
         assert report.success is False
         assert report.error_code == VerificationErrorCode.COMMITMENT_MISMATCH
 
+    def test_invalid_attestation_in_wire(self, valid_local_bundle):
+        """Invalid attestation JSON in wire bundle fails with RECEIPT_PARSE_ERROR."""
+        import base64
+        
+        wire = valid_local_bundle.to_wire()
+        # Corrupt attestation so JSON parsing fails
+        wire.attestation_json_b64 = base64.b64encode(b"not json").decode()
+        
+        report = verify_proof_bundle_wire(
+            wire,
+            require_zk=False,
+        )
+        
+        assert report.success is False
+        assert report.error_code == VerificationErrorCode.RECEIPT_PARSE_ERROR
+
 
 class TestVerifyCommitmentOnly:
     """Tests for commitment-only verification."""

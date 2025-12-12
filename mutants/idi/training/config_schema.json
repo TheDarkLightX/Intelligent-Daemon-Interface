@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IDI/IAN Training Configuration Schema",
+  "description": "Shared schema for Python and Rust training configurations",
+  "type": "object",
+  "required": ["episodes", "episode_length", "discount", "learning_rate", "exploration_decay", "quantizer", "rewards"],
+  "properties": {
+    "episodes": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 128,
+      "description": "Number of training episodes"
+    },
+    "episode_length": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 64,
+      "description": "Steps per episode"
+    },
+    "discount": {
+      "type": "number",
+      "minimum": 0.0,
+      "exclusiveMinimum": true,
+      "maximum": 1.0,
+      "default": 0.92,
+      "description": "Discount factor γ ∈ (0, 1]"
+    },
+    "learning_rate": {
+      "type": "number",
+      "minimum": 0.0,
+      "exclusiveMinimum": true,
+      "maximum": 1.0,
+      "default": 0.2,
+      "description": "Learning rate α ∈ (0, 1]"
+    },
+    "exploration_decay": {
+      "type": "number",
+      "minimum": 0.0,
+      "exclusiveMinimum": true,
+      "maximum": 1.0,
+      "default": 0.995,
+      "description": "Exploration decay rate ∈ (0, 1]"
+    },
+    "quantizer": {
+      "type": "object",
+      "required": ["price_buckets", "volume_buckets", "trend_buckets", "scarcity_buckets", "mood_buckets"],
+      "properties": {
+        "price_buckets": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "Number of price quantization buckets"
+        },
+        "volume_buckets": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "Number of volume quantization buckets"
+        },
+        "trend_buckets": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "Number of trend quantization buckets"
+        },
+        "scarcity_buckets": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 8,
+          "description": "Number of scarcity quantization buckets"
+        },
+        "mood_buckets": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "Number of mood quantization buckets"
+        }
+      },
+      "additionalProperties": false
+    },
+    "rewards": {
+      "type": "object",
+      "required": ["pnl", "scarcity_alignment", "ethics_bonus", "communication_clarity"],
+      "properties": {
+        "pnl": {
+          "type": "number",
+          "default": 1.0,
+          "description": "PnL reward weight"
+        },
+        "scarcity_alignment": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Scarcity alignment weight"
+        },
+        "ethics_bonus": {
+          "type": "number",
+          "default": 0.75,
+          "description": "Ethics bonus weight"
+        },
+        "communication_clarity": {
+          "type": "number",
+          "default": 0.2,
+          "description": "Communication clarity weight"
+        }
+      },
+      "additionalProperties": false
+    },
+    "emote": {
+      "type": "object",
+      "properties": {
+        "palette": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Mood bucket to emoji/text mapping"
+        },
+        "linger_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 2,
+          "description": "Emotion persistence duration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "layers": {
+      "type": "object",
+      "properties": {
+        "emit_weight_streams": {
+          "type": "boolean",
+          "default": true,
+          "description": "Emit layer weight streams for layered specs"
+        },
+        "momentum_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.6,
+          "description": "Momentum layer activation threshold"
+        },
+        "contrarian_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.3,
+          "description": "Contrarian layer activation threshold"
+        },
+        "trend_favors_even": {
+          "type": "boolean",
+          "default": true,
+          "description": "Trend layer favors even price buckets"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tile_coder": {
+      "type": "object",
+      "properties": {
+        "num_tilings": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Number of tilings for state abstraction"
+        },
+        "tile_sizes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Tile sizes per dimension"
+        },
+        "offsets": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Tile offsets per dimension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "communication": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["silent", "positive", "alert", "persist"],
+          "description": "Communication action vocabulary"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

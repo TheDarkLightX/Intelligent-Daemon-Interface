@@ -32,7 +32,6 @@ from idi.devkit.experimental.sape_q_patch import (
     evaluate_patch_real,
     evaluate_patch_stub,
 )
-from idi.synth import AgentPatch, qagent_patch_to_agent_patch
 
 
 DEFAULT_REAL_EVAL_EPISODES = 16
@@ -164,6 +163,104 @@ class PackSelectionSpec:
     extra: Tuple[str, ...] = ()
 
 
+def _parse_packs(data: Dict[str, Any]) -> PackSelectionSpec:
+    """Parse packs section from raw goal spec data."""
+    packs = data.get("packs", {}) or {}
+    include_raw = list(packs.get("include", ()) or ())[:MAX_PACKS]
+    extra_raw = list(packs.get("extra", ()) or ())[:MAX_PACKS]
+    return PackSelectionSpec(
+        include=tuple(str(p)[:MAX_STRING_LENGTH] for p in include_raw),
+        extra=tuple(str(p)[:MAX_STRING_LENGTH] for p in extra_raw),
+    )
+
+
+def _parse_objectives(data: Dict[str, Any]) -> Tuple[ObjectiveSpec, ...]:
+    """Parse objectives section from raw goal spec data."""
+    objectives_raw = list(data.get("objectives", []) or [])[:MAX_OBJECTIVES]
+    objectives_list: List[ObjectiveSpec] = []
+    for o in objectives_raw:
+        if not isinstance(o, dict):
+            continue
+        try:
+            direction = _validated_direction(o.get("direction", "maximize"))
+        except ValueError:
+            # Skip objectives with invalid direction
+            continue
+        objectives_list.append(
+            ObjectiveSpec(
+                id=str(o.get("id", ""))[:MAX_STRING_LENGTH],
+                direction=direction,
+            )
+        )
+    return tuple(objectives_list)
+
+
+def _parse_training(data: Dict[str, Any]) -> TrainingSpec:
+    """Parse training section from raw goal spec data."""
+    training_cfg = (data.get("training", {}) or {})
+
+    envs_raw = list(training_cfg.get("envs", []) or [])[:MAX_ENVS]
+    envs = tuple(
+        TrainingEnvSpec(
+            id=str(e.get("id", ""))[:MAX_STRING_LENGTH],
+            weight=_clamp_float(float(e.get("weight", 1.0)), 0.0, 1000.0),
+        )
+        for e in envs_raw
+        if isinstance(e, dict)
+    )
+
+    budget_cfg = training_cfg.get("budget", {}) or {}
+    budget = TrainingBudgetSpec(
+        max_agents=_clamp(int(budget_cfg.get("max_agents", 16)), 1, MAX_AGENTS_LIMIT),
+        max_generations=_clamp(
+            int(budget_cfg.get("max_generations", 4)),
+            1,
+            MAX_GENERATIONS_LIMIT,
+        ),
+        max_episodes_per_agent=_clamp(
+            int(budget_cfg.get("max_episodes_per_agent", 512)),
+            1,
+            MAX_EPISODES_LIMIT,
+        ),
+        wallclock_hours=_clamp_float(
+            float(budget_cfg.get("wallclock_hours", 1.0)),
+            0.01,
+            MAX_WALLCLOCK_HOURS,
+        ),
+    )
+
+    curriculum_cfg = training_cfg.get("curriculum", {}) or {}
+    curriculum_enabled = bool(curriculum_cfg.get("enabled", True))
+
+    return TrainingSpec(
+        envs=envs,
+        curriculum_enabled=curriculum_enabled,
+        budget=budget,
+    )
+
+
+def _parse_outputs(data: Dict[str, Any]) -> OutputSpec:
+    """Parse outputs section from raw goal spec data."""
+    outputs_cfg = data.get("outputs", {}) or {}
+    num_final_agents = _clamp(int(outputs_cfg.get("num_final_agents", 3)), 1, MAX_AGENTS_LIMIT)
+    bundle_format = str(outputs_cfg.get("bundle_format", "wire_v1"))[:MAX_STRING_LENGTH]
+    return OutputSpec(num_final_agents=num_final_agents, bundle_format=bundle_format)
+
+
+def _parse_profiles(data: Dict[str, Any]) -> Tuple[str, ...]:
+    """Parse profiles section from raw goal spec data."""
+    profiles_raw = list(data.get("profiles", ()) or ())[:MAX_PROFILES]
+    return tuple(str(p)[:MAX_STRING_LENGTH] for p in profiles_raw)
+
+
+def _parse_eval_mode(data: Dict[str, Any]) -> EvalMode:
+    """Parse eval_mode from raw goal spec data."""
+    eval_mode_str = str(data.get("eval_mode", "synthetic"))
+    if eval_mode_str not in ("synthetic", "real"):
+        raise ValueError(f"Unsupported eval_mode: {eval_mode_str}")
+    return eval_mode_str  # type: ignore[return-value]
+
+
 @dataclass(frozen=True)
 class AutoQAgentGoalSpec:
     """Top-level goal/constraint specification for Auto-QAgent.
@@ -184,86 +281,37 @@ class AutoQAgentGoalSpec:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AutoQAgentGoalSpec":
-        # Packs (bounded)
-        packs = data.get("packs", {}) or {}
-        include_raw = list(packs.get("include", ()) or ())[:MAX_PACKS]
-        extra_raw = list(packs.get("extra", ()) or ())[:MAX_PACKS]
-        packs_spec = PackSelectionSpec(
-            include=tuple(str(p)[:MAX_STRING_LENGTH] for p in include_raw),
-            extra=tuple(str(p)[:MAX_STRING_LENGTH] for p in extra_raw),
-        )
-
-        # Objectives (bounded with direction validation)
-        objectives_raw = list(data.get("objectives", []) or [])[:MAX_OBJECTIVES]
-        objectives_list: List[ObjectiveSpec] = []
-        for o in objectives_raw:
-            if not isinstance(o, dict):
-                continue
-            try:
-                direction = _validated_direction(o.get("direction", "maximize"))
-            except ValueError:
-                # Skip objectives with invalid direction
-                continue
-            objectives_list.append(
-                ObjectiveSpec(
-                    id=str(o.get("id", ""))[:MAX_STRING_LENGTH],
-                    direction=direction,
-                )
-            )
-        objectives = tuple(objectives_list)
-
-        # Environments (bounded)
-        envs_raw = list(
-            (data.get("training", {}) or {}).get("envs", []) or []
-        )[:MAX_ENVS]
-        envs = tuple(
-            TrainingEnvSpec(
-                id=str(e.get("id", ""))[:MAX_STRING_LENGTH],
-                weight=_clamp_float(float(e.get("weight", 1.0)), 0.0, 1000.0),
-            )
-            for e in envs_raw
-            if isinstance(e, dict)
-        )
-
-        # Budget (clamped)
-        budget_cfg = (data.get("training", {}) or {}).get("budget", {}) or {}
-        budget = TrainingBudgetSpec(
-            max_agents=_clamp(int(budget_cfg.get("max_agents", 16)), 1, MAX_AGENTS_LIMIT),
-            max_generations=_clamp(int(budget_cfg.get("max_generations", 4)), 1, MAX_GENERATIONS_LIMIT),
-            max_episodes_per_agent=_clamp(int(budget_cfg.get("max_episodes_per_agent", 512)), 1, MAX_EPISODES_LIMIT),
-            wallclock_hours=_clamp_float(float(budget_cfg.get("wallclock_hours", 1.0)), 0.01, MAX_WALLCLOCK_HOURS),
-        )
-
-        training = TrainingSpec(
-            envs=envs,
-            curriculum_enabled=bool((data.get("training", {}) or {}).get("curriculum", {}).get("enabled", True)),
-            budget=budget,
-        )
-
-        # Outputs (clamped)
-        outputs_cfg = data.get("outputs", {}) or {}
-        outputs = OutputSpec(
-            num_final_agents=_clamp(int(outputs_cfg.get("num_final_agents", 3)), 1, MAX_AGENTS_LIMIT),
-            bundle_format=str(outputs_cfg.get("bundle_format", "wire_v1"))[:MAX_STRING_LENGTH],
-        )
-
-        eval_mode_str = str(data.get("eval_mode", "synthetic"))
-        if eval_mode_str not in ("synthetic", "real"):
-            raise ValueError(f"Unsupported eval_mode: {eval_mode_str}")
-
-        # Profiles (bounded)
-        profiles_raw = list(data.get("profiles", ()) or ())[:MAX_PROFILES]
-        profiles = tuple(str(p)[:MAX_STRING_LENGTH] for p in profiles_raw)
-
+        packs_spec = _parse_packs(data)
+        objectives = _parse_objectives(data)
+        training = _parse_training(data)
+        outputs = _parse_outputs(data)
+        profiles = _parse_profiles(data)
+        eval_mode = _parse_eval_mode(data)
+        agent_family = str(data.get("agent_family", "qagent"))[:MAX_STRING_LENGTH]
         return cls(
-            agent_family=str(data.get("agent_family", "qagent"))[:MAX_STRING_LENGTH],
+            agent_family=agent_family,
             profiles=profiles,
             packs=packs_spec,
             objectives=objectives,
             training=training,
-            eval_mode=eval_mode_str,  # type: ignore[arg-type]
+            eval_mode=eval_mode,
             outputs=outputs,
         )
+
+
+def derive_synth_config(budget: TrainingBudgetSpec) -> QAgentSynthConfig:
+    """Derive QAgentSynthConfig from a training budget.
+
+    Beam width and depth are scaled from budget parameters but remain
+    bounded to keep search tractable.
+    """
+    raw_beam = max(2, budget.max_agents // 4)
+    beam_width = _clamp(raw_beam, 2, 16)
+
+    raw_depth = max(1, budget.max_generations)
+    max_depth = _clamp(raw_depth, 1, 8)
+
+    return QAgentSynthConfig(beam_width=beam_width, max_depth=max_depth)
 
 
 def load_goal_spec(path: Path) -> AutoQAgentGoalSpec:
@@ -492,7 +540,7 @@ def run_auto_qagent_synth(
     )
 
     profiles = set(goal.profiles) or {"conservative"}
-    synth_cfg = QAgentSynthConfig(beam_width=4, max_depth=3)
+    synth_cfg = derive_synth_config(goal.training.budget)
 
     # Wrap evaluator with deadline check
     base_evaluator = _make_evaluator(goal)
@@ -530,7 +578,9 @@ def run_auto_qagent_synth(
     return sorted(results, key=sort_key, reverse=True)
 
 
-def run_auto_qagent_synth_agentpatches(goal: AutoQAgentGoalSpec) -> List[AgentPatch]:
+def run_auto_qagent_synth_agentpatches(goal: AutoQAgentGoalSpec) -> List["AgentPatch"]:
+    from idi.synth import AgentPatch, qagent_patch_to_agent_patch
+
     results = run_auto_qagent_synth(goal)
     patches: List[AgentPatch] = []
     for qpatch, _score in results:

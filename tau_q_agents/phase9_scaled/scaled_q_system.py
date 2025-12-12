@@ -13,7 +13,7 @@ from typing import List, Dict, Tuple, Optional, Callable
 from enum import IntEnum
 import time
 import json
-import pickle
+import hashlib
 from pathlib import Path
 
 
@@ -503,43 +503,95 @@ class TrainingSystem:
             "total_updates": self.q_table.total_visits
         }
     
-    def save(self, path: str):
-        """Save model"""
-        data = {
-            "config": self.config,
-            "q_primary": self.q_table.primary,
-            "q_specialized": self.q_table.specialized,
-            "meta": self.q_table.meta,
-            "visits": self.q_table.visits,
-            "stats": self.get_stats()
-        }
-        with open(path, 'wb') as f:
-            pickle.dump(data, f)
-        print(f"Saved to {path}")
-    
-    def load(self, path: str):
-        """Load model from pickle file.
+    def save(self, path: str) -> None:
+        """Save model using safe serialization (JSON + NPZ).
         
-        ⚠️  SECURITY WARNING: Only load files from trusted sources!
-        Pickle can execute arbitrary code during deserialization.
-        Never load model files downloaded from untrusted sources.
+        Preconditions:
+            - path is a valid writable path
+            - Model state is consistent
+        
+        Postconditions:
+            - Creates {path}_meta.json and {path}_arrays.npz
+            - SHA-256 digest stored in metadata for integrity
+        """
+        path = Path(path)
+        meta_path = path.with_suffix(".meta.json")
+        arrays_path = path.with_suffix(".arrays.npz")
+        
+        # Save arrays separately (data-only, no code execution)
+        np.savez_compressed(
+            arrays_path,
+            q_primary=self.q_table.primary,
+            q_specialized=self.q_table.specialized,
+            meta=self.q_table.meta,
+            visits=self.q_table.visits,
+        )
+        
+        # Compute integrity digest
+        with open(arrays_path, "rb") as f:
+            arrays_digest = hashlib.sha256(f.read()).hexdigest()
+        
+        # Save metadata as JSON (safe, no code execution)
+        metadata = {
+            "version": 2,
+            "format": "json+npz",
+            "config": self.config,
+            "stats": self.get_stats(),
+            "arrays_sha256": arrays_digest,
+        }
+        meta_path.write_text(json.dumps(metadata, indent=2))
+        print(f"Saved to {meta_path} and {arrays_path}")
+    
+    def load(self, path: str, *, verify_integrity: bool = True) -> None:
+        """Load model using safe deserialization.
+        
+        Preconditions:
+            - path exists with .meta.json and .arrays.npz files
+        
+        Postconditions:
+            - Model state restored from files
+            - If verify_integrity=True, SHA-256 digest verified
         
         Args:
-            path: Path to the saved model file
+            path: Base path (without extension)
+            verify_integrity: Whether to verify SHA-256 digest
+            
+        Raises:
+            ValueError: If integrity check fails
+            FileNotFoundError: If required files missing
         """
-        import warnings
-        warnings.warn(
-            "Loading pickled model - only load files from trusted sources!",
-            UserWarning,
-            stacklevel=2,
-        )
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
-        self.q_table.primary = data["q_primary"]
-        self.q_table.specialized = data["q_specialized"]
-        self.q_table.meta = data["meta"]
-        self.q_table.visits = data["visits"]
-        print(f"Loaded from {path}")
+        path = Path(path)
+        meta_path = path.with_suffix(".meta.json")
+        arrays_path = path.with_suffix(".arrays.npz")
+        
+        # Load metadata (JSON is safe)
+        metadata = json.loads(meta_path.read_text())
+        
+        if metadata.get("version", 1) < 2:
+            raise ValueError(
+                f"Legacy pickle format detected at {path}. "
+                "Please migrate to safe format using the migration script."
+            )
+        
+        # Verify integrity before loading arrays
+        if verify_integrity:
+            with open(arrays_path, "rb") as f:
+                actual_digest = hashlib.sha256(f.read()).hexdigest()
+            expected_digest = metadata.get("arrays_sha256", "")
+            if actual_digest != expected_digest:
+                raise ValueError(
+                    f"Integrity check failed for {arrays_path}. "
+                    f"Expected {expected_digest[:16]}..., got {actual_digest[:16]}..."
+                )
+        
+        # Load arrays (NumPy NPZ is data-only, no code execution)
+        with np.load(arrays_path, allow_pickle=False) as data:
+            self.q_table.primary = data["q_primary"]
+            self.q_table.specialized = data["q_specialized"]
+            self.q_table.meta = data["meta"]
+            self.q_table.visits = data["visits"]
+        
+        print(f"Loaded from {meta_path} and {arrays_path}")
 
 
 # ============================================================================

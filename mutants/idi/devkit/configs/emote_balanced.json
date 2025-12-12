@@ -1,0 +1,21 @@
+{
+  "episodes": 120,
+  "episode_length": 64,
+  "quantizer": {
+    "price_buckets": 4,
+    "volume_buckets": 4,
+    "trend_buckets": 4,
+    "scarcity_buckets": 8,
+    "mood_buckets": 5
+  },
+  "rewards": {
+    "pnl": 0.9,
+    "scarcity_alignment": 0.5,
+    "ethics_bonus": 0.8,
+    "communication_clarity": 0.5
+  },
+  "emote": {
+    "linger_ticks": 4
+  }
+}
+

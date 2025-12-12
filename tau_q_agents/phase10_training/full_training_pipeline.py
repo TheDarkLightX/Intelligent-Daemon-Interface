@@ -11,8 +11,8 @@ import os
 import json
 import sys
 import time
-import pickle
 import csv
+import hashlib
 import numpy as np
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional
@@ -135,55 +135,133 @@ class MegaQTable:
         self.episode_wins: List[int] = []
 
     # --------------------------- Persistence --------------------------------
-    def save(self, path: Path):
-        """Save Q-table, visits, and params to disk."""
-        data = {
+    def save(self, path: Path) -> None:
+        """Save Q-table using safe serialization (JSON + NPZ).
+        
+        Preconditions:
+            - path is a valid writable path
+            - Model state is consistent
+        
+        Postconditions:
+            - Creates {path}.meta.json and {path}.arrays.npz
+            - SHA-256 digest stored in metadata for integrity
+        """
+        path = Path(path)
+        meta_path = path.with_suffix(".meta.json")
+        arrays_path = path.with_suffix(".arrays.npz")
+        
+        # Convert sparse dicts to arrays for NPZ storage
+        # Store state indices and corresponding arrays
+        q_states = list(self.q.keys())
+        q_values = np.array([self.q[s] for s in q_states]) if q_states else np.array([])
+        visit_values = np.array([self.visits[s] for s in q_states]) if q_states else np.array([])
+        
+        # Save arrays (data-only, no code execution)
+        np.savez_compressed(
+            arrays_path,
+            q_states=np.array(q_states, dtype=np.int64),
+            q_values=q_values,
+            visit_values=visit_values,
+            episode_rewards=np.array(self.episode_rewards),
+            episode_trades=np.array(self.episode_trades),
+            episode_wins=np.array(self.episode_wins),
+            priorities=np.array(self.priorities),
+        )
+        
+        # Compute integrity digest
+        with open(arrays_path, "rb") as f:
+            arrays_digest = hashlib.sha256(f.read()).hexdigest()
+        
+        # Save metadata as JSON (safe, no code execution)
+        # Note: replay_buffer contains tuples which we serialize as lists
+        replay_serializable = [list(t) for t in self.replay_buffer]
+        
+        metadata = {
+            "version": 2,
+            "format": "json+npz",
             "n_states": self.n_states,
             "n_actions": self.n_actions,
-            "q": self.q,
-            "visits": self.visits,
-            "replay_buffer": self.replay_buffer,
-            "priorities": self.priorities,
             "lr": self.lr,
             "gamma": self.gamma,
             "epsilon": self.epsilon,
             "total_updates": self.total_updates,
             "unique_states": self.unique_states,
-            "episode_rewards": self.episode_rewards,
-            "episode_trades": self.episode_trades,
-            "episode_wins": self.episode_wins,
+            "replay_buffer": replay_serializable,
+            "arrays_sha256": arrays_digest,
         }
-        with open(path, "wb") as f:
-            pickle.dump(data, f)
+        meta_path.write_text(json.dumps(metadata, indent=2))
+        print(f"Saved to {meta_path} and {arrays_path}")
 
     @classmethod
-    def load(cls, path: Path) -> "MegaQTable":
-        """Load Q-table from disk.
+    def load(cls, path: Path, *, verify_integrity: bool = True) -> "MegaQTable":
+        """Load Q-table using safe deserialization.
         
-        ⚠️  SECURITY WARNING: Only load files from trusted sources!
-        Pickle can execute arbitrary code during deserialization.
+        Preconditions:
+            - path exists with .meta.json and .arrays.npz files
+        
+        Postconditions:
+            - Model state restored from files
+            - If verify_integrity=True, SHA-256 digest verified
+        
+        Args:
+            path: Base path (without extension)
+            verify_integrity: Whether to verify SHA-256 digest
+            
+        Raises:
+            ValueError: If integrity check fails or legacy format detected
+            FileNotFoundError: If required files missing
         """
-        import warnings
-        warnings.warn(
-            "Loading pickled Q-table - only load files from trusted sources!",
-            UserWarning,
-            stacklevel=2,
-        )
-        with open(path, "rb") as f:
-            data = pickle.load(f)
-        obj = cls(data["n_states"], data["n_actions"])
-        obj.q = data["q"]
-        obj.visits = data["visits"]
-        obj.replay_buffer = data.get("replay_buffer", [])
-        obj.priorities = data.get("priorities", [])
-        obj.lr = data.get("lr", obj.lr)
-        obj.gamma = data.get("gamma", obj.gamma)
-        obj.epsilon = data.get("epsilon", obj.epsilon)
-        obj.total_updates = data.get("total_updates", 0)
-        obj.unique_states = data.get("unique_states", 0)
-        obj.episode_rewards = data.get("episode_rewards", [])
-        obj.episode_trades = data.get("episode_trades", [])
-        obj.episode_wins = data.get("episode_wins", [])
+        path = Path(path)
+        meta_path = path.with_suffix(".meta.json")
+        arrays_path = path.with_suffix(".arrays.npz")
+        
+        # Load metadata (JSON is safe)
+        metadata = json.loads(meta_path.read_text())
+        
+        if metadata.get("version", 1) < 2:
+            raise ValueError(
+                f"Legacy pickle format detected at {path}. "
+                "Please migrate to safe format using the migration script."
+            )
+        
+        # Verify integrity before loading arrays
+        if verify_integrity:
+            with open(arrays_path, "rb") as f:
+                actual_digest = hashlib.sha256(f.read()).hexdigest()
+            expected_digest = metadata.get("arrays_sha256", "")
+            if actual_digest != expected_digest:
+                raise ValueError(
+                    f"Integrity check failed for {arrays_path}. "
+                    f"Expected {expected_digest[:16]}..., got {actual_digest[:16]}..."
+                )
+        
+        # Create instance
+        obj = cls(metadata["n_states"], metadata["n_actions"])
+        obj.lr = metadata.get("lr", obj.lr)
+        obj.gamma = metadata.get("gamma", obj.gamma)
+        obj.epsilon = metadata.get("epsilon", obj.epsilon)
+        obj.total_updates = metadata.get("total_updates", 0)
+        obj.unique_states = metadata.get("unique_states", 0)
+        
+        # Restore replay buffer (convert lists back to tuples)
+        obj.replay_buffer = [tuple(t) for t in metadata.get("replay_buffer", [])]
+        
+        # Load arrays (NumPy NPZ is data-only, no code execution)
+        with np.load(arrays_path, allow_pickle=False) as data:
+            q_states = data["q_states"]
+            q_values = data["q_values"]
+            visit_values = data["visit_values"]
+            
+            # Reconstruct sparse dicts
+            obj.q = {int(s): q_values[i] for i, s in enumerate(q_states)}
+            obj.visits = {int(s): visit_values[i] for i, s in enumerate(q_states)}
+            
+            obj.episode_rewards = data["episode_rewards"].tolist()
+            obj.episode_trades = data["episode_trades"].tolist()
+            obj.episode_wins = data["episode_wins"].tolist()
+            obj.priorities = data["priorities"].tolist()
+        
+        print(f"Loaded from {meta_path} and {arrays_path}")
         return obj
     
     def get_q(self, state: int) -> np.ndarray:

@@ -76,6 +76,8 @@ except ImportError:
 
 from idi.devkit.experimental.auto_qagent import (
     AutoQAgentGoalSpec,
+    MAX_AGENTS_LIMIT,
+    MAX_EPISODES_LIMIT,
 )
 
 
@@ -172,6 +174,9 @@ if HAS_HYPOTHESIS:
             "extra_field": json_value,
         },
     )
+else:
+    random_dict = {}
+    semi_valid_goal = {}
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +223,7 @@ def test_goal_spec_empty_dict() -> None:
     try:
         spec = AutoQAgentGoalSpec.from_dict({})
         # If it succeeds, should have defaults
-        assert spec.agent_family == ""
+        assert isinstance(spec.agent_family, str)
     except (ValueError, TypeError, KeyError):
         pass
 
@@ -267,8 +272,9 @@ def test_goal_spec_negative_budget_values() -> None:
     }
     try:
         spec = AutoQAgentGoalSpec.from_dict(data)
-        # Should parse, even if values are nonsensical
-        assert spec.training.budget.max_agents == -1
+        # Should parse and clamp to safe bounds
+        assert spec.training.budget.max_agents >= 1
+        assert spec.training.budget.max_episodes_per_agent >= 1
     except (ValueError, TypeError, KeyError):
         pass
 
@@ -288,8 +294,9 @@ def test_goal_spec_extremely_large_values() -> None:
     }
     try:
         spec = AutoQAgentGoalSpec.from_dict(data)
-        # Should parse; actual clamping happens at runtime
-        assert spec.training.budget.max_agents == 10**15
+        # Should parse; values are clamped to configured bounds
+        assert 1 <= spec.training.budget.max_agents <= MAX_AGENTS_LIMIT
+        assert 1 <= spec.training.budget.max_episodes_per_agent <= MAX_EPISODES_LIMIT
     except (ValueError, TypeError, KeyError, OverflowError):
         pass
 

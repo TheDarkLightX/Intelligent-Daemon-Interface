@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 from pathlib import Path
+import gzip
 
 import pytest
 
@@ -13,6 +14,7 @@ from idi.zk.wire import (
     ZkProofBundleLocal,
     ZkProofBundleWireV1,
     _pack_streams,
+    _unpack_streams,
     _unpack_streams_to_dict,
 )
 
@@ -236,6 +238,39 @@ class TestZkProofBundleWireV1:
         fs_commitment = compute_commitment_fs(manifest, streams)
         
         assert wire_commitment == fs_commitment
+
+    def test_verify_integrity_invalid_streams_base64(self):
+        """verify_integrity reports RECEIPT_PARSE_ERROR on invalid streams base64."""
+        from idi.zk.verification import VerificationErrorCode
+        
+        wire = ZkProofBundleWireV1(
+            zk_receipt_bin_b64=base64.b64encode(b"proof").decode(),
+            attestation_json_b64=base64.b64encode(b"{}").decode(),
+            manifest_json_b64=base64.b64encode(b"{}").decode(),
+            streams_pack_b64="not-base64",
+            streams_sha256="0" * 64,
+        )
+        
+        report = wire.verify_integrity()
+        assert report.success is False
+        assert report.error_code == VerificationErrorCode.RECEIPT_PARSE_ERROR
+
+    def test_unpack_streams_rejects_path_traversal(self, tmp_path):
+        """_unpack_streams rejects archives with path traversal entries."""
+        import io
+        import tarfile
+        
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+            with tarfile.open(fileobj=gz, mode="w") as tar:
+                info = tarfile.TarInfo(name="../evil.in")
+                payload = b"data"
+                info.size = len(payload)
+                tar.addfile(info, io.BytesIO(payload))
+        pack_bytes = buf.getvalue()
+        
+        with pytest.raises(ValueError, match="Unsafe path in archive"):
+            _unpack_streams(pack_bytes, tmp_path)
 
 
 class TestZkProofBundleLocal:
