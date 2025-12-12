@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 import sys
 from pathlib import Path
+from typing import Any, Optional
 
 from idi.pipeline.agent_pack import build_agent_pack
 from idi.zk.proof_manager import ProofBundle, verify_proof
@@ -17,9 +19,59 @@ WARN = "⚠️"
 ERROR = "❌"
 
 
+@dataclass(frozen=True)
+class CliError(Exception):
+    code: str
+    message: str
+    exit_code: int = 1
+    details: Optional[dict[str, Any]] = None
+
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "code": self.code,
+            "message": self.message,
+            "exit_code": self.exit_code,
+        }
+        if self.details:
+            data["details"] = self.details
+        return data
+
+
+def _wants_json(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, "json", False))
+
+
+def _emit_error(args: argparse.Namespace, err: CliError) -> None:
+    if _wants_json(args):
+        print(json.dumps({"ok": False, "error": err.to_dict()}, sort_keys=True, indent=2))
+        return
+    print(err.message)
+
+
+def _handle_exception(args: argparse.Namespace, context: str, exc: Exception) -> int:
+    if isinstance(exc, CliError):
+        err = exc
+        _emit_error(args, err)
+        return err.exit_code
+
+    if isinstance(exc, FileNotFoundError):
+        err = CliError(code="path_not_found", message=f"{ERROR} {context}: {exc}")
+        _emit_error(args, err)
+        return err.exit_code
+
+    if isinstance(exc, ValueError):
+        err = CliError(code="invalid_input", message=f"{ERROR} {context}: {exc}")
+        _emit_error(args, err)
+        return err.exit_code
+
+    err = CliError(code="unexpected_error", message=f"{ERROR} {context}: {exc}")
+    _emit_error(args, err)
+    return err.exit_code
+
+
 def _poke_yoke_path(path: Path, must_exist: bool = True) -> None:
     if must_exist and not path.exists():
-        raise FileNotFoundError(f"{ERROR} Path not found: {path}")
+        raise CliError(code="path_not_found", message=f"{ERROR} Path not found: {path}")
 
 
 def _print_header(title: str) -> None:
@@ -44,8 +96,7 @@ def _cmd_build(args: argparse.Namespace) -> int:
         print(f"{SUCCESS} Agent pack created at {out_dir}")
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Build failed: {exc}")
-        return 1
+        return _handle_exception(args, "Build failed", exc)
 
 
 def _cmd_patch_validate(args: argparse.Namespace) -> int:
@@ -65,8 +116,7 @@ def _cmd_patch_validate(args: argparse.Namespace) -> int:
         print(json.dumps(summary, sort_keys=True, indent=2))
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Patch validation failed: {exc}")
-        return 1
+        return _handle_exception(args, "Patch validation failed", exc)
 
 
 def _cmd_patch_diff(args: argparse.Namespace) -> int:
@@ -86,8 +136,7 @@ def _cmd_patch_diff(args: argparse.Namespace) -> int:
         print(json.dumps(diff, sort_keys=True, indent=2))
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Patch diff failed: {exc}")
-        return 1
+        return _handle_exception(args, "Patch diff failed", exc)
 
 
 def _cmd_patch_create(args: argparse.Namespace) -> int:
@@ -114,8 +163,7 @@ def _cmd_patch_create(args: argparse.Namespace) -> int:
         _print_header(f"Created AgentPatch at {out_path}")
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Patch create failed: {exc}")
-        return 1
+        return _handle_exception(args, "Patch create failed", exc)
 
 
 def _cmd_patch_apply(args: argparse.Namespace) -> int:
@@ -131,8 +179,7 @@ def _cmd_patch_apply(args: argparse.Namespace) -> int:
         print(json.dumps(data, sort_keys=True, indent=2))
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Patch apply failed: {exc}")
-        return 1
+        return _handle_exception(args, "Patch apply failed", exc)
 
 
 def _load_bundle(pack_dir: Path) -> ProofBundle:
@@ -157,13 +204,13 @@ def _cmd_verify(args: argparse.Namespace) -> int:
         _print_header(f"Verifying agent pack at {pack_dir}")
         ok = verify_proof(bundle, use_risc0=args.risc0)
         if not ok:
-            print(f"{ERROR} Verification failed")
-            return 2
+            err = CliError(code="verification_failed", message=f"{ERROR} Verification failed", exit_code=2)
+            _emit_error(args, err)
+            return err.exit_code
         print(f"{SUCCESS} Verification succeeded")
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Verify failed: {exc}")
-        return 1
+        return _handle_exception(args, "Verify failed", exc)
 
 
 def _cmd_bundle_pack(args: argparse.Namespace) -> int:
@@ -212,8 +259,7 @@ def _cmd_bundle_pack(args: argparse.Namespace) -> int:
         return 0
         
     except Exception as exc:
-        print(f"{ERROR} Pack failed: {exc}")
-        return 1
+        return _handle_exception(args, "Pack failed", exc)
 
 
 def _cmd_bundle_verify(args: argparse.Namespace) -> int:
@@ -299,11 +345,9 @@ def _cmd_bundle_verify(args: argparse.Namespace) -> int:
             return 2
             
     except ValueError as exc:
-        print(f"{ERROR} Invalid bundle: {exc}")
-        return 1
+        return _handle_exception(args, "Invalid bundle", exc)
     except Exception as exc:
-        print(f"{ERROR} Verify failed: {exc}")
-        return 1
+        return _handle_exception(args, "Verify failed", exc)
 
 
 def _cmd_bundle_info(args: argparse.Namespace) -> int:
@@ -341,8 +385,7 @@ def _cmd_bundle_info(args: argparse.Namespace) -> int:
         return 0
         
     except Exception as exc:
-        print(f"{ERROR} Info failed: {exc}")
-        return 1
+        return _handle_exception(args, "Info failed", exc)
 
 
 def _cmd_dev_sape_qpatch(args: argparse.Namespace) -> int:
@@ -406,8 +449,7 @@ def _cmd_dev_sape_qpatch(args: argparse.Namespace) -> int:
             )
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Experimental SAPE run failed: {exc}")
-        return 1
+        return _handle_exception(args, "Experimental SAPE run failed", exc)
 
 
 def _cmd_dev_qagent_synth(args: argparse.Namespace) -> int:
@@ -478,8 +520,7 @@ def _cmd_dev_qagent_synth(args: argparse.Namespace) -> int:
             )
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} QAgent modular synth run failed: {exc}")
-        return 1
+        return _handle_exception(args, "QAgent modular synth run failed", exc)
 
 
 def _cmd_dev_comm_krr(args: argparse.Namespace) -> int:
@@ -510,8 +551,7 @@ def _cmd_dev_comm_krr(args: argparse.Namespace) -> int:
         print(json.dumps(stats, sort_keys=True, indent=2))
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Experimental comm KRR run failed: {exc}")
-        return 1
+        return _handle_exception(args, "Experimental comm KRR run failed", exc)
 
 
 def _cmd_dev_auto_qagent(args: argparse.Namespace) -> int:
@@ -547,8 +587,7 @@ def _cmd_dev_auto_qagent(args: argparse.Namespace) -> int:
             )
         return 0
     except Exception as exc:  # noqa: BLE001
-        print(f"{ERROR} Auto-QAgent synthesis failed: {exc}")
-        return 1
+        return _handle_exception(args, "Auto-QAgent synthesis failed", exc)
 
 
 # -----------------------------------------------------------------------------
@@ -593,8 +632,7 @@ def _cmd_presets(args: argparse.Namespace) -> int:
                 print()
         return 0
     except Exception as exc:
-        print(f"{ERROR} Failed to list presets: {exc}")
-        return 1
+        return _handle_exception(args, "Failed to list presets", exc)
 
 
 def _cmd_preset_show(args: argparse.Namespace) -> int:
@@ -625,8 +663,7 @@ def _cmd_preset_show(args: argparse.Namespace) -> int:
             print(json.dumps(goal_spec, indent=2))
         return 0
     except Exception as exc:
-        print(f"{ERROR} Failed to show preset: {exc}")
-        return 1
+        return _handle_exception(args, "Failed to show preset", exc)
 
 
 def _cmd_macros(args: argparse.Namespace) -> int:
@@ -661,8 +698,7 @@ def _cmd_macros(args: argparse.Namespace) -> int:
                 print()
         return 0
     except Exception as exc:
-        print(f"{ERROR} Failed to list macros: {exc}")
-        return 1
+        return _handle_exception(args, "Failed to list macros", exc)
 
 
 def _cmd_macro_apply(args: argparse.Namespace) -> int:
@@ -707,8 +743,7 @@ def _cmd_macro_apply(args: argparse.Namespace) -> int:
         
         return 0
     except Exception as exc:
-        print(f"{ERROR} Failed to apply macros: {exc}")
-        return 1
+        return _handle_exception(args, "Failed to apply macros", exc)
 
 
 def _cmd_invariants(args: argparse.Namespace) -> int:
@@ -741,8 +776,7 @@ def _cmd_invariants(args: argparse.Namespace) -> int:
                 print(f"{WARN} Some invariants violated. Review configuration.")
         return 0 if all_ok else 1
     except Exception as exc:
-        print(f"{ERROR} Failed to check invariants: {exc}")
-        return 1
+        return _handle_exception(args, "Failed to check invariants", exc)
 
 
 def _cmd_gui(args: argparse.Namespace) -> int:
@@ -781,14 +815,18 @@ def _cmd_gui(args: argparse.Namespace) -> int:
         print(f"\n{SUCCESS} GUI server stopped.")
         return 0
     except Exception as exc:
-        print(f"{ERROR} Failed to start GUI: {exc}")
-        return 1
+        return _handle_exception(args, "Failed to start GUI", exc)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="IDI agent pack CLI",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON on errors",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

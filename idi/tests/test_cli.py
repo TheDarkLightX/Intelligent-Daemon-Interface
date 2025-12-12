@@ -47,6 +47,23 @@ def test_cli_verify_missing_pack(tmp_path):
     assert exit_code != 0
 
 
+def test_cli_verify_missing_pack_json(tmp_path, capsys):
+    exit_code = cli.main(
+        [
+            "--json",
+            "verify",
+            "--agentpack",
+            str(tmp_path / "missing"),
+        ]
+    )
+    assert exit_code != 0
+
+    captured = capsys.readouterr()
+    payload = cli.json.loads(captured.out)
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "path_not_found"
+
+
 def test_cli_verify_happy_path(tmp_path, monkeypatch):
     # Set up minimal agentpack structure
     pack = tmp_path / "pack"
