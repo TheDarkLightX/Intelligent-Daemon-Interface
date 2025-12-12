@@ -19,7 +19,7 @@ import json
 import logging
 import secrets
 import time
-from collections import deque
+from collections import deque, OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
@@ -234,6 +234,13 @@ class P2PManager:
         # Connection semaphore (limit concurrent pending connections)
         self._connection_semaphore = asyncio.Semaphore(self._config.max_pending_connections)
         
+        # Replay attack protection: LRU cache of seen message IDs
+        # Key: message_id (sender_id:nonce), Value: timestamp
+        # Messages older than 5 minutes are evicted
+        self._seen_messages: OrderedDict[str, float] = OrderedDict()
+        self._max_seen_messages = 100_000  # Cap to prevent memory exhaustion
+        self._message_ttl_seconds = 300  # 5 minute window
+        
         # Server
         self._server: Optional[asyncio.Server] = None
         
@@ -246,6 +253,61 @@ class P2PManager:
         
         # Lock for peer modifications
         self._lock = asyncio.Lock()
+    
+    # -------------------------------------------------------------------------
+    # Replay Attack Protection
+    # -------------------------------------------------------------------------
+    
+    def _is_replay(self, message: Message) -> bool:
+        """
+        Check if a message is a replay attack.
+        
+        Security:
+        - Prevents replay attacks by tracking seen message nonces
+        - Uses LRU eviction to bound memory usage
+        - Evicts messages older than TTL
+        
+        Returns:
+            True if message is a replay (should be rejected)
+        """
+        msg_id = message.message_id()
+        now = time.time()
+        
+        # Check if we've seen this message before
+        if msg_id in self._seen_messages:
+            logger.warning(f"Replay attack detected: {msg_id[:32]}...")
+            return True
+        
+        # Check timestamp freshness (reject messages older than TTL)
+        msg_timestamp_s = message.timestamp / 1000.0  # Convert ms to seconds
+        if abs(now - msg_timestamp_s) > self._message_ttl_seconds:
+            logger.warning(f"Message timestamp too old/future: {msg_id[:32]}...")
+            return True
+        
+        # Record this message
+        self._seen_messages[msg_id] = now
+        
+        # Evict old entries
+        self._evict_old_messages()
+        
+        return False
+    
+    def _evict_old_messages(self) -> None:
+        """Evict expired messages from the seen cache."""
+        now = time.time()
+        cutoff = now - self._message_ttl_seconds
+        
+        # Evict by age (oldest first since OrderedDict maintains insertion order)
+        while self._seen_messages:
+            oldest_id, oldest_time = next(iter(self._seen_messages.items()))
+            if oldest_time < cutoff:
+                self._seen_messages.pop(oldest_id)
+            else:
+                break  # Rest are newer
+        
+        # Also enforce size limit
+        while len(self._seen_messages) > self._max_seen_messages:
+            self._seen_messages.popitem(last=False)  # Remove oldest
     
     # -------------------------------------------------------------------------
     # Lifecycle
@@ -611,11 +673,36 @@ class P2PManager:
             await self._disconnect_peer(session.node_id)
     
     async def _handle_message(self, session: PeerSession, data: bytes) -> None:
-        """Handle received message."""
+        """Handle received message.
+        
+        Security:
+        - Checks for replay attacks before processing
+        - Validates message timestamps
+        """
         try:
             # Parse JSON
             msg_dict = json.loads(data.decode('utf-8'))
             msg_type = MessageType(msg_dict.get("type", ""))
+            
+            # Create a temporary Message object for replay checking
+            # (uses sender_id + nonce as message_id)
+            sender_id = msg_dict.get("sender_id", "")
+            nonce = msg_dict.get("nonce", "")
+            timestamp = msg_dict.get("timestamp", 0)
+            
+            if sender_id and nonce:
+                # Create lightweight message for replay check
+                temp_msg = Message(
+                    type=msg_type,
+                    sender_id=sender_id,
+                    timestamp=timestamp,
+                    nonce=nonce,
+                )
+                
+                # SECURITY: Check for replay attack
+                if self._is_replay(temp_msg):
+                    logger.warning(f"Dropping replayed message from {sender_id[:16]}...")
+                    return
             
             # Route to handler
             handler = self._handlers.get(msg_type)
