@@ -51,3 +51,54 @@ impl Oracle {
         Ok(snapshot)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn reads_valid_snapshot_from_disk() {
+        let dir = tempdir().unwrap();
+        let snapshot_path = dir.path().join("market_snapshot.json");
+        let payload = serde_json::json!({
+            "bid_price": 100.5,
+            "ask_price": 101.5,
+            "timestamp": 1_700_000_000u64,
+            "base_volume": 10.0,
+            "quote_volume": 1015.0,
+            "sources": [
+                {"price": 100.5, "age_ms": 10u64, "within_tol": true},
+                {"price": 101.5, "age_ms": 12u64, "within_tol": true}
+            ]
+        });
+        fs::write(&snapshot_path, serde_json::to_string(&payload).unwrap()).unwrap();
+
+        let oracle = Oracle::new(dir.path()).expect("oracle should initialize");
+        let snapshot = oracle
+            .get_market_snapshot()
+            .await
+            .expect("snapshot should parse");
+
+        assert_eq!(snapshot.bid_price, 100.5);
+        assert_eq!(snapshot.ask_price, 101.5);
+        assert_eq!(snapshot.timestamp, 1_700_000_000u64);
+        assert_eq!(snapshot.sources.unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn surfaces_parse_errors() {
+        let dir = tempdir().unwrap();
+        let snapshot_path = dir.path().join("market_snapshot.json");
+        fs::write(&snapshot_path, "not-json").unwrap();
+
+        let oracle = Oracle::new(dir.path()).expect("oracle should initialize");
+        let err = oracle
+            .get_market_snapshot()
+            .await
+            .expect_err("invalid json should error");
+
+        assert!(err.to_string().contains("Failed to parse snapshot"));
+    }
+}

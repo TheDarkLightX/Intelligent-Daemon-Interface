@@ -96,6 +96,45 @@ impl FileIO {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn write_and_read_bool_roundtrip() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("flag.txt");
+
+        FileIO::write_bool_atomic(&path, true).expect("write should succeed");
+        assert!(FileIO::read_last_bool(&path).expect("read should succeed"));
+
+        FileIO::write_bool_atomic(&path, false).expect("overwrite should succeed");
+        assert!(!FileIO::read_last_bool(&path).expect("read should succeed"));
+    }
+
+    #[test]
+    fn append_and_read_last_bool() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("append.txt");
+
+        FileIO::append_bool(&path, true).expect("append should succeed");
+        FileIO::append_bool(&path, false).expect("append should succeed");
+
+        assert!(!FileIO::read_last_bool(&path).expect("read should succeed"));
+    }
+
+    #[test]
+    fn read_last_bool_rejects_invalid_content() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("invalid.txt");
+
+        FileIO::write_atomic(&path, "not-a-bool\n").expect("write should succeed");
+        let err = FileIO::read_last_bool(&path).expect_err("should fail on invalid content");
+        assert!(err.to_string().contains("Invalid boolean value"));
+    }
+}
+
 /// Tau process runner
 pub struct TauRunner {
     tau_bin: PathBuf,
