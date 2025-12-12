@@ -71,6 +71,20 @@ cd idi/practice/my_agent
 python train_agent.py
 ```
 
+### Q-Agent Persistence Format (Safe)
+
+Q-agent training scripts that persist learned state use a **safe, data-only** format:
+
+```text
+<base>/
+├── metadata.json
+└── arrays.npz
+```
+
+Notes:
+- **Suffix stripping (UX):** if you pass a path like `model.tar.gz`, artifacts are written to `model/` (no misleading extensions).
+- **Legacy compatibility:** loaders still accept the older `<base>.meta.json` + `<base>.arrays.npz` layout.
+
 ### Run Agent with Tau
 
 ```bash
