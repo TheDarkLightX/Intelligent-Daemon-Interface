@@ -206,18 +206,22 @@ pub struct Action {
 }
 
 /// Legacy types for backward compatibility
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarketSnapshot {
     pub bid_price: f64,
     pub ask_price: f64,
     pub timestamp: u64,
+    pub base_volume: Option<f64>,
+    pub quote_volume: Option<f64>,
+    pub sources: Option<Vec<OracleSource>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct KernelInputs {
-    pub i0_price_bit: bool,
-    pub i1_oracle_fresh: bool,
-    pub i2_trend_bit: bool,
-    pub i3_profit_guard: bool,
-    pub i4_failure_echo: bool,
+    pub price_bit: bool,
+    pub volume_bit: bool,
+    pub trend_bit: bool,
+    pub profit_guard: bool,
+    pub failure_echo: bool,
+    pub oracle_fresh: bool,
 }

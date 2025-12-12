@@ -36,7 +36,10 @@ impl DaemonState {
 
     /// Enters the `Quarantine` state.
     pub fn enter_quarantine(&mut self) {
-        info!("Entering Quarantine state for {} ticks.", self.quarantine_clear_ticks);
+        info!(
+            "Entering Quarantine state for {} ticks.",
+            self.quarantine_clear_ticks
+        );
         self.current = State::Quarantine;
         self.quarantine_ticks_remaining = self.quarantine_clear_ticks;
     }
@@ -45,7 +48,10 @@ impl DaemonState {
     pub fn tick(&mut self) {
         if self.current == State::Quarantine {
             self.quarantine_ticks_remaining -= 1;
-            info!("In Quarantine. Ticks remaining to clear: {}", self.quarantine_ticks_remaining);
+            info!(
+                "In Quarantine. Ticks remaining to clear: {}",
+                self.quarantine_ticks_remaining
+            );
             if self.quarantine_ticks_remaining == 0 {
                 self.current = State::Operational;
                 info!("Quarantine cleared. Returning to Operational state.");

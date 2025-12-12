@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use tau_core::{Config, model::*};
+use tau_core::{model::*, Config};
 use tracing::{debug, warn};
 
 pub struct RiskGuardImpl {
@@ -9,9 +9,7 @@ pub struct RiskGuardImpl {
 
 impl RiskGuardImpl {
     pub fn new() -> Self {
-        Self {
-            last_metrics: None,
-        }
+        Self { last_metrics: None }
     }
 
     /// Compute position duration in ticks
@@ -41,7 +39,7 @@ impl super::RiskGuard for RiskGuardImpl {
     async fn compute(&mut self, venue_state: &VenueState, config: &Config) -> Result<bool> {
         debug!("Computing risk guard...");
 
-        // Use UNIX time seconds as a coarse stand-in for tick index if last_trade_tick is recorded in ticks; 
+        // Use UNIX time seconds as a coarse stand-in for tick index if last_trade_tick is recorded in ticks;
         // In production, pass the actual tick counter from the looper.
         let current_tick = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -86,4 +84,4 @@ impl super::RiskGuard for RiskGuardImpl {
             max_drawdown_bps: 0,
         }))
     }
-} 
+}

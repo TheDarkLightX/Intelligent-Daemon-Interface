@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde_json;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
@@ -15,14 +15,17 @@ pub struct Ledger {
 impl Ledger {
     pub fn new(ledger_dir: &Path) -> Result<Self> {
         fs::create_dir_all(ledger_dir)?;
-        
+
         let ledger_path = ledger_dir.join("ticks.log");
-        
+
         // Find the last hash from existing ledger
         let last_hash = Self::find_last_hash(&ledger_path)?;
-        
-        info!("Initialized ledger at {:?} with last hash: {:?}", ledger_path, last_hash);
-        
+
+        info!(
+            "Initialized ledger at {:?} with last hash: {:?}",
+            ledger_path, last_hash
+        );
+
         Ok(Self {
             ledger_path,
             last_hash,
@@ -101,7 +104,10 @@ impl Ledger {
         // Update last hash
         self.last_hash = Some(hash.clone());
 
-        debug!("Appended ledger record for tick {} with hash {}", tick, hash);
+        debug!(
+            "Appended ledger record for tick {} with hash {}",
+            tick, hash
+        );
         Ok(())
     }
 
@@ -111,7 +117,7 @@ impl Ledger {
         fs::create_dir_all(&snapshot_dir)?;
 
         let snapshot_path = snapshot_dir.join(format!("tick_{:08}.json", tick));
-        
+
         // Copy current ledger to snapshot
         if self.ledger_path.exists() {
             fs::copy(&self.ledger_path, &snapshot_path)?;
@@ -206,4 +212,4 @@ pub struct RecoveryState {
     pub last_hash: Option<String>,
     pub kernel_state: KernelOutputs,
     pub health: bool,
-} 
+}

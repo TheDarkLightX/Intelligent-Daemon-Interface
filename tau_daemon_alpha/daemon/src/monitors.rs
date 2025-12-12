@@ -1,6 +1,9 @@
 use anyhow::Result;
-use tau_core::{Config, model::*};
-use tracing::{debug, warn, error};
+use std::path::Path;
+use tau_core::{model::*, Config};
+use tracing::{debug, warn};
+
+use crate::fsio::FileIO;
 
 pub struct MonitorManager {
     config: Config,
@@ -15,20 +18,8 @@ impl MonitorManager {
     pub async fn read_outputs(&self, tick: u64) -> Result<MonitorOutputs> {
         debug!("Reading monitor outputs for tick {}", tick);
 
-        // In a real implementation, this would read from the actual output files
-        // For now, return mock data
-        let outputs = MonitorOutputs {
-            inv_action_excl: true,
-            inv_fresh: true,
-            inv_burn_profit: true,
-            inv_nonce: true,
-            inv_timeout_exit: true,
-            inv_fresh_drop_exit: true,
-            liveness_progress: true,
-            liveness_stalled: false,
-            health_ok: true,
-            alarm_latched: false,
-        };
+        self.validate_files().await?;
+        let outputs = self.load_outputs(&self.config.paths.kernel_outputs)?;
 
         debug!("Monitor outputs: {:?}", outputs);
         Ok(outputs)
@@ -71,9 +62,25 @@ impl MonitorManager {
     pub async fn validate_files(&self) -> Result<()> {
         debug!("Validating monitor files...");
 
-        // In a real implementation, this would check that all required output files exist
-        // and are readable. For now, just return success.
-        
+        let outputs_dir = &self.config.paths.kernel_outputs;
+        let required_files = [
+            "inv_action_excl.out",
+            "inv_fresh.out",
+            "inv_burn_profit.out",
+            "inv_nonce.out",
+            "inv_timeout_exit.out",
+            "inv_fresh_drop_exit.out",
+            "liveness_progress.out",
+            "liveness_stalled.out",
+        ];
+
+        for file in required_files.iter() {
+            let path = outputs_dir.join(file);
+            if !path.exists() {
+                return Err(anyhow::anyhow!("Missing monitor output file: {:?}", path));
+            }
+        }
+
         debug!("Monitor files validation passed");
         Ok(())
     }
@@ -81,11 +88,30 @@ impl MonitorManager {
     /// Check if monitors are stalled
     pub async fn check_stalled(&self, outputs: &MonitorOutputs) -> Result<bool> {
         let stalled = outputs.liveness_stalled;
-        
+
         if stalled {
             warn!("Monitors detected stall condition");
         }
-        
+
         Ok(stalled)
     }
-} 
+
+    fn load_outputs(&self, outputs_dir: &Path) -> Result<MonitorOutputs> {
+        let outputs = MonitorOutputs {
+            inv_action_excl: FileIO::read_last_bool(&outputs_dir.join("inv_action_excl.out"))?,
+            inv_fresh: FileIO::read_last_bool(&outputs_dir.join("inv_fresh.out"))?,
+            inv_burn_profit: FileIO::read_last_bool(&outputs_dir.join("inv_burn_profit.out"))?,
+            inv_nonce: FileIO::read_last_bool(&outputs_dir.join("inv_nonce.out"))?,
+            inv_timeout_exit: FileIO::read_last_bool(&outputs_dir.join("inv_timeout_exit.out"))?,
+            inv_fresh_drop_exit: FileIO::read_last_bool(
+                &outputs_dir.join("inv_fresh_drop_exit.out"),
+            )?,
+            liveness_progress: FileIO::read_last_bool(&outputs_dir.join("liveness_progress.out"))?,
+            liveness_stalled: FileIO::read_last_bool(&outputs_dir.join("liveness_stalled.out"))?,
+            health_ok: true,
+            alarm_latched: false,
+        };
+
+        Ok(outputs)
+    }
+}

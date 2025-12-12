@@ -6,4 +6,3 @@ pub mod model;
 pub use config::Config;
 pub use error::DaemonError;
 pub use model::*;
-
