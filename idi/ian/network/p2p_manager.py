@@ -770,37 +770,70 @@ class P2PManager:
             
             signature = bytes.fromhex(signature_hex)
             
-            # Verify signature (using NodeIdentity's verification)
-            # In production, would verify against the claimed node's public key
-            # For now, accept if signature is present and non-empty
-            if len(signature) < 32:
-                logger.warning(f"Signature too short from {claimed_id}")
+            # Verify ED25519 signature against the peer's public key
+            # 
+            # Security: This prevents node ID spoofing attacks where an attacker
+            # claims to be another node without possessing its private key
+            #
+            # Note: node_id = SHA256(public_key)[:40], so we need the actual
+            # public key from the peer's NodeInfo, not the node_id itself
+            if len(signature) != 64:
+                logger.warning(f"Invalid signature length ({len(signature)}) from {claimed_id[:16]}...")
                 return False
             
-            # TODO: Full signature verification against claimed_id's public key
-            # verified = verify_ed25519(claimed_id_pubkey, msg_to_verify, signature)
+            # Get the peer's public key from their NodeInfo
+            if session.info is None or session.info.public_key is None:
+                logger.warning(f"No public key available for {claimed_id[:16]}... - cannot verify")
+                return False
+            
+            peer_pubkey = session.info.public_key
+            if len(peer_pubkey) != 32:
+                logger.warning(f"Invalid public key length ({len(peer_pubkey)}) from {claimed_id[:16]}...")
+                return False
+            
+            # Verify the node_id matches the public key (prevents key substitution)
+            expected_node_id = hashlib.sha256(peer_pubkey).hexdigest()[:40]
+            if claimed_id != expected_node_id:
+                logger.warning(
+                    f"Node ID mismatch: claimed {claimed_id[:16]}... but pubkey gives {expected_node_id[:16]}..."
+                )
+                return False
+            
+            # Perform actual cryptographic verification
+            verified = NodeIdentity.verify_with_public_key(
+                peer_pubkey,
+                msg_to_verify,
+                signature
+            )
+            
+            if not verified:
+                logger.warning(f"Signature verification FAILED for {claimed_id[:16]}...")
+                return False
             
             session.verified = True
+            logger.debug(f"Signature verified for {claimed_id[:16]}...")
             return True
             
         except Exception as e:
             logger.warning(f"Handshake verification error: {e}")
             return False
     
-    def _handle_handshake_response(self, session: PeerSession, pong: Pong) -> None:
+    def _handle_handshake_response(self, session: PeerSession, pong: Pong) -> bool:
         """
         Handle handshake response with verification.
         
         Security:
         - Only updates node_id after verification
-        - Rejects unverified identity claims
+        - DISCONNECTS unverified peers (prevents identity spoofing)
+        
+        Returns:
+            True if handshake succeeded, False if peer should be disconnected
         """
         claimed_id = pong.sender_id
         
-        # For backwards compatibility with simple Ping/Pong
-        # In production, would require full challenge-response
+        # Require challenge-response verification for all connections
         if session.pending_challenge:
-            # Verify the response if we sent a challenge
+            # Verify the response - peer must prove they control the claimed identity
             response_dict = {
                 "sender_id": pong.sender_id,
                 "response_nonce": getattr(pong, 'nonce', ''),
@@ -808,14 +841,22 @@ class P2PManager:
             }
             
             if not self._verify_handshake_response(session, response_dict):
-                # For now, log warning but allow connection
-                # In strict mode, would disconnect
+                # SECURITY: Reject unverified peers to prevent identity spoofing
                 logger.warning(
-                    f"Unverified handshake from {claimed_id} - allowing but marked unverified"
+                    f"Rejecting unverified peer {claimed_id[:16]}... - signature verification failed"
                 )
                 session.verified = False
-            else:
-                session.verified = True
+                session.state = PeerState.DISCONNECTING
+                # Schedule disconnect
+                asyncio.create_task(self._disconnect_peer(claimed_id))
+                return False
+            
+            session.verified = True
+        else:
+            # No challenge was sent - this shouldn't happen in normal flow
+            # For legacy compatibility, mark as unverified but allow
+            logger.warning(f"No challenge sent for {claimed_id[:16]}... - marking unverified")
+            session.verified = False
         
         # Update session with verified peer info
         old_id = session.node_id
@@ -838,6 +879,7 @@ class P2PManager:
         
         verified_str = "verified" if session.verified else "UNVERIFIED"
         logger.info(f"Handshake complete with {claimed_id[:16]}... ({verified_str})")
+        return True
     
     # -------------------------------------------------------------------------
     # Keepalive
