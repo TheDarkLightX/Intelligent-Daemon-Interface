@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from idi.pipeline.agent_pack import build_agent_pack
+from idi.logging import LoggingOptions, configure_logging, load_logging_options_from_env
 from idi.zk.proof_manager import ProofBundle, verify_proof
 from idi.zk.verification import VerificationErrorCode
 
@@ -828,6 +829,24 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Emit machine-readable JSON on errors",
     )
+    parser.add_argument(
+        "--log-level",
+        help="Log level (DEBUG, INFO, WARNING, ERROR); may also be set via IDI_LOG_LEVEL",
+    )
+    parser.add_argument(
+        "--log-format",
+        choices=["text", "json"],
+        help="Log format; may also be set via IDI_LOG_FORMAT",
+    )
+    parser.add_argument(
+        "--log-file",
+        help="Optional log file path; may also be set via IDI_LOG_FILE",
+    )
+    parser.add_argument(
+        "--no-redact",
+        action="store_true",
+        help="Disable log redaction; may also be controlled via IDI_LOG_REDACT=0",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # Agent pack commands
@@ -1199,6 +1218,19 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    env_options = load_logging_options_from_env()
+    options = LoggingOptions(
+        level=args.log_level or env_options.level,
+        format=args.log_format or env_options.format,
+        file=args.log_file if args.log_file is not None else env_options.file,
+        redact=(not args.no_redact) and env_options.redact,
+    )
+    try:
+        configure_logging(options)
+    except Exception as exc:  # noqa: BLE001
+        return _handle_exception(args, "Logging configuration failed", exc)
+
     return args.func(args)
 
 
