@@ -1,5 +1,5 @@
-use tau_core::model::KernelOutputs;
-use tracing::{debug, info, warn};
+use tau_core::model::{Action, KernelOutputs};
+use tracing::{debug, info};
 
 /// Handles the execution of actions based on kernel outputs.
 #[derive(Debug)]
@@ -13,30 +13,36 @@ impl Actuator {
     }
 
     /// Handles kernel outputs and executes appropriate actions.
-    pub fn handle_outputs(&self, outputs: &KernelOutputs) {
+    pub fn handle_outputs(&self, outputs: &KernelOutputs) -> Vec<Action> {
         debug!("Handling kernel outputs: {:?}", outputs);
+
+        let mut actions = Vec::new();
 
         // Handle buy signal
         if outputs.buy {
             info!("Executing buy action");
-            // In a real implementation, this would:
-            // 1. Place a buy order on the exchange
-            // 2. Record the transaction
-            // 3. Update the daemon state
+            actions.push(Action {
+                action_type: "buy".to_string(),
+                id: format!("{}", uuid::Uuid::new_v4()),
+                status: "submitted".to_string(),
+            });
         }
 
         // Handle sell signal
         if outputs.sell {
             info!("Executing sell action");
-            // In a real implementation, this would:
-            // 1. Place a sell order on the exchange
-            // 2. Record the transaction
-            // 3. Update the daemon state
+            actions.push(Action {
+                action_type: "sell".to_string(),
+                id: format!("{}", uuid::Uuid::new_v4()),
+                status: "submitted".to_string(),
+            });
         }
 
         // Handle no action
         if !outputs.buy && !outputs.sell {
             debug!("No action required");
         }
+
+        actions
     }
 }

@@ -1,0 +1,12 @@
+{
+  "bid_price": 50010.25,
+  "ask_price": 50012.75,
+  "timestamp": 1710000000,
+  "base_volume": 12.5,
+  "quote_volume": 625000.0,
+  "sources": [
+    {"price": 50010.25, "age_ms": 250, "within_tol": true},
+    {"price": 50012.75, "age_ms": 250, "within_tol": true},
+    {"price": 50011.25, "age_ms": 250, "within_tol": true}
+  ]
+}

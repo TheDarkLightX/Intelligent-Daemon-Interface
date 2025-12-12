@@ -1,13 +1,14 @@
 use anyhow::Result;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use tau_core::{Config, model::*};
-use tracing::{debug, error, info, warn};
+use tau_core::{model::*, Config};
+use tracing::{debug, info};
+
+use crate::fsio::{FileIO, TauRunner};
 
 /// Manages the execution of the Tau kernel and related processes.
 #[derive(Debug)]
 pub struct ExecutionManager {
     config: Config,
+    tau_runner: TauRunner,
 }
 
 impl ExecutionManager {
@@ -16,66 +17,72 @@ impl ExecutionManager {
         info!("Initializing execution manager.");
         Ok(Self {
             config: config.clone(),
+            tau_runner: TauRunner::new(
+                config.paths.tau_bin.clone(),
+                config.paths.kernel_inputs.clone(),
+                config.paths.kernel_outputs.clone(),
+                config.daemon.tick_period_ms.saturating_mul(2),
+            ),
         })
     }
 
     /// Executes a single tick of the kernel.
-    pub fn execute_tick(&self, kernel_inputs: &KernelInputs) -> Result<KernelOutputs> {
+    pub async fn execute_tick(&self, kernel_inputs: &KernelInputs) -> Result<KernelOutputs> {
         info!("Executing kernel tick...");
 
-        // In a real implementation, this would:
-        // 1. Write the kernel inputs to the appropriate files
-        // 2. Execute the Tau binary with the kernel specification
-        // 3. Read the kernel outputs from the output files
-        // 4. Parse and return the results
-
-        // For now, we return mock outputs for demonstration purposes.
-        let outputs = KernelOutputs {
-            state: kernel_inputs.i0_price_bit,
-            holding: kernel_inputs.i1_oracle_fresh,
-            buy: kernel_inputs.i2_trend_bit,
-            sell: kernel_inputs.i3_profit_guard,
-            oracle_fresh: kernel_inputs.i4_failure_echo,
-            timer_b0: false,
-            timer_b1: false,
-            nonce: false,
-            entry_price: false,
-            profit: false,
-            burn: false,
-            has_burned: false,
-            obs_action_excl: true,
-            obs_fresh_exec: true,
-            obs_burn_profit: true,
-            obs_nonce_effect: true,
-            progress: true,
-        };
+        self.write_inputs(kernel_inputs)?;
+        self.tau_runner
+            .run_kernel(&self.config.paths.kernel_spec)
+            .await?;
+        let outputs = self.read_kernel_outputs()?;
 
         info!(?outputs, "Kernel execution completed.");
         Ok(outputs)
     }
 
-    /// Reads kernel outputs from files (mock implementation)
-    fn read_kernel_outputs(&self) -> Result<HashMap<String, bool>> {
-        // In a real implementation, this would read from actual output files
-        let mut output_map = HashMap::new();
-        output_map.insert("state.out".to_string(), true);
-        output_map.insert("holding.out".to_string(), false);
-        output_map.insert("buy_signal.out".to_string(), false);
-        output_map.insert("sell_signal.out".to_string(), false);
-        output_map.insert("oracle_fresh.out".to_string(), true);
-        output_map.insert("timer_b0.out".to_string(), false);
-        output_map.insert("timer_b1.out".to_string(), false);
-        output_map.insert("nonce.out".to_string(), false);
-        output_map.insert("entry_price.out".to_string(), false);
-        output_map.insert("profit.out".to_string(), false);
-        output_map.insert("burn_event.out".to_string(), false);
-        output_map.insert("has_burned.out".to_string(), false);
-        output_map.insert("obs_action_excl.out".to_string(), true);
-        output_map.insert("obs_fresh_exec.out".to_string(), true);
-        output_map.insert("obs_burn_profit.out".to_string(), true);
-        output_map.insert("obs_nonce_effect.out".to_string(), true);
-        output_map.insert("progress_flag.out".to_string(), true);
-        
-        Ok(output_map)
+    fn write_inputs(&self, kernel_inputs: &KernelInputs) -> Result<()> {
+        let inputs_dir = &self.config.paths.kernel_inputs;
+        FileIO::write_bool_atomic(&inputs_dir.join("price.in"), kernel_inputs.price_bit)?;
+        FileIO::write_bool_atomic(&inputs_dir.join("volume.in"), kernel_inputs.volume_bit)?;
+        FileIO::write_bool_atomic(&inputs_dir.join("trend.in"), kernel_inputs.trend_bit)?;
+        FileIO::write_bool_atomic(
+            &inputs_dir.join("profit_guard.in"),
+            kernel_inputs.profit_guard,
+        )?;
+        FileIO::write_bool_atomic(
+            &inputs_dir.join("failure_echo.in"),
+            kernel_inputs.failure_echo,
+        )?;
+        FileIO::write_bool_atomic(
+            &inputs_dir.join("oracle_fresh.in"),
+            kernel_inputs.oracle_fresh,
+        )?;
+        Ok(())
+    }
+
+    /// Reads kernel outputs from files
+    fn read_kernel_outputs(&self) -> Result<KernelOutputs> {
+        let outputs_dir = &self.config.paths.kernel_outputs;
+        let outputs = KernelOutputs {
+            state: FileIO::read_last_bool(&outputs_dir.join("state.out"))?,
+            holding: FileIO::read_last_bool(&outputs_dir.join("holding.out"))?,
+            buy: FileIO::read_last_bool(&outputs_dir.join("buy_signal.out"))?,
+            sell: FileIO::read_last_bool(&outputs_dir.join("sell_signal.out"))?,
+            oracle_fresh: FileIO::read_last_bool(&outputs_dir.join("oracle_fresh.out"))?,
+            timer_b0: FileIO::read_last_bool(&outputs_dir.join("timer_b0.out"))?,
+            timer_b1: FileIO::read_last_bool(&outputs_dir.join("timer_b1.out"))?,
+            nonce: FileIO::read_last_bool(&outputs_dir.join("nonce.out"))?,
+            entry_price: FileIO::read_last_bool(&outputs_dir.join("entry_price.out"))?,
+            profit: FileIO::read_last_bool(&outputs_dir.join("profit.out"))?,
+            burn: FileIO::read_last_bool(&outputs_dir.join("burn_event.out"))?,
+            has_burned: FileIO::read_last_bool(&outputs_dir.join("has_burned.out"))?,
+            obs_action_excl: FileIO::read_last_bool(&outputs_dir.join("obs_action_excl.out"))?,
+            obs_fresh_exec: FileIO::read_last_bool(&outputs_dir.join("obs_fresh_exec.out"))?,
+            obs_burn_profit: FileIO::read_last_bool(&outputs_dir.join("obs_burn_profit.out"))?,
+            obs_nonce_effect: FileIO::read_last_bool(&outputs_dir.join("obs_nonce_effect.out"))?,
+            progress: FileIO::read_last_bool(&outputs_dir.join("progress_flag.out"))?,
+        };
+
+        Ok(outputs)
     }
 }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use tau_core::{Config, model::*};
-use tracing::{debug, warn, info};
+use tau_core::{model::*, Config};
+use tracing::{debug, info, warn};
 
 pub struct FailureEchoImpl {
     hold_counter: u32,
@@ -28,7 +28,11 @@ impl FailureEchoImpl {
         }
 
         // Venue state anomalies
-        if venue_state.pending_orders.iter().any(|o| o.status == OrderStatus::Failed) {
+        if venue_state
+            .pending_orders
+            .iter()
+            .any(|o| o.status == OrderStatus::Failed)
+        {
             anomalies.push("venue_order_failed".to_string());
         }
 
@@ -44,7 +48,12 @@ impl FailureEchoImpl {
 
 #[async_trait]
 impl super::FailureEcho for FailureEchoImpl {
-    async fn compute_and_latch(&mut self, config: &Config, health: &Health, _tick: u64) -> Result<bool> {
+    async fn compute_and_latch(
+        &mut self,
+        config: &Config,
+        health: &Health,
+        _tick: u64,
+    ) -> Result<bool> {
         debug!("Computing failure echo...");
 
         // Detect current anomalies
@@ -54,13 +63,16 @@ impl super::FailureEcho for FailureEchoImpl {
             last_trade_tick: None,
             pending_orders: Vec::new(),
         };
-        
+
         let anomalies = self.detect_anomalies(health, &venue_state);
-        
+
         // If there are current anomalies, set hold counter
         if !anomalies.is_empty() {
             self.hold_counter = config.tick.fail_hold_ticks;
-            warn!("Anomalies detected: {:?}. Setting failure echo for {} ticks", anomalies, self.hold_counter);
+            warn!(
+                "Anomalies detected: {:?}. Setting failure echo for {} ticks",
+                anomalies, self.hold_counter
+            );
         }
 
         // Compute failure echo: true if there are current anomalies OR if we're in hold period
@@ -91,4 +103,4 @@ impl super::FailureEcho for FailureEchoImpl {
         self.hold_counter = 0;
         Ok(())
     }
-} 
+}

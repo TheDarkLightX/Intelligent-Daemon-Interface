@@ -1,11 +1,11 @@
 use anyhow::Result;
-use tau_core::{Config, model::*};
 use async_trait::async_trait;
+use tau_core::{model::*, Config};
 
+pub mod cooldown;
+pub mod failure;
 pub mod freshness;
 pub mod profit;
-pub mod failure;
-pub mod cooldown;
 pub mod risk;
 
 /// Trait for freshness witness implementation
@@ -18,14 +18,24 @@ pub trait FreshnessWitness: Send + Sync {
 /// Trait for profit guard implementation
 #[async_trait]
 pub trait ProfitGuard: Send + Sync {
-    async fn compute(&mut self, venue_state: &VenueState, config: &Config, tick: u64) -> Result<bool>;
+    async fn compute(
+        &mut self,
+        venue_state: &VenueState,
+        config: &Config,
+        tick: u64,
+    ) -> Result<bool>;
     async fn get_economics(&self) -> Result<Option<Economics>>;
 }
 
 /// Trait for failure echo implementation
 #[async_trait]
 pub trait FailureEcho: Send + Sync {
-    async fn compute_and_latch(&mut self, config: &Config, health: &Health, tick: u64) -> Result<bool>;
+    async fn compute_and_latch(
+        &mut self,
+        config: &Config,
+        health: &Health,
+        tick: u64,
+    ) -> Result<bool>;
     async fn get_hold_counter(&self) -> u32;
     async fn clear(&mut self) -> Result<()>;
 }
@@ -33,7 +43,12 @@ pub trait FailureEcho: Send + Sync {
 /// Trait for cooldown implementation
 #[async_trait]
 pub trait CooldownGuard: Send + Sync {
-    async fn compute(&self, last_trade_tick: Option<u64>, current_tick: u64, config: &Config) -> Result<bool>;
+    async fn compute(
+        &self,
+        last_trade_tick: Option<u64>,
+        current_tick: u64,
+        config: &Config,
+    ) -> Result<bool>;
     async fn get_ticks_since_trade(&self) -> Option<u32>;
 }
 
@@ -97,7 +112,9 @@ impl GuardCoordinator {
 
         // Compute cooldown (if enabled)
         let cooldown_ok = if config.cooldown.enabled {
-            self.cooldown.compute(venue_state.last_trade_tick, tick, config).await?
+            self.cooldown
+                .compute(venue_state.last_trade_tick, tick, config)
+                .await?
         } else {
             true
         };
@@ -143,4 +160,4 @@ pub struct GuardDiagnostics {
     pub hold_counter: u32,
     pub ticks_since_trade: Option<u32>,
     pub risk_metrics: RiskMetrics,
-} 
+}

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use tau_core::{Config, model::*};
+use tau_core::{model::*, Config};
 use tracing::{debug, warn};
 
 pub struct ProfitGuardImpl {
@@ -23,7 +23,7 @@ impl ProfitGuardImpl {
             .ok_or_else(|| anyhow::anyhow!("Fee calculation overflow"))?
             .checked_div(Fx::new(10_000))
             .ok_or_else(|| anyhow::anyhow!("Fee calculation overflow"))?;
-        
+
         Ok(fee_amount)
     }
 
@@ -50,22 +50,28 @@ impl ProfitGuardImpl {
     }
 
     /// Compute realized PnL
-    fn compute_pnl(&self, buy_price: Fx, sell_price: Fx, qty: Fx, config: &Config) -> Result<Economics> {
+    fn compute_pnl(
+        &self,
+        buy_price: Fx,
+        sell_price: Fx,
+        qty: Fx,
+        config: &Config,
+    ) -> Result<Economics> {
         let gross_buy = qty
             .checked_mul(buy_price)
             .ok_or_else(|| anyhow::anyhow!("Gross buy calculation overflow"))?;
-        
+
         let gross_sell = qty
             .checked_mul(sell_price)
             .ok_or_else(|| anyhow::anyhow!("Gross sell calculation overflow"))?;
 
         let fee_buy = self.compute_fees(qty, buy_price, config.economics.fee_bps_buy)?;
         let fee_sell = self.compute_fees(qty, sell_price, config.economics.fee_bps_sell)?;
-        
+
         let gas_cost = Fx::new(config.economics.gas_unit_cost.into());
-        
+
         let slippage_bps = self.compute_slippage_bps(sell_price, sell_price)?; // Assuming no slippage for now
-        
+
         let total_costs = fee_buy
             .checked_add(fee_sell)
             .ok_or_else(|| anyhow::anyhow!("Total costs calculation overflow"))?
@@ -95,7 +101,12 @@ impl ProfitGuardImpl {
 
 #[async_trait]
 impl super::ProfitGuard for ProfitGuardImpl {
-    async fn compute(&mut self, _venue_state: &VenueState, config: &Config, _tick: u64) -> Result<bool> {
+    async fn compute(
+        &mut self,
+        _venue_state: &VenueState,
+        config: &Config,
+        _tick: u64,
+    ) -> Result<bool> {
         debug!("Computing profit guard...");
 
         // For now, use simple profit calculation
@@ -105,7 +116,7 @@ impl super::ProfitGuard for ProfitGuardImpl {
         let qty = Fx::new(config.economics.trade_qty.into());
 
         let economics = self.compute_pnl(buy_price, sell_price, qty, config)?;
-        
+
         // Store economics for diagnostics
         self.last_economics.replace(economics.clone());
 
@@ -141,4 +152,4 @@ impl super::ProfitGuard for ProfitGuardImpl {
     async fn get_economics(&self) -> Result<Option<Economics>> {
         Ok(self.last_economics.clone())
     }
-} 
+}

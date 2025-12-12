@@ -1,18 +1,21 @@
 use crate::{
     actuator::Actuator,
     execution::ExecutionManager,
+    fsio::{FileIO, TauRunner},
+    guards::{
+        cooldown::CooldownGuardImpl, failure::FailureEchoImpl, freshness::FreshnessWitnessImpl,
+        profit::ProfitGuardImpl, risk::RiskGuardImpl, GuardCoordinator,
+    },
     kernel::KernelManager,
+    ledger::Ledger,
+    monitors::MonitorManager,
     oracle::Oracle,
     state::{DaemonState, State},
-    guards::{GuardCoordinator, freshness::FreshnessWitnessImpl, profit::ProfitGuardImpl, failure::FailureEchoImpl, cooldown::CooldownGuardImpl, risk::RiskGuardImpl},
-    monitors::MonitorManager,
-    fsio::{FileIO, TauRunner},
-    ledger::Ledger,
 };
 use anyhow::Result;
-use tau_core::{Config, model::*};
+use tau_core::{model::*, Config};
 use tokio::time::{self, Duration};
-use tracing::{info, warn, error, debug};
+use tracing::{debug, error, info, warn};
 
 /// The main operational loop for the daemon with comprehensive safety integration
 pub async fn run(config: Config) -> Result<()> {
@@ -20,7 +23,7 @@ pub async fn run(config: Config) -> Result<()> {
 
     // Initialize components
     let mut state = DaemonState::new(config.daemon.quarantine_clear_ticks);
-    let oracle = Oracle::new();
+    let oracle = Oracle::new(&config.paths.data_dir)?;
     let kernel_manager = KernelManager::new();
     let execution_manager = ExecutionManager::new(&config)?;
     let actuator = Actuator::new();
@@ -53,6 +56,7 @@ pub async fn run(config: Config) -> Result<()> {
     FileIO::ensure_dir(&config.paths.kernel_inputs)?;
     FileIO::ensure_dir(&config.paths.kernel_outputs)?;
     FileIO::ensure_dir(&config.paths.specs_root)?;
+    FileIO::ensure_dir(&config.paths.data_dir)?;
 
     // Validate ledger integrity
     if !ledger.validate_integrity().await? {
@@ -62,7 +66,10 @@ pub async fn run(config: Config) -> Result<()> {
 
     // Recover state if possible
     if let Some(recovery_state) = ledger.recover_state().await? {
-        info!("Recovered from tick {} with health: {}", recovery_state.last_tick, recovery_state.health);
+        info!(
+            "Recovered from tick {} with health: {}",
+            recovery_state.last_tick, recovery_state.health
+        );
         if !recovery_state.health {
             warn!("Recovering from unhealthy state, entering quarantine");
             state.enter_quarantine();
@@ -96,18 +103,32 @@ pub async fn run(config: Config) -> Result<()> {
                     }
                 };
 
+                let mid_price = (market_snapshot.bid_price + market_snapshot.ask_price) / 2.0;
+
                 // Convert MarketSnapshot to OracleSnapshot for guards (ensure timestamp is in ms)
-                let oracle_snapshot = OracleSnapshot {
-                    median: Fx::from_float((market_snapshot.bid_price + market_snapshot.ask_price) / 2.0),
-                    age_ok: true, // Placeholder; real check done in FreshnessWitness
-                    quorum_ok: true, // Placeholder; real check done in FreshnessWitness
-                    sources: vec![
-                        OracleSource {
-                            price: Fx::from_float(market_snapshot.bid_price),
-                            age_ms: 0,
-                            within_tol: true,
-                        }
-                    ],
+                let mut oracle_snapshot = OracleSnapshot {
+                    median: Fx::from_float(mid_price),
+                    age_ok: false,
+                    quorum_ok: false,
+                    sources: market_snapshot.sources.clone().unwrap_or_else(|| {
+                        vec![
+                            OracleSource {
+                                price: Fx::from_float(market_snapshot.bid_price),
+                                age_ms: 0,
+                                within_tol: true,
+                            },
+                            OracleSource {
+                                price: Fx::from_float(market_snapshot.ask_price),
+                                age_ms: 0,
+                                within_tol: true,
+                            },
+                            OracleSource {
+                                price: Fx::from_float(mid_price),
+                                age_ms: 0,
+                                within_tol: true,
+                            },
+                        ]
+                    }),
                     timestamp: market_snapshot.timestamp.saturating_mul(1000),
                 };
 
@@ -121,13 +142,16 @@ pub async fn run(config: Config) -> Result<()> {
 
                 // 3. Compute guards
                 let health = Health::new(); // Will be updated after monitors
-                let guards = match guard_coordinator.compute_guards(
-                    &oracle_snapshot,
-                    &venue_state,
-                    &health,
-                    &config,
-                    tick_counter,
-                ).await {
+                let guards = match guard_coordinator
+                    .compute_guards(
+                        &oracle_snapshot,
+                        &venue_state,
+                        &health,
+                        &config,
+                        tick_counter,
+                    )
+                    .await
+                {
                     Ok(guards) => {
                         debug!("Computed guards: {:?}", guards);
                         guards
@@ -139,46 +163,36 @@ pub async fn run(config: Config) -> Result<()> {
                     }
                 };
 
-                // 4. Derive core kernel inputs (price/volume/trend) and write guard inputs expected by V35
-                let current_price = (market_snapshot.bid_price + market_snapshot.ask_price) / 2.0;
-                let previous_price = state.last_price().unwrap_or(current_price);
-                let price_eps = 0.000_000_1f64; // negligible epsilon
+                // 4. Build kernel inputs from guards + market data
+                let guard_diagnostics = guard_coordinator.get_diagnostics().await?;
+                oracle_snapshot.age_ok = guard_diagnostics.age_ok;
+                oracle_snapshot.quorum_ok = guard_diagnostics.quorum_ok;
 
-                // price_bit: 1 = high, 0 = low
-                let price_bit = current_price > (previous_price * (1.0 + price_eps));
-                // trend_bit: 1 = bullish (up), 0 = bearish (down or flat)
-                let trend_bit = current_price > previous_price;
-                // volume_bit: placeholder true until real volume is wired
-                let volume_bit = true;
-
-                FileIO::write_bool_atomic(&config.paths.kernel_inputs.join("price.in"), price_bit)?;
-                FileIO::write_bool_atomic(&config.paths.kernel_inputs.join("volume.in"), volume_bit)?;
-                FileIO::write_bool_atomic(&config.paths.kernel_inputs.join("trend.in"), trend_bit)?;
-
-                // Guard inputs
-                FileIO::write_bool_atomic(&config.paths.kernel_inputs.join("profit_guard.in"), guards.profit_guard)?;
-                FileIO::write_bool_atomic(&config.paths.kernel_inputs.join("failure_echo.in"), guards.failure_echo)?;
-
-                // 5. Run kernel
-                match tau_runner.run_kernel(&config.paths.kernel_spec).await {
-                    Ok(()) => {
-                        debug!("Kernel execution completed");
-                    }
+                let kernel_inputs = match kernel_manager.prepare_inputs(
+                    &market_snapshot,
+                    state.last_price(),
+                    &guards,
+                    &config,
+                ) {
+                    Ok(inputs) => inputs,
                     Err(e) => {
-                        warn!("Kernel execution failed: {}. Entering Quarantine.", e);
+                        warn!(
+                            "Failed to prepare kernel inputs: {}. Entering Quarantine.",
+                            e
+                        );
                         state.enter_quarantine();
                         continue;
                     }
-                }
+                };
 
-                // 6. Read kernel outputs
-                let kernel_outputs = match read_kernel_outputs(&config.paths.kernel_outputs).await {
+                // 5. Run kernel and collect outputs
+                let kernel_outputs = match execution_manager.execute_tick(&kernel_inputs).await {
                     Ok(outputs) => {
-                        debug!("Read kernel outputs: {:?}", outputs);
+                        debug!("Kernel outputs: {:?}", outputs);
                         outputs
                     }
                     Err(e) => {
-                        warn!("Failed to read kernel outputs: {}. Entering Quarantine.", e);
+                        warn!("Kernel execution failed: {}. Entering Quarantine.", e);
                         state.enter_quarantine();
                         continue;
                     }
@@ -203,7 +217,10 @@ pub async fn run(config: Config) -> Result<()> {
                         outputs
                     }
                     Err(e) => {
-                        warn!("Failed to read monitor outputs: {}. Entering Quarantine.", e);
+                        warn!(
+                            "Failed to read monitor outputs: {}. Entering Quarantine.",
+                            e
+                        );
                         state.enter_quarantine();
                         continue;
                     }
@@ -219,31 +236,36 @@ pub async fn run(config: Config) -> Result<()> {
                 }
 
                 // 10. Process kernel outputs and take action
-                if health.health_ok {
-                    actuator.handle_outputs(&kernel_outputs);
+                let actions = if health.health_ok {
+                    actuator.handle_outputs(&kernel_outputs)
                 } else {
-                    warn!("Health check failed: {:?}, entering quarantine", health.failed_bits);
+                    warn!(
+                        "Health check failed: {:?}, entering quarantine",
+                        health.failed_bits
+                    );
                     state.enter_quarantine();
                     continue;
-                }
+                };
 
                 // 11. Commit ledger record
-                let actions = Vec::new(); // Will be populated by actuator
-                if let Err(e) = ledger.append(
-                    tick_counter,
-                    &oracle_snapshot,
-                    &kernel_outputs,
-                    &monitor_outputs,
-                    &guards,
-                    &health,
-                    None, // economics
-                    actions,
-                ).await {
+                if let Err(e) = ledger
+                    .append(
+                        tick_counter,
+                        &oracle_snapshot,
+                        &kernel_outputs,
+                        &monitor_outputs,
+                        &guards,
+                        &health,
+                        None, // economics
+                        actions,
+                    )
+                    .await
+                {
                     error!("Failed to append ledger record: {}", e);
                 }
 
                 // Update last observed price
-                state.update_last_price(current_price);
+                state.update_last_price(mid_price);
 
                 // 12. Create periodic snapshots
                 if tick_counter % 1000 == 0 {
@@ -257,29 +279,4 @@ pub async fn run(config: Config) -> Result<()> {
             }
         }
     }
-}
-
-/// Read kernel outputs from files
-async fn read_kernel_outputs(outputs_dir: &std::path::Path) -> Result<KernelOutputs> {
-    let outputs = KernelOutputs {
-        state: FileIO::read_last_bool(&outputs_dir.join("state.out"))?,
-        holding: FileIO::read_last_bool(&outputs_dir.join("holding.out"))?,
-        buy: FileIO::read_last_bool(&outputs_dir.join("buy_signal.out"))?,
-        sell: FileIO::read_last_bool(&outputs_dir.join("sell_signal.out"))?,
-        oracle_fresh: FileIO::read_last_bool(&outputs_dir.join("oracle_fresh.out"))?,
-        timer_b0: FileIO::read_last_bool(&outputs_dir.join("timer_b0.out"))?,
-        timer_b1: FileIO::read_last_bool(&outputs_dir.join("timer_b1.out"))?,
-        nonce: FileIO::read_last_bool(&outputs_dir.join("nonce.out"))?,
-        entry_price: FileIO::read_last_bool(&outputs_dir.join("entry_price.out"))?,
-        profit: FileIO::read_last_bool(&outputs_dir.join("profit.out"))?,
-        burn: FileIO::read_last_bool(&outputs_dir.join("burn_event.out"))?,
-        has_burned: FileIO::read_last_bool(&outputs_dir.join("has_burned.out"))?,
-        obs_action_excl: FileIO::read_last_bool(&outputs_dir.join("obs_action_excl.out"))?,
-        obs_fresh_exec: FileIO::read_last_bool(&outputs_dir.join("obs_fresh_exec.out"))?,
-        obs_burn_profit: FileIO::read_last_bool(&outputs_dir.join("obs_burn_profit.out"))?,
-        obs_nonce_effect: FileIO::read_last_bool(&outputs_dir.join("obs_nonce_effect.out"))?,
-        progress: FileIO::read_last_bool(&outputs_dir.join("progress_flag.out"))?,
-    };
-
-    Ok(outputs)
 }

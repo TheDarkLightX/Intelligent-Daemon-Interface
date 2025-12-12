@@ -1,8 +1,12 @@
 # Enhanced Tau Daemon Testing Summary
 
-## Testing Status: ✅ COMPLETE
+## Latest regression attempt (offline environment)
 
-The enhanced Tau daemon with supporting specifications integration has been successfully tested and validated.
+- Added unit tests for daemon file I/O, oracle snapshot loading, and monitor aggregation.
+- `cargo test -p daemon --locked` currently fails in this environment because the crates.io index and git dependencies are blocked (CONNECT tunnel 403). Core unit tests compile locally but cannot fetch remote crates here.
+- `cargo fmt` passes for the workspace.
+
+The remainder of this document reflects the prior testing snapshot; the new tests expand coverage around the most risk-sensitive file and monitor handling paths.
 
 ## Compilation Tests
 

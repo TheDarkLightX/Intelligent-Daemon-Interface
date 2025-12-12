@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use tau_core::{Config, model::*};
+use tau_core::{model::*, Config};
 use tracing::debug;
 
 pub struct CooldownGuardImpl;
@@ -13,7 +13,12 @@ impl CooldownGuardImpl {
 
 #[async_trait]
 impl super::CooldownGuard for CooldownGuardImpl {
-    async fn compute(&self, last_trade_tick: Option<u64>, current_tick: u64, config: &Config) -> Result<bool> {
+    async fn compute(
+        &self,
+        last_trade_tick: Option<u64>,
+        current_tick: u64,
+        config: &Config,
+    ) -> Result<bool> {
         debug!("Computing cooldown guard...");
 
         if !config.cooldown.enabled {
@@ -25,12 +30,12 @@ impl super::CooldownGuard for CooldownGuardImpl {
             Some(last_tick) => {
                 let ticks_since_trade = current_tick.saturating_sub(last_tick);
                 let ok = ticks_since_trade >= config.cooldown.ticks.into();
-                
+
                 debug!(
                     "Cooldown check: last_trade_tick={}, current_tick={}, ticks_since_trade={}, cooldown_ticks={}, cooldown_ok={}",
                     last_tick, current_tick, ticks_since_trade, config.cooldown.ticks, ok
                 );
-                
+
                 ok
             }
             None => {
@@ -47,4 +52,4 @@ impl super::CooldownGuard for CooldownGuardImpl {
         // For now, return None
         None
     }
-} 
+}

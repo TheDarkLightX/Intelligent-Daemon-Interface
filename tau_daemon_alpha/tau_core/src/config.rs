@@ -136,4 +136,3 @@ impl Config {
         Ok(config)
     }
 }
-

@@ -3,16 +3,16 @@ use std::path::PathBuf;
 use tau_core::Config;
 use tracing::{error, info};
 
-mod kernel;
-mod execution;
 mod actuator;
+mod execution;
+mod fsio;
+mod guards;
+mod kernel;
+mod ledger;
 mod looper;
+mod monitors;
 mod oracle;
 mod state;
-mod guards;
-mod monitors;
-mod fsio;
-mod ledger;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,11 +29,18 @@ async fn main() -> Result<()> {
     // Load configuration from the file.
     let config = match Config::from_file(&config_path) {
         Ok(cfg) => {
-            info!("Configuration loaded successfully from {:?}", config_path.canonicalize()?);
+            info!(
+                "Configuration loaded successfully from {:?}",
+                config_path.canonicalize()?
+            );
             cfg
         }
         Err(e) => {
-            error!("Failed to load configuration from {:?}: {}", config_path.display(), e);
+            error!(
+                "Failed to load configuration from {:?}: {}",
+                config_path.display(),
+                e
+            );
             return Err(e.into());
         }
     };
