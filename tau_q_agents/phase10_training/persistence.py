@@ -164,9 +164,12 @@ class QTablePersistence:
         return result
     
     def _compute_checksum(self, q_data: Dict) -> str:
-        """Compute checksum for data integrity"""
+        """Compute checksum for data integrity.
+        
+        Uses SHA-256 instead of MD5 to avoid collision vulnerabilities.
+        """
         data_str = json.dumps(q_data, sort_keys=True)
-        return hashlib.md5(data_str.encode()).hexdigest()[:16]
+        return hashlib.sha256(data_str.encode()).hexdigest()[:32]
 
 
 def apply_to_agent(agent: Any, loaded_data: Dict):

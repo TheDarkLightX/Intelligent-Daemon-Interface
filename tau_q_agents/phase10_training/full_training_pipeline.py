@@ -158,7 +158,17 @@ class MegaQTable:
 
     @classmethod
     def load(cls, path: Path) -> "MegaQTable":
-        """Load Q-table from disk."""
+        """Load Q-table from disk.
+        
+        ⚠️  SECURITY WARNING: Only load files from trusted sources!
+        Pickle can execute arbitrary code during deserialization.
+        """
+        import warnings
+        warnings.warn(
+            "Loading pickled Q-table - only load files from trusted sources!",
+            UserWarning,
+            stacklevel=2,
+        )
         with open(path, "rb") as f:
             data = pickle.load(f)
         obj = cls(data["n_states"], data["n_actions"])

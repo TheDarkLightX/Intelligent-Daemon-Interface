@@ -184,17 +184,104 @@ class SeedNodeDiscovery(PeerDiscovery):
         logger.info("Peer discovery stopped")
     
     async def _bootstrap(self) -> None:
-        """Bootstrap from seed nodes."""
+        """Bootstrap from seed nodes.
+        
+        Connects to each seed node, performs handshake, and fetches
+        initial peer list for network discovery.
+        """
+        bootstrap_tasks = []
         for address in self._seed_addresses:
+            bootstrap_tasks.append(self._bootstrap_from_seed(address))
+        
+        # Run bootstrap attempts concurrently with timeout
+        if bootstrap_tasks:
+            results = await asyncio.gather(*bootstrap_tasks, return_exceptions=True)
+            successful = sum(1 for r in results if r is True)
+            logger.info(f"Bootstrap complete: {successful}/{len(self._seed_addresses)} seeds responded")
+    
+    async def _bootstrap_from_seed(self, address: str) -> bool:
+        """Bootstrap from a single seed node.
+        
+        Args:
+            address: Seed node address in format "host:port"
+            
+        Returns:
+            True if bootstrap succeeded, False otherwise
+        """
+        try:
+            logger.info(f"Bootstrapping from seed: {address}")
+            
+            # Parse address
+            if ':' in address:
+                host, port_str = address.rsplit(':', 1)
+                port = int(port_str)
+            else:
+                host = address
+                port = 9000  # Default port
+            
+            # Attempt TCP connection with timeout
             try:
-                # For now, create placeholder peer info
-                # In production, would connect and fetch actual info
-                logger.info(f"Bootstrapping from seed: {address}")
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(host, port),
+                    timeout=10.0
+                )
+            except (asyncio.TimeoutError, OSError) as e:
+                logger.debug(f"Cannot connect to seed {address}: {e}")
+                return False
+            
+            try:
+                # Send bootstrap request (Ping with bootstrap flag)
+                ping = Ping(sender_id=self._identity.node_id)
+                if HAS_CRYPTO and self._identity.has_private_key():
+                    self._identity.sign_message(ping)
                 
-                # TODO: Actually connect and fetch node info
+                # Serialize and send
+                msg_bytes = ping.to_bytes()
+                writer.write(len(msg_bytes).to_bytes(4, 'big') + msg_bytes)
+                await writer.drain()
                 
-            except Exception as e:
-                logger.warning(f"Failed to bootstrap from {address}: {e}")
+                # Read response with timeout
+                try:
+                    length_bytes = await asyncio.wait_for(reader.read(4), timeout=5.0)
+                    if len(length_bytes) < 4:
+                        return False
+                    
+                    msg_length = int.from_bytes(length_bytes, 'big')
+                    if msg_length > 1024 * 1024:  # 1MB limit
+                        logger.warning(f"Message too large from seed {address}")
+                        return False
+                    
+                    response_bytes = await asyncio.wait_for(
+                        reader.read(msg_length),
+                        timeout=5.0
+                    )
+                    
+                    # Parse response - expect Pong with peer info
+                    from .protocol import Message
+                    response = Message.from_bytes(response_bytes)
+                    
+                    if isinstance(response, Pong):
+                        # Create NodeInfo from response
+                        seed_info = NodeInfo(
+                            node_id=response.sender_id,
+                            public_key=getattr(response, 'public_key', b''),
+                            addresses=[address],
+                        )
+                        self.add_peer(seed_info)
+                        logger.info(f"Added seed peer: {response.sender_id[:16]}...")
+                        return True
+                    
+                except asyncio.TimeoutError:
+                    logger.debug(f"Timeout waiting for response from seed {address}")
+                    return False
+                    
+            finally:
+                writer.close()
+                await writer.wait_closed()
+                
+        except Exception as e:
+            logger.warning(f"Failed to bootstrap from {address}: {e}")
+            return False
     
     async def _exchange_loop(self) -> None:
         """Periodically exchange peers with connected nodes."""

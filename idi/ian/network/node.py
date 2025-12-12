@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from .protocol import Message
 
 # Use cryptography library if available, otherwise fallback to hashlib-based signing
+# SECURITY: The fallback is INSECURE and should NEVER be used in production!
 try:
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -36,9 +37,20 @@ try:
 except ImportError:
     HAS_CRYPTO = False
     import warnings
+    
+    # Check if we're in production mode - if so, refuse to run without crypto
+    _production_mode = os.environ.get("IAN_PRODUCTION", "").lower() in ("1", "true", "yes")
+    if _production_mode:
+        raise ImportError(
+            "SECURITY ERROR: cryptography library is required for production mode. "
+            "Install with: pip install cryptography"
+        )
+    
     warnings.warn(
-        "cryptography library not available. Node identity will use INSECURE fallback. "
-        "Install 'cryptography' for production use.",
+        "⚠️  SECURITY WARNING: cryptography library not available. "
+        "Node identity will use INSECURE HMAC fallback that provides NO real signatures. "
+        "This is acceptable ONLY for local development/testing. "
+        "For production, install 'cryptography': pip install cryptography",
         UserWarning,
         stacklevel=2,
     )

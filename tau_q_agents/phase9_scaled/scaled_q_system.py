@@ -518,7 +518,21 @@ class TrainingSystem:
         print(f"Saved to {path}")
     
     def load(self, path: str):
-        """Load model"""
+        """Load model from pickle file.
+        
+        ⚠️  SECURITY WARNING: Only load files from trusted sources!
+        Pickle can execute arbitrary code during deserialization.
+        Never load model files downloaded from untrusted sources.
+        
+        Args:
+            path: Path to the saved model file
+        """
+        import warnings
+        warnings.warn(
+            "Loading pickled model - only load files from trusted sources!",
+            UserWarning,
+            stacklevel=2,
+        )
         with open(path, 'rb') as f:
             data = pickle.load(f)
         self.q_table.primary = data["q_primary"]

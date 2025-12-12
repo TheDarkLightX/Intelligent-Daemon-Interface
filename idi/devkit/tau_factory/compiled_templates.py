@@ -160,7 +160,8 @@ class TemplateCache:
             for var in fragment.variables:
                 content += str(var)
 
-        return hashlib.md5(content.encode()).hexdigest()
+        # Use SHA-256 instead of MD5 to avoid collision vulnerabilities
+        return hashlib.sha256(content.encode()).hexdigest()
 
     def _compile_template(self, name: str, template: TauTemplate) -> CompiledTemplate:
         """Compile TauTemplate to CompiledTemplate."""
