@@ -503,6 +503,25 @@ class TrainingSystem:
             "total_updates": self.q_table.total_visits
         }
     
+    def _artifact_dir(self, base_path: Path) -> Path:
+        """Resolve the artifact directory used for safe persistence.
+        
+        Preconditions:
+            - base_path is a Path
+        
+        Postconditions:
+            - Returned path has no file suffixes (prevents misleading extensions)
+            - Returned path is suitable to be created as a directory
+        """
+        name = base_path.name
+        for suffix in base_path.suffixes:
+            if not suffix:
+                continue
+            name = name[: -len(suffix)]
+        if not name:
+            name = base_path.name
+        return base_path.with_name(name)
+
     def save(self, path: str) -> None:
         """Save model using safe serialization (JSON + NPZ).
         
@@ -511,12 +530,14 @@ class TrainingSystem:
             - Model state is consistent
         
         Postconditions:
-            - Creates {path}_meta.json and {path}_arrays.npz
+            - Creates <path>/metadata.json and <path>/arrays.npz
             - SHA-256 digest stored in metadata for integrity
         """
-        path = Path(path)
-        meta_path = path.with_suffix(".meta.json")
-        arrays_path = path.with_suffix(".arrays.npz")
+        base_path = Path(path)
+        artifact_dir = self._artifact_dir(base_path)
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        meta_path = artifact_dir / "metadata.json"
+        arrays_path = artifact_dir / "arrays.npz"
         
         # Save arrays separately (data-only, no code execution)
         np.savez_compressed(
@@ -546,7 +567,9 @@ class TrainingSystem:
         """Load model using safe deserialization.
         
         Preconditions:
-            - path exists with .meta.json and .arrays.npz files
+            - path exists either as:
+              - <path>/metadata.json and <path>/arrays.npz (preferred)
+              - legacy: <path>.meta.json and <path>.arrays.npz
         
         Postconditions:
             - Model state restored from files
@@ -560,9 +583,18 @@ class TrainingSystem:
             ValueError: If integrity check fails
             FileNotFoundError: If required files missing
         """
-        path = Path(path)
-        meta_path = path.with_suffix(".meta.json")
-        arrays_path = path.with_suffix(".arrays.npz")
+        base_path = Path(path)
+        if base_path.is_dir():
+            meta_path = base_path / "metadata.json"
+            arrays_path = base_path / "arrays.npz"
+        else:
+            artifact_dir = self._artifact_dir(base_path)
+            if artifact_dir.is_dir():
+                meta_path = artifact_dir / "metadata.json"
+                arrays_path = artifact_dir / "arrays.npz"
+            else:
+                meta_path = base_path.with_suffix(".meta.json")
+                arrays_path = base_path.with_suffix(".arrays.npz")
         
         # Load metadata (JSON is safe)
         metadata = json.loads(meta_path.read_text())
