@@ -282,6 +282,6 @@ class TestEnsembleIntegration:
         assert "majority_buy" in spec
         assert "unanimous_buy" in spec
         assert "position" in spec
-        assert "defs" in spec
-        assert "r (" in spec
+        # Tau CLI format: r <wff> (not 'defs' + 'r (' block)
+        assert "r " in spec
 

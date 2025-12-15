@@ -111,13 +111,14 @@ class TestAgentSchema:
 
     def test_schema_requires_name(self):
         """Schema must have a name."""
+        schema = AgentSchema(
+            name="",
+            strategy="momentum",
+            streams=(),
+            logic_blocks=(),
+        )
         with pytest.raises(ValueError):
-            AgentSchema(
-                name="",
-                strategy="momentum",
-                streams=(),
-                logic_blocks=(),
-            )
+            validate_schema(schema)
 
     def test_schema_validates_stream_references(self):
         """Logic blocks must reference valid streams."""
@@ -129,13 +130,14 @@ class TestAgentSchema:
                 output="output1",
             ),
         )
+        schema = AgentSchema(
+            name="test",
+            strategy="momentum",
+            streams=streams,
+            logic_blocks=logic,
+        )
         with pytest.raises(ValueError, match="nonexistent"):
-            AgentSchema(
-                name="test",
-                strategy="momentum",
-                streams=streams,
-                logic_blocks=logic,
-            )
+            validate_schema(schema)
 
     def test_schema_validates_output_streams(self):
         """Logic block outputs must be defined as output streams."""
@@ -150,13 +152,14 @@ class TestAgentSchema:
                 output="nonexistent_output",
             ),
         )
+        schema = AgentSchema(
+            name="test",
+            strategy="momentum",
+            streams=streams,
+            logic_blocks=logic,
+        )
         with pytest.raises(ValueError, match="nonexistent_output"):
-            AgentSchema(
-                name="test",
-                strategy="momentum",
-                streams=streams,
-                logic_blocks=logic,
-            )
+            validate_schema(schema)
 
     def test_validate_schema_function(self):
         """Test validate_schema helper function."""
@@ -174,14 +177,14 @@ class TestAgentSchema:
         # Should not raise
         validate_schema(valid_schema)
 
-        # Invalid schema - error raised during construction, not in validate_schema
+        invalid_schema = AgentSchema(
+            name="test",
+            strategy="momentum",
+            streams=(StreamConfig(name="in", stream_type="sbf"),),
+            logic_blocks=(
+                LogicBlock(pattern="fsm", inputs=("in",), output="missing"),
+            ),
+        )
         with pytest.raises(ValueError, match="missing"):
-            AgentSchema(
-                name="test",
-                strategy="momentum",
-                streams=(StreamConfig(name="in", stream_type="sbf"),),
-                logic_blocks=(
-                    LogicBlock(pattern="fsm", inputs=("in",), output="missing"),
-                ),
-            )
+            validate_schema(invalid_schema)
 

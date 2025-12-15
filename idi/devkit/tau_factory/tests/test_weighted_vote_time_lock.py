@@ -107,8 +107,7 @@ class TestTimeLockPattern:
         # Should contain time arithmetic
         assert "lock_active" in spec
         assert "+" in spec  # Addition: lock_start + lock_duration
-        assert "-" in spec  # Subtraction: - current_time
-        assert ">" in spec  # Comparison: remaining > 0
+        assert "<" in spec  # Safe comparison: current_time < end_time
         
         # Should contain bitvector references
         assert "bv[" in spec or ":bv[" in spec

@@ -1,18 +1,16 @@
+# smoke_echo - Generated Tau Agent
+# Auto-generated from AgentSchema
 # smoke_echo Agent (Auto-generated)
 # Strategy: custom
 
-i0:sbf = in file("inputs/input_signal.in").
+i0:sbf = in file("inputs/input_signal.in")
 
-o0:sbf = out file("outputs/echo.out").
+o0:sbf = out file("outputs/echo.out")
 
-defs
-r (
-    # passthrough pattern: echo <- input_signal
-    (o0[t] = i0[t])
-)
+# passthrough pattern: echo <- input_signal
+# echo :- input_signal
+r (o0[t] = i0[t])
 
-n
-n
-n
+
+
 q
-

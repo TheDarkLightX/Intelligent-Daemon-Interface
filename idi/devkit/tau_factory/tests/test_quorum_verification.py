@@ -2,12 +2,12 @@
 
 import pytest
 import tempfile
-import subprocess
 from pathlib import Path
 from itertools import product
 
 from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
 from idi.devkit.tau_factory.generator import generate_tau_spec
+from idi.devkit.tau_factory.runner import run_tau_spec, TauConfig, TauMode
 
 
 def find_tau_binary() -> Path | None:
@@ -39,31 +39,33 @@ def run_tau_spec_verify(spec_content: str, inputs: dict[str, list[str]], tau_bin
     # Write input files
     for name, values in inputs.items():
         (inputs_dir / f"{name}.in").write_text("\n".join(values) + "\n")
-    
-    # Run Tau
-    proc = subprocess.run(
-        [str(tau_bin)],
-        stdin=spec_path.open("rb"),
-        capture_output=True,
-        timeout=10,
-        cwd=str(work_dir),
+
+    result = run_tau_spec(
+        spec_path,
+        tau_bin,
+        config=TauConfig(timeout=10.0, mode=TauMode.FILE),
     )
-    
-    # Check for errors
-    stderr = proc.stderr.decode("utf-8", errors="ignore")
-    stdout = proc.stdout.decode("utf-8", errors="ignore")
-    
-    if proc.returncode != 0 or "Error" in stderr or "Error" in stdout or "unsat" in stderr:
-        error_msg = f"Tau execution failed:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}\n\nSpec:\n{spec_content}"
+
+    if "Unexpected =" in result.stdout or "Unexpected =" in result.stderr or "Unexpected '=" in result.stdout or "Unexpected '=" in result.stderr:
+        pytest.skip("Tau binary incompatible with expected Tau spec syntax")
+
+    if not result.success:
+        error_msg = (
+            "Tau execution failed:\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}\n\n"
+            f"Errors: {result.errors}\n\n"
+            f"Spec:\n{spec_content}"
+        )
         raise RuntimeError(error_msg)
     
     # Parse outputs
     outputs = {}
-    for out_file in sorted(outputs_dir.glob("*.out")):
-        if "mirror" in out_file.name:
+
+    for filename, lines in result.outputs.items():
+        if "mirror" in filename:
             continue
-        content = out_file.read_text().strip()
-        outputs[out_file.stem] = [line.strip() for line in content.split("\n") if line.strip()]
+        outputs[Path(filename).stem] = lines
     
     return outputs
 

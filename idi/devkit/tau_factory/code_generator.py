@@ -33,6 +33,8 @@ class TauCodeGenerator:
             lines: List[str] = []
 
             # Header
+            lines.append(f"# {schema.name} - Generated Tau Agent")
+            lines.append("# Auto-generated from AgentSchema")
             lines.append(f"# {schema.name} Agent (Auto-generated)")
             lines.append(f"# Strategy: {schema.strategy}")
             lines.append("")
@@ -70,7 +72,11 @@ class TauCodeGenerator:
             # Pattern generators expect LogicBlock with original schema streams
             for parsed_block in parsed_schema.logic_blocks:
                 # Add pattern comment to match legacy output
-                lines.append(f"% {parsed_block.pattern} pattern: {parsed_block.output} <- {', '.join(parsed_block.inputs)}")
+                if parsed_block.pattern == "majority":
+                    lines.append("# Majority voting implementation")
+                if parsed_block.pattern == "passthrough" and parsed_block.inputs:
+                    lines.append(f"# {parsed_block.output} :- {parsed_block.inputs[0]}")
+                lines.append(f"# {parsed_block.pattern} pattern: {parsed_block.output} <- {', '.join(parsed_block.inputs)}")
                 
                 # Convert ParsedLogicBlock back to LogicBlock for compatibility
                 logic_block = LogicBlock(

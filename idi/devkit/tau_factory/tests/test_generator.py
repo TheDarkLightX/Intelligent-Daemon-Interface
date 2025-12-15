@@ -41,21 +41,37 @@ class TestTauSpecGenerator:
         """Generated spec should include input stream declarations."""
         schema = create_minimal_schema()
         spec = generate_tau_spec(schema)
-        assert 'i0:sbf = in file("inputs/q_buy.in").' in spec
-        assert 'i1:sbf = in file("inputs/q_sell.in").' in spec
+        # Note: no trailing dots in new Tau CLI format
+        assert 'i0:sbf = in file("inputs/q_buy.in")' in spec
+        assert 'i1:sbf = in file("inputs/q_sell.in")' in spec
 
     def test_generates_output_declarations(self):
         """Generated spec should include output stream declarations."""
         schema = create_minimal_schema()
         spec = generate_tau_spec(schema)
-        assert 'o0:sbf = out file("outputs/position.out").' in spec
+        # Note: no trailing dots in new Tau CLI format
+        assert 'o0:sbf = out file("outputs/position.out")' in spec
 
     def test_generates_input_mirrors(self):
         """Generated spec should include input mirrors when enabled."""
-        schema = create_minimal_schema()
+        schema = AgentSchema(
+            name="test_agent",
+            strategy="momentum",
+            streams=(
+                StreamConfig(name="q_buy", stream_type="sbf"),
+                StreamConfig(name="q_sell", stream_type="sbf"),
+                StreamConfig(name="position", stream_type="sbf", is_input=False),
+            ),
+            logic_blocks=(
+                LogicBlock(pattern="fsm", inputs=("q_buy", "q_sell"), output="position"),
+            ),
+            num_steps=5,
+            include_mirrors=True,  # Explicitly enable mirrors
+        )
         spec = generate_tau_spec(schema)
-        assert 'i0:sbf = out file("outputs/i0_mirror.out").' in spec
-        assert 'i1:sbf = out file("outputs/i1_mirror.out").' in spec
+        # Mirrors use 'mi' prefix to avoid name conflict with input streams
+        assert 'mi0:sbf = out file("outputs/i0_mirror.out")' in spec
+        assert 'mi1:sbf = out file("outputs/i1_mirror.out")' in spec
 
     def test_skips_mirrors_when_disabled(self):
         """Generated spec should skip mirrors when include_mirrors=False."""
@@ -72,29 +88,48 @@ class TestTauSpecGenerator:
         spec = generate_tau_spec(schema)
         assert "mirror" not in spec.lower()
 
-    def test_generates_defs_keyword(self):
-        """Generated spec should include 'defs' keyword before recurrence."""
+    def test_generates_run_command(self):
+        """Generated spec should include 'r <wff>' run command.
+        
+        In Tau CLI mode, we use 'r <wff>' directly (not 'defs' + 'r (' block).
+        """
         schema = create_minimal_schema()
         spec = generate_tau_spec(schema)
-        assert "defs" in spec
-        # Should appear before 'r'
-        defs_pos = spec.find("defs")
-        r_pos = spec.find("r (")
-        assert defs_pos < r_pos
+        # Should have 'r ' followed by the WFF
+        assert "r " in spec
+        # The run command should contain stream references
+        r_line = next((ln for ln in spec.splitlines() if ln.strip().startswith('r ')), None)
+        assert r_line is not None, "No 'r' run command found"
+        assert "o0[t]" in r_line or "o0" in r_line
 
-    def test_generates_recurrence_block(self):
-        """Generated spec should include recurrence block."""
+    def test_generates_recurrence_logic(self):
+        """Generated spec should include recurrence logic in run command."""
         schema = create_minimal_schema()
         spec = generate_tau_spec(schema)
-        assert "r (" in spec
-        assert ")" in spec  # Closing paren
+        # Run command should contain the WFF with stream references
+        assert "r " in spec
+        # Should have balanced parentheses
+        assert spec.count("(") == spec.count(")")
 
     def test_generates_execution_commands(self):
-        """Generated spec should include 'n' commands and 'q'."""
+        """Generated spec should include empty lines for stepping and 'q'.
+        
+        In Tau REPL, empty lines advance execution (not 'n' commands).
+        """
         schema = create_minimal_schema()
         spec = generate_tau_spec(schema)
-        # Should have num_steps 'n' commands
-        assert spec.count("\nn\n") == schema.num_steps - 1 or spec.count("n\n") == schema.num_steps
+        lines = spec.splitlines()
+        
+        # Find r command and q to count empty lines between them
+        r_idx = next((i for i, ln in enumerate(lines) if ln.strip().startswith('r ')), -1)
+        q_idx = next((i for i, ln in enumerate(lines) if ln.strip() == 'q'), -1)
+        
+        assert r_idx >= 0, "No 'r' run command"
+        assert q_idx > r_idx, "No 'q' after 'r'"
+        
+        # Count empty lines (execution steps)
+        empty_count = sum(1 for ln in lines[r_idx+1:q_idx] if ln.strip() == '')
+        assert empty_count == schema.num_steps
         assert spec.strip().endswith("q")
 
     def test_generates_bitvector_streams(self):
@@ -111,8 +146,9 @@ class TestTauSpecGenerator:
             ),
         )
         spec = generate_tau_spec(schema)
-        assert 'i0:bv[16] = in file("inputs/price.in").' in spec
-        assert 'o0:bv[16] = out file("outputs/ema.out").' in spec
+        # Note: no trailing dots in new Tau CLI format
+        assert 'i0:bv[16] = in file("inputs/price.in")' in spec
+        assert 'o0:bv[16] = out file("outputs/ema.out")' in spec
 
     def test_generates_fsm_pattern(self):
         """Generated spec should include FSM logic pattern."""
@@ -139,7 +175,6 @@ class TestTauSpecGenerator:
         spec = generate_tau_spec(schema)
         # Basic syntax checks
         assert spec.count("(") == spec.count(")")  # Balanced parens
-        assert "defs" in spec
-        assert "r (" in spec
-        assert spec.strip().endswith("q")
+        assert "r " in spec  # Run command
+        assert spec.strip().endswith("q")  # Quit command
 

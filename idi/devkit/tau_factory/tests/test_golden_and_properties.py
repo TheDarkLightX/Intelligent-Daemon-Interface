@@ -133,13 +133,25 @@ def test_golden_fsm():
 
 @pytest.mark.parametrize("num_steps", [1, 2, 3, 4, 5, 6, 7, 8])
 def test_property_num_steps_commands(num_steps: int):
-    """Spec should emit exactly num_steps 'n' commands plus a trailing 'q'."""
+    """Spec should emit exactly num_steps empty lines (execution steps) plus a trailing 'q'.
+    
+    In Tau REPL, empty lines advance execution by one step (not 'n' commands).
+    """
     schema = _schema_echo(num_steps=num_steps)
     spec = generate_tau_spec(schema)
-    lines = [ln.strip() for ln in spec.splitlines() if ln.strip()]
-    n_count = sum(1 for ln in lines if ln == "n")
-    assert n_count == num_steps
-    assert lines[-1] == "q"
+    lines = spec.splitlines()
+    
+    # Find the 'r ' command and 'q' to count empty lines between them
+    r_idx = next((i for i, ln in enumerate(lines) if ln.strip().startswith('r ')), -1)
+    q_idx = next((i for i, ln in enumerate(lines) if ln.strip() == 'q'), -1)
+    
+    assert r_idx >= 0, "Missing 'r' run command"
+    assert q_idx > r_idx, "Missing 'q' quit command after 'r'"
+    
+    # Count empty lines between r command and q (these are execution steps)
+    empty_count = sum(1 for ln in lines[r_idx+1:q_idx] if ln.strip() == '')
+    assert empty_count == num_steps, f"Expected {num_steps} empty lines, got {empty_count}"
+    assert lines[q_idx].strip() == "q"
 
 
 @pytest.mark.parametrize("num_steps", [1, 2, 3, 4, 5, 6, 7, 8])
@@ -150,6 +162,7 @@ def test_property_output_decl_count(num_steps: int):
     outputs = [s for s in schema.streams if not s.is_input]
     for idx, stream in enumerate(outputs):
         hex_idx = hex(idx)[2:].upper()
-        marker = f"o{hex_idx}:{'sbf' if stream.stream_type=='sbf' else f'bv[{stream.width}]'} = out file(\"outputs/{stream.name}.out\")."
+        # Note: no trailing dot in new Tau CLI format
+        marker = f"o{hex_idx}:{'sbf' if stream.stream_type=='sbf' else f'bv[{stream.width}]'} = out file(\"outputs/{stream.name}.out\")"
         assert marker in spec
 

@@ -8,6 +8,13 @@ from typing import List, Tuple
 def validate_tau_spec(spec: str) -> Tuple[bool, List[str]]:
     """Validate a generated Tau spec for common issues.
     
+    Tau Language REPL syntax (verified via tau.tgf grammar):
+    - Input: varname:type = in file("path")
+    - Output: varname:type = out file("path")
+    - Run: r <wff> (formula directly, no block wrapper)
+    - Stepping: Empty lines advance execution
+    - Quit: q
+    
     Args:
         spec: The Tau spec string to validate
         
@@ -16,12 +23,9 @@ def validate_tau_spec(spec: str) -> Tuple[bool, List[str]]:
     """
     errors = []
     
-    # Check for required keywords
-    if "defs" not in spec:
-        errors.append("Missing 'defs' keyword")
-    
-    if "r (" not in spec:
-        errors.append("Missing recurrence block 'r ('")
+    # Check for run command (r <wff>)
+    if "r " not in spec:
+        errors.append("Missing run command 'r <wff>'")
     
     if not spec.strip().endswith("q"):
         errors.append("Missing 'q' quit command")
@@ -49,32 +53,36 @@ def validate_tau_spec(spec: str) -> Tuple[bool, List[str]]:
     if not has_outputs:
         errors.append("No output streams found (o0, o1, etc.)")
     
-    # Check for execution commands
-    n_count = spec.count("\nn\n") + spec.count("n\n")
-    if n_count == 0:
-        errors.append("No execution steps ('n' commands) found")
+    # Check for execution steps (empty lines between 'r' command and 'q')
+    # In Tau REPL, empty lines advance execution, NOT 'n' commands
+    lines = spec.split('\n')
+    r_idx = -1
+    q_idx = -1
+    for i, line in enumerate(lines):
+        if line.strip().startswith('r '):
+            r_idx = i
+        if line.strip() == 'q':
+            q_idx = i
     
-    # Check for common syntax errors
-    if "&&" in spec and "r (" in spec:
-        # Check that && is used correctly in recurrence block
-        r_block_start = spec.find("r (")
-        r_block_end = spec.find(")", r_block_start)
-        if r_block_end > r_block_start:
-            r_block = spec[r_block_start:r_block_end]
-            # Should have && between clauses, not at start/end
-            if r_block.strip().startswith("&&"):
-                errors.append("Recurrence block starts with && (should start with clause)")
-            if r_block.strip().endswith("&&"):
-                errors.append("Recurrence block ends with && (should end with clause)")
+    if r_idx >= 0 and q_idx > r_idx:
+        # Count empty lines between r command and q (these are execution steps)
+        empty_count = sum(1 for line in lines[r_idx+1:q_idx] if line.strip() == '')
+        if empty_count == 0:
+            errors.append("No execution steps (empty lines between 'r' and 'q') found")
     
-    # Check for proper initial conditions format
-    if "[0]" in spec:
-        # Initial conditions should use && syntax
-        init_patterns = ["&& (", "&&("]
-        has_proper_init = any(pattern in spec for pattern in init_patterns)
-        if not has_proper_init and "[0]" in spec:
-            # Might be okay, but warn if no && nearby
-            pass
+    # Check for common syntax errors in run command
+    if "r " in spec:
+        # Find the run command line
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('r '):
+                wff = stripped[2:]  # Everything after 'r '
+                # Check that WFF doesn't start or end with &&
+                if wff.strip().startswith('&&'):
+                    errors.append("Run command WFF starts with && (should start with clause)")
+                if wff.strip().endswith('&&'):
+                    errors.append("Run command WFF ends with && (should end with clause)")
+                break
     
     return len(errors) == 0, errors
 
