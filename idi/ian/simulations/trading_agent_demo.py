@@ -187,7 +187,7 @@ class DemoTauSender:
         try:
             decoded = json.loads(tx_data.decode('utf-8'))
             tx_type = decoded.get('type', 'unknown')
-        except:
+        except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
             decoded = {"raw": tx_data.hex()[:32]}
             tx_type = "raw"
         

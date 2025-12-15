@@ -207,6 +207,63 @@ class TestOrdering:
         valid, reason = proof.verify_ordering()
         assert not valid
         assert "out of order" in reason
+    
+    def test_ordering_key_deterministic_when_seed_zero(self, goal_spec):
+        """Regression: OrderingKey must be deterministic when seed==0.
+        
+        Previously, seed==0 caused a wall-clock fallback which broke
+        multi-node consensus (different nodes computed different keys).
+        Now seed==0 falls back to _U64_MAX, ensuring all nodes agree.
+        """
+        from idi.ian.network.ordering import OrderingKey, _U64_MAX
+        
+        # Create contribution with seed=0 (no explicit timestamp)
+        contrib = make_contribution(goal_spec.goal_id, seed=0)
+        
+        # Generate key twice - must be identical (deterministic)
+        key1 = OrderingKey.from_contribution(contrib)
+        key2 = OrderingKey.from_contribution(contrib)
+        
+        assert key1 == key2, "OrderingKey must be deterministic"
+        assert key1.timestamp_ms == _U64_MAX, "seed==0 must fall back to _U64_MAX"
+    
+    @pytest.mark.asyncio
+    async def test_mempool_ordering_with_seed_zero(self, goal_spec):
+        """Regression: Contributions with seed=0 should sort after explicit seeds.
+        
+        This ensures that contributions without explicit ordering hints
+        are processed last, giving priority to timestamped contributions.
+        """
+        from idi.ian.network.ordering import ContributionMempool, _U64_MAX
+        
+        mempool = ContributionMempool(goal_id=str(goal_spec.goal_id))
+        
+        # Add contribution with seed=0 (deterministic fallback)
+        contrib_no_seed = Contribution(
+            goal_id=goal_spec.goal_id,
+            agent_pack=AgentPack(version="1.0", parameters=b"no_seed_params"),
+            contributor_id="alice",
+            seed=0,
+        )
+        
+        # Add contribution with explicit seed
+        contrib_with_seed = Contribution(
+            goal_id=goal_spec.goal_id,
+            agent_pack=AgentPack(version="1.0", parameters=b"with_seed_params"),
+            contributor_id="bob",
+            seed=1000,
+        )
+        
+        # Add in reverse order
+        await mempool.add(contrib_no_seed)
+        await mempool.add(contrib_with_seed)
+        
+        # Pop should return explicit-seed first (lower timestamp wins)
+        entry1 = await mempool.pop_next()
+        entry2 = await mempool.pop_next()
+        
+        assert entry1.key.timestamp_ms == 1000, "Explicit seed should come first"
+        assert entry2.key.timestamp_ms == _U64_MAX, "seed=0 should fallback to _U64_MAX"
 
 
 # =============================================================================

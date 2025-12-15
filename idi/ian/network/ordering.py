@@ -37,6 +37,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_U64_MODULUS = 1 << 64
+_U64_MAX = _U64_MODULUS - 1
+
+
 # =============================================================================
 # Ordering Key
 # =============================================================================
@@ -70,9 +74,15 @@ class OrderingKey:
     @classmethod
     def from_contribution(cls, contrib: "Contribution") -> "OrderingKey":
         """Create ordering key from contribution."""
-        # Use submission timestamp (seed encodes timestamp typically)
-        timestamp_ms = contrib.seed if contrib.seed > 1_000_000_000_000 else int(time.time() * 1000)
-        return cls(timestamp_ms=timestamp_ms, pack_hash=contrib.pack_hash)
+        # Use submission timestamp.
+        #
+        # Contract:
+        # - If contrib.seed is non-zero, treat it as a deterministic timestamp for ordering.
+        # - Otherwise, fall back to wall-clock.
+        seed_ms = int(contrib.seed)
+        if 0 < seed_ms < _U64_MODULUS:
+            return cls(timestamp_ms=seed_ms, pack_hash=contrib.pack_hash)
+        return cls(timestamp_ms=_U64_MAX, pack_hash=contrib.pack_hash)
 
 
 # =============================================================================
@@ -265,14 +275,12 @@ class ContributionMempool:
                 return self._heap[0]
             return None
     
-    async def contains(self, pack_hash: bytes) -> bool:
+    async def contains(self, contribution_hash: bytes) -> bool:
         """Check if contribution is in mempool."""
         async with self._lock:
-            # Check by contribution hash (need to compute from pack_hash)
-            for entry in self._by_hash.values():
-                if entry.key.pack_hash == pack_hash:
-                    return True
-            return False
+            if contribution_hash in self._by_hash:
+                return True
+            return contribution_hash in self._processed
     
     async def get_ordered_batch(self, max_count: int = 100) -> List[MempoolEntry]:
         """
@@ -600,8 +608,12 @@ class ContributionGossip:
         if not peers:
             return
         
-        import random
-        targets = random.sample(peers, min(self._fanout, len(peers)))
+        # Security: Use secrets for unpredictable peer selection to prevent
+        # adversaries from predicting gossip targets and partitioning the network
+        import secrets
+        peer_list = list(peers)
+        secrets.SystemRandom().shuffle(peer_list)
+        targets = peer_list[:min(self._fanout, len(peer_list))]
         
         # Gossip to each peer
         for peer_id in targets:

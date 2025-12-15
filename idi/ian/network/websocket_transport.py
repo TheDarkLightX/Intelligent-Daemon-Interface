@@ -22,8 +22,11 @@ Integration:
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import json
 import logging
+import secrets
 import time
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -40,6 +43,60 @@ from .protocol import Message, MessageType
 from .node import NodeIdentity
 
 logger = logging.getLogger(__name__)
+
+
+_AIOHTTP_WS_CLIENT_COMPRESS_WBITS = 15
+
+
+def _derive_node_id_from_public_key(public_key: bytes) -> str:
+    """Derive a node_id from an Ed25519 public key.
+
+    Invariant:
+        node_id == sha256(public_key)[:40]
+    """
+    return hashlib.sha256(public_key).hexdigest()[:40]
+
+
+def _auth_payload(challenge: bytes, node_id: str) -> bytes:
+    """Build the challenge payload for WebSocket authentication.
+
+    Preconditions:
+        - `challenge` is a per-connection random nonce.
+        - `node_id` is a canonical string representation.
+    Postcondition:
+        - Returned bytes are deterministic given (challenge, node_id).
+    """
+    return hashlib.sha256(challenge + node_id.encode()).digest()
+
+
+def _b64decode(value: Any) -> Optional[bytes]:
+    """Decode a base64 string.
+
+    Returns None for invalid input to keep call sites fail-closed.
+    """
+    if not isinstance(value, str):
+        return None
+    try:
+        return base64.b64decode(value, validate=True)
+    except Exception:
+        return None
+
+
+def _get_request_id(data: Dict[str, Any]) -> Optional[str]:
+    """Extract a request_id from an inbound client message."""
+    request_id = data.get("request_id")
+    if not isinstance(request_id, str) or not request_id:
+        return None
+    return request_id
+
+
+def _with_request_id(payload: Dict[str, Any], request_id: Optional[str]) -> Dict[str, Any]:
+    """Return payload with request_id injected (if provided and not already set)."""
+    if request_id is None:
+        return payload
+    if "request_id" in payload:
+        return payload
+    return {**payload, "request_id": request_id}
 
 
 # =============================================================================
@@ -75,6 +132,11 @@ class WebSocketConfig:
     
     # Compression
     compress: bool = True
+    
+    # Security: Origin validation for CSRF protection
+    # Empty list = allow all origins (development only)
+    # In production, set to explicit list like ["https://example.com"]
+    allowed_origins: List[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -87,6 +149,7 @@ class WSClientConnection:
     id: str  # Connection ID
     ws: Any  # WebSocket object (aiohttp.WebSocketResponse)
     node_id: Optional[str] = None  # Node ID after handshake
+    auth_challenge: Optional[bytes] = None  # Per-connection challenge nonce
     connected_at: float = field(default_factory=time.time)
     last_message_at: float = field(default_factory=time.time)
     messages_sent: int = 0
@@ -215,6 +278,13 @@ class WebSocketServer:
     
     async def _handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         """Handle new WebSocket connection."""
+        # Security: Validate Origin header for CSRF protection
+        if self._config.allowed_origins:
+            origin = request.headers.get("Origin", "")
+            if origin not in self._config.allowed_origins:
+                logger.warning(f"Rejected WebSocket from disallowed origin: {origin}")
+                return web.Response(status=403, text="Origin not allowed")
+        
         # Check connection limit
         if len(self._connections) >= self._config.max_connections:
             return web.Response(status=503, text="Too many connections")
@@ -229,8 +299,9 @@ class WebSocketServer:
         # Create connection
         self._connection_counter += 1
         conn_id = f"ws_{self._connection_counter}"
-        
-        conn = WSClientConnection(id=conn_id, ws=ws)
+
+        # DbC: auth_challenge is a per-connection nonce. It MUST be unpredictable.
+        conn = WSClientConnection(id=conn_id, ws=ws, auth_challenge=secrets.token_bytes(32))
         self._connections[conn_id] = conn
         
         logger.debug(f"WebSocket client connected: {conn_id}")
@@ -241,6 +312,7 @@ class WebSocketServer:
                 "type": "welcome",
                 "node_id": self._identity.node_id,
                 "connection_id": conn_id,
+                "challenge": conn.auth_challenge.hex() if conn.auth_challenge else None,
             })
             
             # Message loop
@@ -300,38 +372,51 @@ class WebSocketServer:
     async def _handle_message(self, conn: WSClientConnection, data: Dict[str, Any]) -> None:
         """Handle incoming WebSocket message."""
         msg_type = data.get("type", "")
+        request_id = _get_request_id(data)
         
         # Built-in handlers
         if msg_type == "ping":
-            await self._send_to_connection(conn, {"type": "pong"})
+            await self._send_to_connection(conn, _with_request_id({"type": "pong"}, request_id))
             return
         
         if msg_type == "subscribe":
-            await self._handle_subscribe(conn, data)
+            await self._handle_subscribe(conn, data, request_id)
             return
         
         if msg_type == "unsubscribe":
-            await self._handle_unsubscribe(conn, data)
+            await self._handle_unsubscribe(conn, data, request_id)
             return
         
         if msg_type == "authenticate":
-            await self._handle_authenticate(conn, data)
+            await self._handle_authenticate(conn, data, request_id)
             return
         
         # Custom handlers
         handler = self._handlers.get(msg_type)
         if handler:
+            if not conn.is_authenticated():
+                await self._send_error(conn, "Not authenticated", request_id)
+                return
             try:
                 response = await handler(data, conn)
                 if response:
-                    await self._send_to_connection(conn, response)
+                    await self._send_to_connection(conn, _with_request_id(response, request_id))
             except Exception as e:
-                await self._send_error(conn, str(e))
+                await self._send_error(conn, str(e), request_id)
         else:
-            await self._send_error(conn, f"Unknown message type: {msg_type}")
+            await self._send_error(conn, f"Unknown message type: {msg_type}", request_id)
     
-    async def _handle_subscribe(self, conn: WSClientConnection, data: Dict[str, Any]) -> None:
+    async def _handle_subscribe(
+        self,
+        conn: WSClientConnection,
+        data: Dict[str, Any],
+        request_id: Optional[str],
+    ) -> None:
         """Handle subscription request."""
+        if not conn.is_authenticated():
+            await self._send_error(conn, "Not authenticated", request_id)
+            return
+
         topics = data.get("topics", [])
         
         for topic in topics:
@@ -340,13 +425,28 @@ class WebSocketServer:
             self._topic_subscribers[topic].add(conn.id)
             conn.subscriptions.add(topic)
         
-        await self._send_to_connection(conn, {
-            "type": "subscribed",
-            "topics": list(conn.subscriptions),
-        })
+        await self._send_to_connection(
+            conn,
+            _with_request_id(
+                {
+                    "type": "subscribed",
+                    "topics": list(conn.subscriptions),
+                },
+                request_id,
+            ),
+        )
     
-    async def _handle_unsubscribe(self, conn: WSClientConnection, data: Dict[str, Any]) -> None:
+    async def _handle_unsubscribe(
+        self,
+        conn: WSClientConnection,
+        data: Dict[str, Any],
+        request_id: Optional[str],
+    ) -> None:
         """Handle unsubscription request."""
+        if not conn.is_authenticated():
+            await self._send_error(conn, "Not authenticated", request_id)
+            return
+
         topics = data.get("topics", [])
         
         for topic in topics:
@@ -354,25 +454,85 @@ class WebSocketServer:
                 self._topic_subscribers[topic].discard(conn.id)
             conn.subscriptions.discard(topic)
         
-        await self._send_to_connection(conn, {
-            "type": "unsubscribed",
-            "topics": topics,
-        })
+        await self._send_to_connection(
+            conn,
+            _with_request_id(
+                {
+                    "type": "unsubscribed",
+                    "topics": topics,
+                },
+                request_id,
+            ),
+        )
     
-    async def _handle_authenticate(self, conn: WSClientConnection, data: Dict[str, Any]) -> None:
+    async def _handle_authenticate(
+        self,
+        conn: WSClientConnection,
+        data: Dict[str, Any],
+        request_id: Optional[str],
+    ) -> None:
         """Handle authentication."""
+        # Preconditions:
+        # - Server must have issued a per-connection challenge.
+        # - Client must prove control of the private key that matches its node_id.
+        if conn.is_authenticated():
+            await self._send_error(conn, "Already authenticated", request_id)
+            return
+
+        if conn.auth_challenge is None:
+            await self._send_error(conn, "Missing server challenge", request_id)
+            return
+
         node_id = data.get("node_id")
-        signature = data.get("signature")
-        
-        # In a full implementation, would verify signature
-        if node_id:
-            conn.node_id = node_id
-            await self._send_to_connection(conn, {
-                "type": "authenticated",
-                "node_id": node_id,
-            })
-        else:
-            await self._send_error(conn, "Invalid authentication")
+        public_key_raw = _b64decode(data.get("public_key"))
+        signature_raw = _b64decode(data.get("signature"))
+
+        if not isinstance(node_id, str) or not node_id:
+            await self._send_error(conn, "Invalid authentication", request_id)
+            return
+
+        if public_key_raw is None or len(public_key_raw) != 32:
+            await self._send_error(conn, "Invalid public key", request_id)
+            return
+
+        if signature_raw is None or len(signature_raw) != 64:
+            await self._send_error(conn, "Invalid signature", request_id)
+            return
+
+        expected_node_id = _derive_node_id_from_public_key(public_key_raw)
+        if node_id != expected_node_id:
+            await self._send_error(conn, "node_id does not match public key", request_id)
+            return
+
+        # Prevent identity hijacking: only one active connection may claim a node_id.
+        for other in self._connections.values():
+            if other is conn:
+                continue
+            if other.node_id == node_id:
+                await self._send_error(conn, "node_id already connected", request_id)
+                return
+
+        payload = _auth_payload(conn.auth_challenge, node_id)
+        if not NodeIdentity.verify_with_public_key(public_key_raw, payload, signature_raw):
+            await self._send_error(conn, "Invalid authentication", request_id)
+            return
+
+        # Postconditions:
+        # - conn.node_id becomes immutable identifier for this connection.
+        # - auth_challenge is cleared to prevent replay on this connection.
+        conn.node_id = node_id
+        conn.auth_challenge = None
+
+        await self._send_to_connection(
+            conn,
+            _with_request_id(
+                {
+                    "type": "authenticated",
+                    "node_id": node_id,
+                },
+                request_id,
+            ),
+        )
     
     # -------------------------------------------------------------------------
     # Sending Messages
@@ -388,12 +548,23 @@ class WebSocketServer:
             logger.debug(f"Failed to send to {conn.id}: {e}")
             return False
     
-    async def _send_error(self, conn: WSClientConnection, error: str) -> None:
+    async def _send_error(
+        self,
+        conn: WSClientConnection,
+        error: str,
+        request_id: Optional[str] = None,
+    ) -> None:
         """Send error message."""
-        await self._send_to_connection(conn, {
-            "type": "error",
-            "error": error,
-        })
+        await self._send_to_connection(
+            conn,
+            _with_request_id(
+                {
+                    "type": "error",
+                    "error": error,
+                },
+                request_id,
+            ),
+        )
     
     async def broadcast(self, data: Dict[str, Any]) -> int:
         """Broadcast message to all connections."""
@@ -543,6 +714,10 @@ class WebSocketClient:
         self._handlers: Dict[str, Callable] = {}
         self._pending_requests: Dict[str, asyncio.Future] = {}
         self._request_counter = 0
+
+        # Server-provided challenge for authentication
+        self._welcome_future: Optional[asyncio.Future] = None
+        self._server_challenge: Optional[bytes] = None
         
         # Background tasks
         self._read_task: Optional[asyncio.Task] = None
@@ -559,23 +734,34 @@ class WebSocketClient:
         
         try:
             self._session = aiohttp.ClientSession()
+
+            # aiohttp>=3.13 expects `compress` as an int (wbits) or 0 (disabled).
+            # WebSocketResponse (server side) uses a bool, so we map our config here.
+            client_compress = _AIOHTTP_WS_CLIENT_COMPRESS_WBITS if self._config.compress else 0
             
             self._ws = await self._session.ws_connect(
                 self._url,
                 heartbeat=self._config.heartbeat_interval,
                 max_msg_size=self._config.max_message_size,
-                compress=self._config.compress,
+                compress=client_compress,
             )
             
             self._connected = True
             self._reconnect_attempts = 0
             self._running = True
-            
-            # Start read loop
+
+            # Start read loop and wait for the server welcome (contains auth challenge).
+            self._welcome_future = asyncio.get_running_loop().create_future()
             self._read_task = asyncio.create_task(self._read_loop())
-            
-            # Authenticate if we have identity
-            if self._identity:
+            try:
+                await asyncio.wait_for(self._welcome_future, timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.error("WebSocket welcome timeout")
+                await self._cleanup()
+                return False
+
+            # Authenticate if we have a signing identity.
+            if self._identity and self._identity.has_private_key():
                 await self.authenticate()
             
             logger.info(f"WebSocket connected to {self._url}")
@@ -673,7 +859,17 @@ class WebSocketClient:
     async def _handle_message(self, data: Dict[str, Any]) -> None:
         """Handle incoming message."""
         msg_type = data.get("type", "")
-        
+
+        if msg_type == "welcome":
+            challenge_hex = data.get("challenge")
+            if isinstance(challenge_hex, str) and challenge_hex:
+                try:
+                    self._server_challenge = bytes.fromhex(challenge_hex)
+                except ValueError:
+                    self._server_challenge = None
+            if self._welcome_future and not self._welcome_future.done():
+                self._welcome_future.set_result(data)
+
         # Check for response to pending request
         request_id = data.get("request_id")
         if request_id and request_id in self._pending_requests:
@@ -740,13 +936,23 @@ class WebSocketClient:
         """Authenticate with server."""
         if not self._identity:
             return False
-        
+
+        if not self._identity.has_private_key():
+            return False
+
+        if self._server_challenge is None:
+            return False
+
+        payload = _auth_payload(self._server_challenge, self._identity.node_id)
+        signature = self._identity.sign(payload)
+
         response = await self.request({
             "type": "authenticate",
             "node_id": self._identity.node_id,
-            # Would include signature in production
+            "public_key": base64.b64encode(self._identity.public_key).decode(),
+            "signature": base64.b64encode(signature).decode(),
         })
-        
+
         return response and response.get("type") == "authenticated"
     
     async def subscribe(self, topics: List[str]) -> bool:

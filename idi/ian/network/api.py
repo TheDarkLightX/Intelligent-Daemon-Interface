@@ -26,10 +26,11 @@ import base64
 import hashlib
 import json
 import logging
+import os
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, asdict
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Mapping, Optional, TYPE_CHECKING
 
 try:
     # Optional structured tracing support
@@ -43,6 +44,50 @@ if TYPE_CHECKING:
     from idi.ian.security import SecureCoordinator
 
 logger = logging.getLogger(__name__)
+
+
+def _cors_allow_origin_value(allowed_origins: List[str], origin: str) -> Optional[str]:
+    """Return the Access-Control-Allow-Origin value for a request.
+
+    Preconditions:
+        - `origin` is a non-empty Origin header value.
+        - `allowed_origins` is a non-empty allowlist.
+    Postconditions:
+        - Returns "*" iff wildcard is enabled.
+        - Returns `origin` iff `origin` is allowlisted.
+        - Returns None otherwise.
+    """
+    if "*" in allowed_origins:
+        return "*"
+    if origin in allowed_origins:
+        return origin
+    return None
+
+
+def _cors_apply_headers(response: Any, allow_origin: str) -> None:
+    """Apply CORS headers to a response.
+
+    Preconditions:
+        - `allow_origin` is either "*" or a validated, allowlisted origin.
+    Postconditions:
+        - Response includes standard CORS headers for allowed origins.
+    """
+    response.headers["Access-Control-Allow-Origin"] = allow_origin
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key"
+    response.headers["Access-Control-Max-Age"] = "600"
+
+    if allow_origin == "*":
+        return
+
+    vary = response.headers.get("Vary")
+    if vary is None:
+        response.headers["Vary"] = "Origin"
+        return
+
+    if "Origin" in vary:
+        return
+    response.headers["Vary"] = f"{vary}, Origin"
 
 
 # =============================================================================
@@ -91,12 +136,77 @@ class ApiConfig:
     host: str = "0.0.0.0"
     port: int = 8080
     api_key: Optional[str] = None  # If set, require X-API-Key header
+    api_key_required: bool = False  # If true, reject requests when api_key is missing
     rate_limit_per_ip: int = 100  # Requests per minute
     cors_origins: List[str] = None  # CORS allowed origins
     
     def __post_init__(self):
         if self.cors_origins is None:
-            self.cors_origins = ["*"]
+            self.cors_origins = []
+
+
+def _parse_bool_env(value: Optional[str]) -> bool:
+    """Parse a boolean environment value.
+
+    Preconditions:
+        - value is either None or a string.
+    Postconditions:
+        - Returns True iff value is in {"1","true","yes","on"} (case-insensitive).
+    """
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_csv_env(value: Optional[str]) -> List[str]:
+    """Parse a comma-separated environment value into a list of strings."""
+    if value is None:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def api_config_from_env(env: Optional[Mapping[str, str]] = None) -> ApiConfig:
+    """Build ApiConfig from environment variables.
+
+    Environment variables:
+        - IAN_API_HOST (fallback: IAN_LISTEN_HOST)
+        - IAN_API_PORT
+        - IAN_API_KEY
+        - IAN_API_KEY_REQUIRED
+        - IAN_API_CORS_ORIGINS (comma-separated)
+
+    Preconditions:
+        - If IAN_API_KEY_REQUIRED is true, IAN_API_KEY must be set.
+    Postconditions:
+        - Returned config is safe-by-default (deny-by-default CORS).
+    """
+    src = env if env is not None else os.environ
+
+    host = src.get("IAN_API_HOST") or src.get("IAN_LISTEN_HOST") or "0.0.0.0"
+
+    port_raw = src.get("IAN_API_PORT")
+    port = 8080
+    if port_raw is not None:
+        port = int(port_raw)
+
+    api_key_raw = src.get("IAN_API_KEY")
+    api_key = api_key_raw.strip() if api_key_raw is not None else None
+    if api_key == "":
+        api_key = None
+
+    api_key_required = _parse_bool_env(src.get("IAN_API_KEY_REQUIRED"))
+    if api_key_required and api_key is None:
+        raise ValueError("IAN_API_KEY_REQUIRED is true but IAN_API_KEY is not set")
+
+    cors_origins = _parse_csv_env(src.get("IAN_API_CORS_ORIGINS"))
+
+    return ApiConfig(
+        host=host,
+        port=port,
+        api_key=api_key,
+        api_key_required=api_key_required,
+        cors_origins=cors_origins,
+    )
 
 
 # =============================================================================
@@ -161,6 +271,8 @@ class IANApiHandlers:
     def _check_api_key(self, provided_key: Optional[str]) -> bool:
         """Check API key if configured."""
         if not self._config.api_key:
+            if self._config.api_key_required:
+                return False
             return True
         return provided_key == self._config.api_key
     
@@ -218,7 +330,7 @@ class IANApiHandlers:
                 agent_pack=agent_pack,
                 proofs=body.get("proofs", {}),
                 contributor_id=body["contributor_id"],
-                seed=body.get("seed", int(time.time() * 1000)),
+                seed=int(body.get("seed", 0)),
             )
             
             # Process
@@ -461,7 +573,7 @@ class IANApiServer:
         config: Optional[ApiConfig] = None,
     ):
         self._coordinator = coordinator
-        self._config = config or ApiConfig()
+        self._config = config or api_config_from_env()
         # Use SecureCoordinator-backed handlers by default for production safety.
         self._handlers = IANApiHandlers(coordinator, self._config, use_secure=True)
         self._app = None
@@ -622,12 +734,24 @@ def create_api_app(handlers: IANApiHandlers, config: ApiConfig):
     
     # CORS middleware
     if config.cors_origins:
+        allowed_origins = list(config.cors_origins)
+
         @web.middleware
         async def cors_middleware(request: web.Request, handler):
-            response = await handler(request)
-            response.headers["Access-Control-Allow-Origin"] = ",".join(config.cors_origins)
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key"
+            origin = request.headers.get("Origin")
+            if origin is None:
+                return await handler(request)
+
+            if request.method == "OPTIONS":
+                response = web.Response(status=204)
+            else:
+                response = await handler(request)
+
+            allow_origin = _cors_allow_origin_value(allowed_origins, origin)
+            if allow_origin is None:
+                return response
+
+            _cors_apply_headers(response, allow_origin)
             return response
         
         app.middlewares.append(cors_middleware)
