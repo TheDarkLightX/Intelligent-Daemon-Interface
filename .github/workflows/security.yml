@@ -33,11 +33,16 @@ jobs:
             pyproject.toml
             uv.lock
 
+      - name: Show project context
+        run: |
+          pwd
+          sed -n '1,30p' pyproject.toml
+
       - name: Verify lockfile is up to date
-        run: uv lock --check
+        run: uv lock --check --project .
 
       - name: Install locked dependencies
-        run: uv sync --locked --extra dev --extra gui
+        run: uv sync --locked --extra dev --extra gui --project .
 
       - name: Run IAN test suite
         run: uv run python -m pytest idi/ian/tests -q
