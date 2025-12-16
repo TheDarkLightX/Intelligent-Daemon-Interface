@@ -1,7 +1,18 @@
 name: Security (Python Dependencies)
 
 on:
-  # Manual trigger only - disabled automatic runs until workflow is stabilized
+  push:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "idi/**"
+      - ".github/workflows/security.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "idi/**"
+      - ".github/workflows/security.yml"
   workflow_dispatch:
 
 jobs:
