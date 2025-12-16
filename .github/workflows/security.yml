@@ -21,8 +21,22 @@ jobs:
   python-deps-security:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: .
+
+    env:
+      UV_PROJECT: ${{ github.workspace }}
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Show checkout context
+        run: |
+          pwd
+          ls -la
+          echo "---- pyproject.toml (root) ----"
+          sed -n '1,40p' "${{ github.workspace }}/pyproject.toml"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
