@@ -1,18 +1,7 @@
 name: Security (Python Dependencies)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "pyproject.toml"
-      - "idi/**"
-      - ".github/workflows/security.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "pyproject.toml"
-      - "idi/**"
-      - ".github/workflows/security.yml"
+  # Manual only - workflow needs debugging
   workflow_dispatch:
 
 jobs:
