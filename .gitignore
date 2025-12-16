@@ -97,4 +97,8 @@ CODEBASE_ANALYSIS*.md
 experiments/
 
 # Internal development documents (AI agent collaboration)
-Internal/
+Internal/**
+!Internal/
+!Internal/intelligent_augmentation_network/
+!Internal/SECURITY_HARDENING_CHECKLIST.md
+!Internal/intelligent_augmentation_network/IAN_IMPLEMENTATION_PLAN.md
