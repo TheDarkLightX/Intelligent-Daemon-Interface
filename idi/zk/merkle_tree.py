@@ -60,16 +60,17 @@ def _compute_level_hashes(
     
     for i in range(0, len(level), 2):
         left_child = level[i]
-        # Handle odd node count by self-pairing the last node
-        # This matches Bitcoin's Merkle tree behavior (BIP 34)
-        right_child = level[i + 1] if i + 1 < len(level) else left_child
+        # Handle odd node count by self-pairing the last node.
+        # This matches Bitcoin's Merkle tree behavior (BIP 34).
+        is_odd_last = i + 1 >= len(level)
+        right_child = level[i + 1] if not is_odd_last else left_child
         
         parent_hash = _hash_pair(left_child, right_child)
         next_level.append(parent_hash)
         
         # Collect descendant leaf keys for both children
         left_keys = level_keys[i]
-        right_keys = level_keys[i + 1] if i + 1 < len(level_keys) else level_keys[i]
+        right_keys = level_keys[i + 1] if not is_odd_last else []
 
         # Normalize in case of accidental flattening
         if isinstance(left_keys, str):

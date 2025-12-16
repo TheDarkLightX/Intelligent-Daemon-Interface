@@ -88,7 +88,11 @@ def test_merkle_tamper_detection(
     # Test 1: Tamper leaf data
     if tamper_byte_idx < len(original_data):
         tampered_data = bytearray(original_data)
-        tampered_data[tamper_byte_idx] = tamper_byte_value
+        original_byte = tampered_data[tamper_byte_idx]
+        next_byte = tamper_byte_value
+        if next_byte == original_byte:
+            next_byte = (original_byte + 1) % 256
+        tampered_data[tamper_byte_idx] = next_byte
         assert not builder.verify_proof(
             tamper_key, bytes(tampered_data), proof_path, root_hash
         ), "Tampered leaf data should fail verification"

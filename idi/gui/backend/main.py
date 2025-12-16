@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -54,10 +55,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+def _parse_cors_origins(value: str) -> List[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 # CORS for Tauri frontend
+_cors_origins_env = os.environ.get("IDI_GUI_CORS_ORIGINS")
+if _cors_origins_env is None:
+    cors_origins = [
+        "tauri://localhost",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+else:
+    cors_origins = _parse_cors_origins(_cors_origins_env)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Tauri uses tauri://localhost
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

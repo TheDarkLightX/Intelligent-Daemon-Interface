@@ -40,13 +40,23 @@ class FeatureStats:
         max_val = max(values)
 
         # Compute histogram
+        safe_bins = max(1, int(n_bins))
         if max_val > min_val:
-            bin_width = (max_val - min_val) / n_bins
-            bin_edges = [min_val + i * bin_width for i in range(n_bins + 1)]
-            histogram = [0] * n_bins
-            for v in values:
-                idx = min(int((v - min_val) / bin_width), n_bins - 1)
-                histogram[idx] += 1
+            bin_width = (max_val - min_val) / safe_bins
+            if not math.isfinite(bin_width) or bin_width <= 0.0:
+                # Degenerate range (e.g., subnormal underflow) -> single bin.
+                bin_edges = [min_val, max_val + 1e-9]
+                histogram = [n]
+            else:
+                bin_edges = [min_val + i * bin_width for i in range(safe_bins + 1)]
+                histogram = [0] * safe_bins
+                for v in values:
+                    idx = int((v - min_val) / bin_width)
+                    if idx < 0:
+                        idx = 0
+                    if idx >= safe_bins:
+                        idx = safe_bins - 1
+                    histogram[idx] += 1
         else:
             bin_edges = [min_val, max_val + 1e-9]
             histogram = [n]

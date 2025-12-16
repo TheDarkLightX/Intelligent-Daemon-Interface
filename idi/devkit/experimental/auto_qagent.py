@@ -165,9 +165,17 @@ class PackSelectionSpec:
 
 def _parse_packs(data: Dict[str, Any]) -> PackSelectionSpec:
     """Parse packs section from raw goal spec data."""
-    packs = data.get("packs", {}) or {}
-    include_raw = list(packs.get("include", ()) or ())[:MAX_PACKS]
-    extra_raw = list(packs.get("extra", ()) or ())[:MAX_PACKS]
+    packs_raw = data.get("packs", {}) or {}
+    packs: Dict[str, Any] = packs_raw if isinstance(packs_raw, dict) else {}
+
+    include_value = packs.get("include", ())
+    include_iter = include_value if isinstance(include_value, (list, tuple)) else ()
+
+    extra_value = packs.get("extra", ())
+    extra_iter = extra_value if isinstance(extra_value, (list, tuple)) else ()
+
+    include_raw = list(include_iter)[:MAX_PACKS]
+    extra_raw = list(extra_iter)[:MAX_PACKS]
     return PackSelectionSpec(
         include=tuple(str(p)[:MAX_STRING_LENGTH] for p in include_raw),
         extra=tuple(str(p)[:MAX_STRING_LENGTH] for p in extra_raw),
@@ -197,7 +205,8 @@ def _parse_objectives(data: Dict[str, Any]) -> Tuple[ObjectiveSpec, ...]:
 
 def _parse_training(data: Dict[str, Any]) -> TrainingSpec:
     """Parse training section from raw goal spec data."""
-    training_cfg = (data.get("training", {}) or {})
+    training_raw = data.get("training", {}) or {}
+    training_cfg: Dict[str, Any] = training_raw if isinstance(training_raw, dict) else {}
 
     envs_raw = list(training_cfg.get("envs", []) or [])[:MAX_ENVS]
     envs = tuple(
@@ -209,7 +218,8 @@ def _parse_training(data: Dict[str, Any]) -> TrainingSpec:
         if isinstance(e, dict)
     )
 
-    budget_cfg = training_cfg.get("budget", {}) or {}
+    budget_raw = training_cfg.get("budget", {}) or {}
+    budget_cfg: Dict[str, Any] = budget_raw if isinstance(budget_raw, dict) else {}
     budget = TrainingBudgetSpec(
         max_agents=_clamp(int(budget_cfg.get("max_agents", 16)), 1, MAX_AGENTS_LIMIT),
         max_generations=_clamp(
@@ -229,7 +239,8 @@ def _parse_training(data: Dict[str, Any]) -> TrainingSpec:
         ),
     )
 
-    curriculum_cfg = training_cfg.get("curriculum", {}) or {}
+    curriculum_raw = training_cfg.get("curriculum", {}) or {}
+    curriculum_cfg: Dict[str, Any] = curriculum_raw if isinstance(curriculum_raw, dict) else {}
     curriculum_enabled = bool(curriculum_cfg.get("enabled", True))
 
     return TrainingSpec(
@@ -241,7 +252,8 @@ def _parse_training(data: Dict[str, Any]) -> TrainingSpec:
 
 def _parse_outputs(data: Dict[str, Any]) -> OutputSpec:
     """Parse outputs section from raw goal spec data."""
-    outputs_cfg = data.get("outputs", {}) or {}
+    outputs_raw = data.get("outputs", {}) or {}
+    outputs_cfg: Dict[str, Any] = outputs_raw if isinstance(outputs_raw, dict) else {}
     num_final_agents = _clamp(int(outputs_cfg.get("num_final_agents", 3)), 1, MAX_AGENTS_LIMIT)
     bundle_format = str(outputs_cfg.get("bundle_format", "wire_v1"))[:MAX_STRING_LENGTH]
     return OutputSpec(num_final_agents=num_final_agents, bundle_format=bundle_format)

@@ -13,6 +13,8 @@ Dependencies: hashlib, json, subprocess
 
 from __future__ import annotations
 
+import os
+import platform
 import hashlib
 import json
 import shlex
@@ -58,6 +60,41 @@ def _validate_path_safety(path: Path, base_dir: Optional[Path] = None) -> None:
 _DEFAULT_RISC0_CMD = "prove --manifest {manifest} --streams {streams} --proof {proof} --receipt {receipt}"
 
 
+def _elf_machine_for_current_platform() -> Optional[int]:
+    machine = platform.machine().lower()
+    if machine in {"x86_64", "amd64"}:
+        return 62
+    if machine in {"aarch64", "arm64"}:
+        return 183
+    return None
+
+
+def _is_compatible_elf_executable(path: Path) -> bool:
+    if not path.exists():
+        return False
+    if not os.access(path, os.X_OK):
+        return False
+
+    expected_machine = _elf_machine_for_current_platform()
+    if expected_machine is None:
+        return True
+
+    try:
+        header = path.read_bytes()[:20]
+    except OSError:
+        return False
+
+    if len(header) < 20:
+        return False
+    if header[:4] != b"\x7fELF":
+        return False
+
+    ei_data = header[5]
+    byte_order = "little" if ei_data == 1 else "big"
+    e_machine = int.from_bytes(header[18:20], byte_order)
+    return e_machine == expected_machine
+
+
 def _get_default_prover_command() -> Optional[str]:
     """Get default prover command, auto-detecting Risc0 if available.
     
@@ -67,7 +104,7 @@ def _get_default_prover_command() -> Optional[str]:
     # Require a prebuilt idi_risc0_host binary; do not invoke cargo directly.
     current_file = Path(__file__)
     risc0_host = current_file.parent / "risc0" / "target" / "release" / "idi_risc0_host"
-    if not risc0_host.exists():
+    if not _is_compatible_elf_executable(risc0_host):
         return None
     return f"{risc0_host} {_DEFAULT_RISC0_CMD}"
 
@@ -164,9 +201,12 @@ def generate_proof(
 
     digest = compute_artifact_digest(manifest_path, stream_dir, extra=combined_extras or None)
 
+    prover_command_auto_detected = False
+
     # Auto-detect Risc0 if no explicit command provided
     if prover_command is None and auto_detect_risc0:
         prover_command = _get_default_prover_command()
+        prover_command_auto_detected = prover_command is not None
         # If Risc0 not available, prover_command will be None
         # and we'll fall back to stub proof generation
 
@@ -183,7 +223,18 @@ def generate_proof(
         cmd_parts = shlex.split(cmd_str)
         # Security: Never use shell=True with user-controlled input
         # Security: Enforce timeout to prevent hangs from malicious/broken provers
-        subprocess.run(cmd_parts, check=True, timeout=PROVER_TIMEOUT_SECONDS)
+        try:
+            subprocess.run(cmd_parts, check=True, timeout=PROVER_TIMEOUT_SECONDS)
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError, OSError):
+            if not prover_command_auto_detected:
+                raise
+            prover_command = None
+            try:
+                if receipt_path.exists():
+                    receipt_path.unlink()
+            except OSError:
+                pass
+            proof_path.write_text(digest, encoding="utf-8")
     else:
         proof_path.write_text(digest, encoding="utf-8")
 
@@ -503,9 +554,12 @@ def verify_zk_receipt(
             f"Verifier binary not found: {risc0_host}",
         )
     except OSError as e:
+        # Treat non-executable binaries as "unavailable" to preserve
+        # fail-closed semantics and clearer operator diagnostics.
         return VerificationReport.fail(
-            VerificationErrorCode.INTERNAL_ERROR,
-            f"OS error during verification: {e}",
+            VerificationErrorCode.VERIFIER_UNAVAILABLE,
+            f"Verifier binary not executable/usable: {risc0_host} ({e})",
+            binary_path=str(risc0_host),
         )
 
 

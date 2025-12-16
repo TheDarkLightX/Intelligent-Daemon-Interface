@@ -89,8 +89,8 @@ from idi.devkit.experimental.agent_patch import (
 # ---------------------------------------------------------------------------
 
 if HAS_HYPOTHESIS:
-    # Non-empty strings for required fields
-    nonempty_text = st.text(min_size=1, max_size=64).filter(lambda s: s.strip())
+    # Non-empty strings for required fields (avoid heavy filtering)
+    nonempty_text = st.from_regex(r"[A-Za-z0-9_\-]{1,64}", fullmatch=True)
 
     # Safe payload values: JSON-serializable primitives
     safe_json_values = st.one_of(
@@ -101,16 +101,18 @@ if HAS_HYPOTHESIS:
         st.text(max_size=32),
     )
 
+    identifier_text = st.from_regex(r"[A-Za-z_][A-Za-z0-9_]{0,15}", fullmatch=True)
+
     # Shallow dicts with safe values (for payload, spec_params, zk_profile)
     safe_json_dict = st.dictionaries(
-        keys=st.text(min_size=1, max_size=16).filter(str.isidentifier),
+        keys=identifier_text,
         values=safe_json_values,
         max_size=8,
     )
 
-    # Tags: tuple of short strings
+    # Tags: tuple of short strings (avoid heavy filtering)
     tags_strategy = st.lists(
-        st.text(min_size=1, max_size=16).filter(str.isalnum),
+        st.from_regex(r"[A-Za-z0-9]{1,16}", fullmatch=True),
         max_size=5,
     ).map(tuple)
 

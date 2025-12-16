@@ -18,6 +18,12 @@ import pytest
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 TAU_TESTNET_PATH = os.path.join(ROOT_DIR, "tau-testnet-ref")
 
+if not os.path.isdir(TAU_TESTNET_PATH):
+    pytest.skip(
+        "tau-testnet-ref/ not present; skipping Tau integration tests",
+        allow_module_level=True,
+    )
+
 
 class StubVerifier:
     def __init__(self, result: bool = True):
