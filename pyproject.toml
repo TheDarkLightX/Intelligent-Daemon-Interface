@@ -1,7 +1,4 @@
 [project]
-
-[project.scripts]
-ian-demo = "idi.ian.cli:main"
 name = "idi"
 version = "0.1.0"
 description = "Intelligent Daemon Interface - ZK proof integration for Tau Net"
@@ -10,7 +7,13 @@ license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "zstandard>=0.22.0",
+    "cryptography>=41.0.0",
+    "aiohttp>=3.9.2",
+    "PyYAML>=6.0.1",
 ]
+
+[project.scripts]
+ian-demo = "idi.ian.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -22,7 +25,12 @@ dev = [
     "mutmut>=2.4.0",
     "pandas>=2.0.0",
     "hypothesis>=6.0.0",
-    "cryptography>=41.0.0",
+    "pip-audit>=2.9.0",
+]
+gui = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.0",
+    "websockets>=12.0",
 ]
 
 [build-system]
@@ -34,6 +42,7 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+norecursedirs = ["mutants"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
