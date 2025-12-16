@@ -1,20 +1,7 @@
 name: Security (Python Dependencies)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "pyproject.toml"
-      - "uv.lock"
-      - "idi/**"
-      - ".github/workflows/**"
-  pull_request:
-    branches: [main]
-    paths:
-      - "pyproject.toml"
-      - "uv.lock"
-      - "idi/**"
-      - ".github/workflows/**"
+  # Manual trigger only - disabled automatic runs until workflow is stabilized
   workflow_dispatch:
 
 jobs:
