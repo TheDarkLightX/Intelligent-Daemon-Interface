@@ -36,13 +36,13 @@ jobs:
       - name: Show project context
         run: |
           pwd
-          sed -n '1,30p' pyproject.toml
+          sed -n '1,30p' "${{ github.workspace }}/pyproject.toml"
 
       - name: Verify lockfile is up to date
-        run: uv lock --check --project .
+        run: uv lock --check --project "${{ github.workspace }}"
 
       - name: Install locked dependencies
-        run: uv sync --locked --extra dev --extra gui --project .
+        run: uv sync --locked --extra dev --extra gui --project "${{ github.workspace }}"
 
       - name: Run IAN test suite
         run: uv run python -m pytest idi/ian/tests -q
