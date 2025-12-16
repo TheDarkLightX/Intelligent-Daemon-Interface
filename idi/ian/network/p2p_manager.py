@@ -20,27 +20,27 @@ import json
 import logging
 import secrets
 import time
-from collections import deque, OrderedDict
+from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import serialization
 
-from .transport import TCPTransport
-from .protocol import (
-    Message, MessageType,
-    ContributionAnnounce, ContributionRequest, ContributionResponse,
-    StateRequest, StateResponse, PeerExchange, Ping, Pong,
-    HandshakeChallenge, HandshakeResponse,
-)
 from .node import NodeIdentity, NodeInfo
+from .protocol import (
+    HandshakeChallenge,
+    HandshakeResponse,
+    Message,
+    MessageType,
+    Ping,
+    Pong,
+)
 
 if TYPE_CHECKING:
-    from .consensus import ConsensusCoordinator
     from .tls import TLSConfig
 
 logger = logging.getLogger(__name__)
@@ -53,28 +53,28 @@ logger = logging.getLogger(__name__)
 @dataclass
 class P2PConfig:
     """P2P manager configuration."""
-    
+
     # Network
     listen_host: str = "0.0.0.0"
     listen_port: int = 9000
-    external_host: Optional[str] = None  # For NAT traversal
-    
+    external_host: str | None = None  # For NAT traversal
+
     # Connections
     max_peers: int = 50
     max_pending_connections: int = 10
     max_connections_per_ip: int = 3  # Limit connections from same IP
     connection_timeout: float = 10.0
     handshake_timeout: float = 5.0  # Timeout for handshake completion
-    
+
     # Keepalive
     ping_interval: float = 30.0
     ping_timeout: float = 10.0
     max_missed_pings: int = 3
-    
+
     # Messages
     max_message_size: int = 16 * 1024 * 1024  # 16 MB
     message_queue_size: int = 1000
-    
+
     # Rate limiting
     max_messages_per_second: float = 100.0
     rate_limit_burst: int = 20
@@ -101,24 +101,24 @@ class PeerState(Enum):
 class TokenBucketRateLimiter:
     """
     Token bucket rate limiter for per-peer message throttling.
-    
+
     Security:
     - Prevents message flooding DoS
     - Allows burst tolerance for legitimate traffic
     - O(1) per check
     """
-    
+
     def __init__(self, rate: float = 10.0, burst: int = 20):
         self.rate = rate  # tokens per second
         self.burst = burst
         self.tokens = float(burst)
         self.last_update = time.monotonic()
         self._lock = asyncio.Lock()
-    
+
     async def acquire(self) -> bool:
         """
         Try to acquire a token.
-        
+
         Returns:
             True if allowed, False if rate limited
         """
@@ -126,16 +126,16 @@ class TokenBucketRateLimiter:
             now = time.monotonic()
             elapsed = now - self.last_update
             self.last_update = now
-            
+
             # Replenish tokens
             self.tokens = min(float(self.burst), self.tokens + elapsed * self.rate)
-            
+
             if self.tokens < 1.0:
                 return False  # Rate limited
-            
+
             self.tokens -= 1.0
             return True
-    
+
     def reset(self) -> None:
         """Reset limiter to full burst capacity."""
         self.tokens = float(self.burst)
@@ -146,9 +146,9 @@ class TokenBucketRateLimiter:
 class PeerSession:
     """
     Session with a connected peer.
-    
+
     Tracks connection state, message queues, and statistics.
-    
+
     Security:
     - Stores handshake challenge for verification
     - Tracks rate limiting state
@@ -157,25 +157,25 @@ class PeerSession:
     node_id: str
     address: str
     port: int
-    
+
     # Connection
-    reader: Optional[asyncio.StreamReader] = None
-    writer: Optional[asyncio.StreamWriter] = None
+    reader: asyncio.StreamReader | None = None
+    writer: asyncio.StreamWriter | None = None
     state: PeerState = PeerState.DISCONNECTED
-    
+
     # Peer info (after handshake)
-    info: Optional[NodeInfo] = None
-    
+    info: NodeInfo | None = None
+
     # Handshake security
-    pending_challenge: Optional[bytes] = None  # Our nonce, awaiting signed response
+    pending_challenge: bytes | None = None  # Our nonce, awaiting signed response
     verified: bool = False  # Whether peer identity is cryptographically verified
 
-    peer_public_key: Optional[bytes] = None
-    kx_private_key: Optional[bytes] = None
-    kx_public_key: Optional[bytes] = None
-    peer_kx_public_key: Optional[bytes] = None
-    session_key: Optional[bytes] = None
-    
+    peer_public_key: bytes | None = None
+    kx_private_key: bytes | None = None
+    kx_public_key: bytes | None = None
+    peer_kx_public_key: bytes | None = None
+    session_key: bytes | None = None
+
     # Statistics
     connected_at: float = 0.0
     last_message_at: float = 0.0
@@ -186,20 +186,22 @@ class PeerSession:
     bytes_sent: int = 0
     bytes_received: int = 0
     rate_limit_violations: int = 0
-    
+
     # Message queue
-    outbound_queue: asyncio.Queue = field(default_factory=lambda: asyncio.Queue(maxsize=100))
-    
+    outbound_queue: asyncio.Queue[bytes | None] = field(
+        default_factory=lambda: asyncio.Queue(maxsize=100)
+    )
+
     # Rate limiter (initialized per session)
-    rate_limiter: Optional[TokenBucketRateLimiter] = None
-    
+    rate_limiter: TokenBucketRateLimiter | None = None
+
     # Tasks
-    read_task: Optional[asyncio.Task] = None
-    write_task: Optional[asyncio.Task] = None
-    
+    read_task: asyncio.Task | None = None
+    write_task: asyncio.Task | None = None
+
     def is_connected(self) -> bool:
         return self.state in (PeerState.CONNECTED, PeerState.HANDSHAKING, PeerState.READY)
-    
+
     def is_ready(self) -> bool:
         return self.state == PeerState.READY
 
@@ -211,105 +213,105 @@ class PeerSession:
 class P2PManager:
     """
     Manages P2P connections and message passing.
-    
+
     Responsibilities:
     1. Accept inbound connections
     2. Establish outbound connections
     3. Route messages to handlers
     4. Maintain peer sessions
     5. Handle keepalive pings
-    
+
     Integration:
     - Uses TCPTransport for wire protocol
     - Connects to ConsensusCoordinator for message handling
     - Integrates with Discovery for peer finding
     """
-    
+
     def __init__(
         self,
         identity: NodeIdentity,
-        config: Optional[P2PConfig] = None,
-        tls_config: Optional["TLSConfig"] = None,
+        config: P2PConfig | None = None,
+        tls_config: TLSConfig | None = None,
     ):
         self._identity = identity
         self._config = config or P2PConfig()
         self._tls_config = tls_config
-        
+
         # Peer sessions by node_id
-        self._peers: Dict[str, PeerSession] = {}
-        
+        self._peers: dict[str, PeerSession] = {}
+
         # Address to node_id mapping
-        self._address_map: Dict[str, str] = {}  # "host:port" -> node_id
-        
+        self._address_map: dict[str, str] = {}  # "host:port" -> node_id
+
         # IP connection tracking (for DoS prevention)
-        self._ip_connections: Dict[str, int] = {}  # IP -> connection count
-        
+        self._ip_connections: dict[str, int] = {}  # IP -> connection count
+
         # Connection semaphore (limit concurrent pending connections)
         self._connection_semaphore = asyncio.Semaphore(self._config.max_pending_connections)
-        
+
         # Replay attack protection: LRU cache of seen message IDs
         # Key: message_id (sender_id:nonce), Value: timestamp
         # Messages older than 5 minutes are evicted
         self._seen_messages: OrderedDict[str, float] = OrderedDict()
         self._max_seen_messages = 100_000  # Cap to prevent memory exhaustion
         self._message_ttl_seconds = 300  # 5 minute window
-        
+
         # Server
-        self._server: Optional[asyncio.Server] = None
-        
+        self._server: asyncio.Server | None = None
+
         # Message handlers
-        self._handlers: Dict[MessageType, Callable] = {}
-        
+        self._handlers: dict[MessageType, Callable] = {}
+
         # Background tasks
         self._running = False
-        self._tasks: List[asyncio.Task] = []
-        
+        self._tasks: list[asyncio.Task] = []
+
         # Lock for peer modifications
         self._lock = asyncio.Lock()
-    
+
     # -------------------------------------------------------------------------
     # Replay Attack Protection
     # -------------------------------------------------------------------------
-    
+
     def _is_replay(self, message: Message) -> bool:
         """
         Check if a message is a replay attack.
-        
+
         Security:
         - Prevents replay attacks by tracking seen message nonces
         - Uses LRU eviction to bound memory usage
         - Evicts messages older than TTL
-        
+
         Returns:
             True if message is a replay (should be rejected)
         """
         msg_id = message.message_id()
         now = time.time()
-        
+
         # Check if we've seen this message before
         if msg_id in self._seen_messages:
             logger.warning(f"Replay attack detected: {msg_id[:32]}...")
             return True
-        
+
         # Check timestamp freshness (reject messages older than TTL)
         msg_timestamp_s = message.timestamp / 1000.0  # Convert ms to seconds
         if abs(now - msg_timestamp_s) > self._message_ttl_seconds:
             logger.warning(f"Message timestamp too old/future: {msg_id[:32]}...")
             return True
-        
+
         # Record this message
         self._seen_messages[msg_id] = now
-        
+
         # Evict old entries
         self._evict_old_messages()
-        
+
         return False
-    
+
     def _evict_old_messages(self) -> None:
         """Evict expired messages from the seen cache."""
         now = time.time()
         cutoff = now - self._message_ttl_seconds
-        
+
         # Evict by age (oldest first since OrderedDict maintains insertion order)
         while self._seen_messages:
             oldest_id, oldest_time = next(iter(self._seen_messages.items()))
@@ -317,22 +319,22 @@ class P2PManager:
                 self._seen_messages.pop(oldest_id)
             else:
                 break  # Rest are newer
-        
+
         # Also enforce size limit
         while len(self._seen_messages) > self._max_seen_messages:
             self._seen_messages.popitem(last=False)  # Remove oldest
-    
+
     # -------------------------------------------------------------------------
     # Lifecycle
     # -------------------------------------------------------------------------
-    
+
     async def start(self) -> bool:
         """Start P2P manager."""
         if self._running:
             return True
-        
+
         self._running = True
-        
+
         # Start server
         try:
             ssl_ctx = None
@@ -346,78 +348,78 @@ class P2PManager:
                 self._config.listen_port,
                 ssl=ssl_ctx,
             )
-            
+
             addr = self._server.sockets[0].getsockname()
             logger.info(f"P2P server listening on {addr[0]}:{addr[1]}")
-            
+
         except Exception as e:
             logger.error(f"Failed to start P2P server: {e}")
             self._running = False
             return False
-        
+
         # Start background tasks
         self._tasks = [
             asyncio.create_task(self._ping_loop()),
             asyncio.create_task(self._cleanup_loop()),
         ]
-        
+
         return True
-    
+
     async def stop(self) -> None:
         """Stop P2P manager."""
         self._running = False
-        
+
         # Stop server
         if self._server:
             self._server.close()
             await self._server.wait_closed()
-        
+
         # Cancel tasks
         for task in self._tasks:
             task.cancel()
-        
+
         if self._tasks:
             await asyncio.gather(*self._tasks, return_exceptions=True)
-        
+
         # Disconnect all peers
         for session in list(self._peers.values()):
             await self._disconnect_peer(session.node_id)
-        
+
         logger.info("P2P manager stopped")
-    
+
     # -------------------------------------------------------------------------
     # Connection Management
     # -------------------------------------------------------------------------
-    
+
     async def connect_to_peer(
         self,
         address: str,
         port: int,
-        node_id: Optional[str] = None,
-    ) -> Tuple[bool, str]:
+        node_id: str | None = None,
+    ) -> tuple[bool, str]:
         """
         Connect to a peer.
-        
+
         Args:
             address: Peer address
             port: Peer port
             node_id: Expected node ID (optional)
-            
+
         Returns:
             (success, node_id_or_error)
         """
         addr_key = f"{address}:{port}"
-        
+
         # Check if already connected
         if addr_key in self._address_map:
             existing_id = self._address_map[addr_key]
             if existing_id in self._peers and self._peers[existing_id].is_connected():
                 return True, existing_id
-        
+
         # Check peer limit
         if len(self._peers) >= self._config.max_peers:
             return False, "max peers reached"
-        
+
         try:
             # Connect (optionally using TLS)
             ssl_ctx = None
@@ -428,7 +430,7 @@ class P2PManager:
                 asyncio.open_connection(address, port, ssl=ssl_ctx),
                 timeout=self._config.connection_timeout,
             )
-            
+
             # Optional certificate pinning
             if self._tls_config is not None and self._tls_config.pinned_certs:
                 ssl_object = writer.get_extra_info('ssl_object')
@@ -438,10 +440,10 @@ class P2PManager:
                         writer.close()
                         await writer.wait_closed()
                         return False, "peer certificate not pinned"
-            
+
             # Create session (node_id may be updated after handshake)
             session_id = node_id or f"pending_{addr_key}"
-            
+
             session = PeerSession(
                 node_id=session_id,
                 address=address,
@@ -451,32 +453,32 @@ class P2PManager:
                 state=PeerState.CONNECTED,
                 connected_at=time.time(),
             )
-            
+
             async with self._lock:
                 self._peers[session_id] = session
                 self._address_map[addr_key] = session_id
-            
+
             # Start session tasks
             session.read_task = asyncio.create_task(self._read_loop(session))
             session.write_task = asyncio.create_task(self._write_loop(session))
-            
+
             # Handshake
             await self._send_handshake(session)
-            
+
             logger.info(f"Connected to peer at {address}:{port}")
             # Initialize rate limiter for outbound connection too
             session.rate_limiter = TokenBucketRateLimiter(
                 rate=self._config.max_messages_per_second,
                 burst=self._config.rate_limit_burst,
             )
-            
+
             return True, session_id
-            
+
         except asyncio.TimeoutError:
             return False, "connection timeout"
         except Exception as e:
             return False, str(e)
-    
+
     async def _handle_inbound_connection(
         self,
         reader: asyncio.StreamReader,
@@ -484,7 +486,7 @@ class P2PManager:
     ) -> None:
         """
         Handle inbound connection with security checks.
-        
+
         Security:
         - Limits connections per IP (DoS prevention)
         - Uses semaphore to limit concurrent pending connections
@@ -494,12 +496,12 @@ class P2PManager:
         if not peer_addr:
             writer.close()
             return
-        
+
         peer_ip = peer_addr[0]
         addr_key = f"{peer_ip}:{peer_addr[1]}"
-        
+
         logger.debug(f"Inbound connection from {addr_key}")
-        
+
         # Check per-IP connection limit (DoS prevention)
         async with self._lock:
             ip_count = self._ip_connections.get(peer_ip, 0)
@@ -508,20 +510,20 @@ class P2PManager:
                 writer.close()
                 await writer.wait_closed()
                 return
-            
+
             # Check total peer limit
             if len(self._peers) >= self._config.max_peers:
                 logger.warning(f"Rejecting connection from {addr_key}: max peers")
                 writer.close()
                 await writer.wait_closed()
                 return
-            
+
             # Increment IP connection count
             self._ip_connections[peer_ip] = ip_count + 1
-        
+
         # Create session with rate limiter
         session_id = f"inbound_{addr_key}"
-        
+
         session = PeerSession(
             node_id=session_id,
             address=peer_ip,
@@ -535,44 +537,44 @@ class P2PManager:
                 burst=self._config.rate_limit_burst,
             ),
         )
-        
+
         async with self._lock:
             self._peers[session_id] = session
             self._address_map[addr_key] = session_id
-        
+
         # Start session tasks
         session.read_task = asyncio.create_task(self._read_loop(session))
         session.write_task = asyncio.create_task(self._write_loop(session))
-    
+
     async def _disconnect_peer(self, node_id: str) -> None:
         """
         Disconnect a peer and cleanup resources.
-        
+
         Ensures IP connection count is decremented.
         """
         async with self._lock:
             session = self._peers.pop(node_id, None)
             if not session:
                 return
-            
+
             addr_key = f"{session.address}:{session.port}"
             self._address_map.pop(addr_key, None)
-            
+
             # Decrement IP connection count
             ip_count = self._ip_connections.get(session.address, 1)
             if ip_count <= 1:
                 self._ip_connections.pop(session.address, None)
             else:
                 self._ip_connections[session.address] = ip_count - 1
-        
+
         session.state = PeerState.DISCONNECTING
-        
+
         # Cancel tasks
         if session.read_task:
             session.read_task.cancel()
         if session.write_task:
             session.write_task.cancel()
-        
+
         # Close connection
         if session.writer:
             try:
@@ -580,50 +582,52 @@ class P2PManager:
                 await session.writer.wait_closed()
             except Exception:
                 pass
-        
+
         session.state = PeerState.DISCONNECTED
         logger.info(f"Disconnected peer {node_id}")
-    
+
     # -------------------------------------------------------------------------
     # Message I/O
     # -------------------------------------------------------------------------
-    
+
     async def _read_loop(self, session: PeerSession) -> None:
         """
         Read messages from peer with rate limiting.
-        
+
         Security:
         - Rate limits messages per second
         - Disconnects on repeated violations
         - Enforces message size limits
         """
         max_rate_violations = 10  # Disconnect after this many violations
-        
+
         try:
             while self._running and session.is_connected():
+                if session.reader is None:
+                    break
                 # Read length prefix (4 bytes)
                 length_data = await asyncio.wait_for(
                     session.reader.readexactly(4),
                     timeout=60.0,
                 )
-                
+
                 msg_length = int.from_bytes(length_data, 'big')
-                
+
                 # Validate message size
                 if msg_length <= 0 or msg_length > self._config.max_message_size:
                     logger.warning(f"Invalid message size from {session.node_id}: {msg_length}")
                     break
-                
+
                 # Read message body
                 msg_data = await asyncio.wait_for(
                     session.reader.readexactly(msg_length),
                     timeout=30.0,
                 )
-                
+
                 session.bytes_received += 4 + msg_length
                 session.messages_received += 1
                 session.last_message_at = time.time()
-                
+
                 # Rate limit check
                 if session.rate_limiter:
                     if not await session.rate_limiter.acquire():
@@ -632,18 +636,18 @@ class P2PManager:
                             f"Rate limiting {session.node_id} "
                             f"(violation {session.rate_limit_violations})"
                         )
-                        
+
                         if session.rate_limit_violations >= max_rate_violations:
                             logger.warning(f"Disconnecting {session.node_id}: too many rate limit violations")
                             break
-                        
+
                         # Skip this message but continue
                         await asyncio.sleep(0.1)
                         continue
-                
+
                 # Parse and handle message
                 await self._handle_message(session, msg_data)
-                
+
         except asyncio.TimeoutError:
             logger.debug(f"Read timeout from {session.node_id}")
         except asyncio.CancelledError:
@@ -652,31 +656,33 @@ class P2PManager:
             logger.debug(f"Connection closed by {session.node_id}")
         except Exception as e:
             logger.error(f"Read error from {session.node_id}: {e}")
-        
+
         # Disconnect on any error
         await self._disconnect_peer(session.node_id)
-    
+
     async def _write_loop(self, session: PeerSession) -> None:
         """Write messages to peer."""
         try:
             while self._running and session.is_connected():
+                if session.writer is None:
+                    break
                 # Get message from queue
                 msg_data = await asyncio.wait_for(
                     session.outbound_queue.get(),
                     timeout=1.0,
                 )
-                
+
                 if msg_data is None:
                     break
-                
+
                 # Write length prefix + message
                 length_prefix = len(msg_data).to_bytes(4, 'big')
                 session.writer.write(length_prefix + msg_data)
                 await session.writer.drain()
-                
+
                 session.bytes_sent += 4 + len(msg_data)
                 session.messages_sent += 1
-                
+
         except asyncio.TimeoutError:
             pass  # Normal - queue empty
         except asyncio.CancelledError:
@@ -684,10 +690,10 @@ class P2PManager:
         except Exception as e:
             logger.error(f"Write error to {session.node_id}: {e}")
             await self._disconnect_peer(session.node_id)
-    
+
     async def _handle_message(self, session: PeerSession, data: bytes) -> None:
         """Handle received message.
-        
+
         Security:
         - Checks for replay attacks before processing
         - Validates message timestamps
@@ -703,17 +709,18 @@ class P2PManager:
                     "HANDSHAKE_CHALLENGE": MessageType.HANDSHAKE_CHALLENGE,
                     "HANDSHAKE_RESPONSE": MessageType.HANDSHAKE_RESPONSE,
                 }
-                msg_type = legacy_map.get(msg_type_raw)
-                if msg_type is None:
+                msg_type_opt = legacy_map.get(msg_type_raw)
+                if msg_type_opt is None:
                     logger.debug(f"Unknown message type: {msg_type_raw}")
                     return
-            
+                msg_type = msg_type_opt
+
             # Create a temporary Message object for replay checking
             # (uses sender_id + nonce as message_id)
             sender_id = msg_dict.get("sender_id", "")
             nonce = msg_dict.get("nonce", "")
             timestamp = msg_dict.get("timestamp", 0)
-            
+
             if sender_id and nonce:
                 # Create lightweight message for replay check
                 temp_msg = Message(
@@ -722,28 +729,28 @@ class P2PManager:
                     timestamp=timestamp,
                     nonce=nonce,
                 )
-                
+
                 # SECURITY: Check for replay attack
                 if self._is_replay(temp_msg):
                     logger.warning(f"Dropping replayed message from {sender_id[:16]}...")
                     return
-            
+
             # Route to handler
             handler = self._handlers.get(msg_type)
             if handler:
                 response = await handler(msg_dict, session.node_id)
-                
+
                 # Send response if any
                 if response:
                     await self._send_to_peer(session.node_id, response)
             else:
                 logger.debug(f"No handler for message type {msg_type}")
-                
+
         except Exception as e:
             logger.error(f"Error handling message: {e}")
 
     @staticmethod
-    def _decode_b64_field(value: Any) -> Optional[bytes]:
+    def _decode_b64_field(value: Any) -> bytes | None:
         if not isinstance(value, str) or not value:
             return None
         try:
@@ -773,27 +780,27 @@ class P2PManager:
         salt = hashlib.sha256(challenge_nonce + left_id.encode('utf-8') + right_id.encode('utf-8')).digest()
         info = b"IAN_P2P_SESSION_KEY_V1" + left_id.encode('utf-8') + right_id.encode('utf-8') + left_pub + right_pub
         hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=info)
-        return hkdf.derive(shared_secret)
-    
+        return cast(bytes, hkdf.derive(shared_secret))
+
     async def send_message(self, node_id: str, message: Any) -> bool:
         """
         Send message to a peer.
-        
+
         Args:
             node_id: Target peer node ID
             message: Message object with to_wire() method
-            
+
         Returns:
             True if queued successfully
         """
         return await self._send_to_peer(node_id, message)
-    
+
     async def _send_to_peer(self, node_id: str, message: Any) -> bool:
         """Send message to specific peer."""
         session = self._peers.get(node_id)
         if not session or not session.is_connected():
             return False
-        
+
         try:
             # Sign message
             if hasattr(message, 'sender_id'):
@@ -804,60 +811,60 @@ class P2PManager:
                 data = json.dumps(message.to_dict()).encode('utf-8')
             else:
                 data = json.dumps(message).encode('utf-8')
-            
+
             # Queue for sending
             await asyncio.wait_for(
                 session.outbound_queue.put(data),
                 timeout=1.0,
             )
-            
+
             return True
-            
+
         except asyncio.TimeoutError:
             logger.warning(f"Send queue full for {node_id}")
             return False
         except Exception as e:
             logger.error(f"Error sending to {node_id}: {e}")
             return False
-    
-    async def broadcast(self, message: Any, exclude: Optional[Set[str]] = None) -> int:
+
+    async def broadcast(self, message: Any, exclude: set[str] | None = None) -> int:
         """
         Broadcast message to all connected peers.
-        
+
         Args:
             message: Message to broadcast
             exclude: Node IDs to exclude
-            
+
         Returns:
             Number of peers message was sent to
         """
         exclude = exclude or set()
         sent = 0
-        
+
         for node_id, session in self._peers.items():
             if node_id in exclude:
                 continue
             if session.is_ready():
                 if await self._send_to_peer(node_id, message):
                     sent += 1
-        
+
         return sent
-    
+
     # -------------------------------------------------------------------------
     # Handshake
     # -------------------------------------------------------------------------
-    
+
     async def _send_handshake(self, session: PeerSession) -> None:
         """
         Send handshake with cryptographic challenge.
-        
+
         Security:
         - Generates random 32-byte nonce
         - Peer must sign nonce to prove identity
         - Prevents session hijacking
         """
         session.state = PeerState.HANDSHAKING
-        
+
         # Generate challenge nonce
         challenge_nonce = secrets.token_bytes(32)
         session.pending_challenge = challenge_nonce
@@ -883,43 +890,43 @@ class P2PManager:
         if self._identity.has_private_key():
             self._identity.sign_message(handshake_msg)
         await self._send_to_peer(session.node_id, handshake_msg)
-    
-    def _verify_handshake_response(self, session: PeerSession, response: Dict[str, Any]) -> bool:
+
+    def _verify_handshake_response(self, session: PeerSession, response: dict[str, Any]) -> bool:
         """
         Verify handshake response proves peer controls claimed identity.
-        
+
         Security:
         - Verifies peer signed our challenge nonce
         - Prevents node ID spoofing/hijacking
-        
+
         Returns:
             True if verification passed
         """
         if not session.pending_challenge:
             logger.warning(f"No pending challenge for {session.node_id}")
             return False
-        
+
         claimed_id = response.get("sender_id", "")
         response_nonce = response.get("response_nonce", "")
         signature_hex = response.get("signature", "")
-        
+
         if not claimed_id or not signature_hex:
             logger.warning(f"Missing fields in handshake response from {session.address}")
             return False
-        
+
         try:
             # The peer should sign: H(our_nonce || their_nonce || their_id)
             our_nonce = session.pending_challenge
             their_nonce = bytes.fromhex(response_nonce) if response_nonce else b""
-            
+
             msg_to_verify = hashlib.sha256(
                 our_nonce + their_nonce + claimed_id.encode()
             ).digest()
-            
+
             signature = bytes.fromhex(signature_hex)
-            
+
             # Verify ED25519 signature against the peer's public key
-            # 
+            #
             # Security: This prevents node ID spoofing attacks where an attacker
             # claims to be another node without possessing its private key
             #
@@ -928,17 +935,17 @@ class P2PManager:
             if len(signature) != 64:
                 logger.warning(f"Invalid signature length ({len(signature)}) from {claimed_id[:16]}...")
                 return False
-            
+
             # Get the peer's public key from their NodeInfo
             if session.info is None or session.info.public_key is None:
                 logger.warning(f"No public key available for {claimed_id[:16]}... - cannot verify")
                 return False
-            
+
             peer_pubkey = session.info.public_key
             if len(peer_pubkey) != 32:
                 logger.warning(f"Invalid public key length ({len(peer_pubkey)}) from {claimed_id[:16]}...")
                 return False
-            
+
             # Verify the node_id matches the public key (prevents key substitution)
             expected_node_id = hashlib.sha256(peer_pubkey).hexdigest()[:40]
             if claimed_id != expected_node_id:
@@ -946,39 +953,39 @@ class P2PManager:
                     f"Node ID mismatch: claimed {claimed_id[:16]}... but pubkey gives {expected_node_id[:16]}..."
                 )
                 return False
-            
+
             # Perform actual cryptographic verification
             verified = NodeIdentity.verify_with_public_key(
                 peer_pubkey,
                 msg_to_verify,
                 signature
             )
-            
+
             if not verified:
                 logger.warning(f"Signature verification FAILED for {claimed_id[:16]}...")
                 return False
-            
+
             session.verified = True
             logger.debug(f"Signature verified for {claimed_id[:16]}...")
             return True
-            
+
         except Exception as e:
             logger.warning(f"Handshake verification error: {e}")
             return False
-    
-    def _handle_handshake_response(self, session: PeerSession, response: Dict[str, Any]) -> bool:
+
+    async def _handle_handshake_response(self, session: PeerSession, response: dict) -> bool:
         """
         Handle handshake response with verification.
-        
+
         Security:
         - Only updates node_id after verification
         - DISCONNECTS unverified peers (prevents identity spoofing)
-        
+
         Returns:
             True if handshake succeeded, False if peer should be disconnected
         """
         claimed_id = response.get("sender_id", "")
-        
+
         # Require challenge-response verification for all connections
         if session.pending_challenge:
             # Verify the response - peer must prove they control the claimed identity
@@ -987,7 +994,7 @@ class P2PManager:
                 "response_nonce": response.get("response_nonce", ""),
                 "signature": response.get("signature", "") or '',
             }
-            
+
             if not self._verify_handshake_response(session, response_dict):
                 # SECURITY: Reject unverified peers to prevent identity spoofing
                 logger.warning(
@@ -998,125 +1005,122 @@ class P2PManager:
                 # Schedule disconnect
                 asyncio.create_task(self._disconnect_peer(claimed_id))
                 return False
-            
+
             session.verified = True
         else:
             # No challenge was sent - this shouldn't happen in normal flow
             # For legacy compatibility, mark as unverified but allow
             logger.warning(f"No challenge sent for {claimed_id[:16]}... - marking unverified")
             session.verified = False
-        
+
         # Update session with verified peer info
         old_id = session.node_id
         session.node_id = claimed_id
         session.state = PeerState.READY
-        
+
         # Clear challenge
         session.pending_challenge = None
-        
+
         # Update mappings if ID changed
         if old_id != claimed_id:
-            async def update():
-                async with self._lock:
-                    self._peers.pop(old_id, None)
-                    self._peers[claimed_id] = session
-                    addr_key = f"{session.address}:{session.port}"
-                    self._address_map[addr_key] = claimed_id
-            
-            asyncio.create_task(update())
-        
+            async with self._lock:
+                self._peers.pop(old_id, None)
+                self._peers[claimed_id] = session
+                addr_key = f"{session.address}:{session.port}"
+                self._address_map[addr_key] = claimed_id
+
         verified_str = "verified" if session.verified else "UNVERIFIED"
         logger.info(f"Handshake complete with {claimed_id[:16]}... ({verified_str})")
         return True
-    
+
     # -------------------------------------------------------------------------
     # Keepalive
     # -------------------------------------------------------------------------
-    
+
     async def _ping_loop(self) -> None:
         """Send periodic pings to all peers."""
         while self._running:
             try:
                 await asyncio.sleep(self._config.ping_interval)
-                
+
                 now = time.time()
                 ping = Ping(sender_id=self._identity.node_id)
-                
+
                 if self._identity.has_private_key():
                     self._identity.sign_message(ping)
-                
+
                 for node_id, session in list(self._peers.items()):
                     if not session.is_ready():
                         continue
-                    
+
                     # Check for missed pings
                     if session.last_ping_at > 0:
                         time_since_pong = now - session.last_message_at
                         if time_since_pong > self._config.ping_timeout:
                             session.missed_pings += 1
-                            
+
                             if session.missed_pings >= self._config.max_missed_pings:
                                 logger.warning(f"Peer {node_id} unresponsive, disconnecting")
                                 await self._disconnect_peer(node_id)
                                 continue
-                    
+
                     # Send ping
                     session.last_ping_at = now
                     await self._send_to_peer(node_id, ping)
-                    
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Ping loop error: {e}")
-    
+
     async def _cleanup_loop(self) -> None:
         """Periodic cleanup of stale connections."""
         while self._running:
             try:
                 await asyncio.sleep(60.0)
-                
+
                 # Clean up disconnected sessions
                 to_remove = [
                     node_id for node_id, session in self._peers.items()
                     if session.state == PeerState.DISCONNECTED
                 ]
-                
+
                 for node_id in to_remove:
                     async with self._lock:
                         self._peers.pop(node_id, None)
-                        
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Cleanup loop error: {e}")
-    
+
     # -------------------------------------------------------------------------
     # Handler Registration
     # -------------------------------------------------------------------------
-    
+
     def register_handler(
         self,
         msg_type: MessageType,
-        handler: Callable[[Dict, str], Optional[Any]],
+        handler: Callable[[dict, str], Any | None],
     ) -> None:
         """
         Register a message handler.
-        
+
         Args:
             msg_type: Message type to handle
             handler: Async function(message_dict, from_node_id) -> optional_response
         """
         self._handlers[msg_type] = handler
-    
+
     def register_default_handlers(self) -> None:
         """Register default protocol handlers."""
 
-        async def handle_handshake_challenge(msg: Dict, from_id: str) -> Optional[HandshakeResponse]:
+        async def handle_handshake_challenge(msg: dict, from_id: str) -> HandshakeResponse | None:
             session = self._peers.get(from_id)
             if session is None:
                 return None
 
-            challenge = HandshakeChallenge.from_dict(msg)
+            challenge = HandshakeChallenge._from_dict_impl(msg)
             peer_pubkey = self._decode_b64_field(challenge.public_key)
             if peer_pubkey is None or len(peer_pubkey) != 32:
                 return None
@@ -1190,11 +1194,11 @@ class P2PManager:
                 self._identity.sign_message(response)
             return response
 
-        async def handle_handshake_response(msg: Dict, from_id: str) -> None:
+        async def handle_handshake_response(msg: dict, from_id: str) -> None:
             session = self._peers.get(from_id)
             if session is None:
                 return
-            response = HandshakeResponse.from_dict(msg)
+            response = HandshakeResponse._from_dict_impl(msg)
 
             if session.pending_challenge is None:
                 return
@@ -1243,22 +1247,20 @@ class P2PManager:
             session.verified = True
 
             if old_id != claimed_id:
-                async def update():
-                    async with self._lock:
-                        self._peers.pop(old_id, None)
-                        self._peers[claimed_id] = session
-                        addr_key = f"{session.address}:{session.port}"
-                        self._address_map[addr_key] = claimed_id
-                asyncio.create_task(update())
+                async with self._lock:
+                    self._peers.pop(old_id, None)
+                    self._peers[claimed_id] = session
+                    addr_key = f"{session.address}:{session.port}"
+                    self._address_map[addr_key] = claimed_id
 
-        async def handle_ping(msg: Dict, from_id: str) -> Optional[Pong]:
+        async def handle_ping(msg: dict, from_id: str) -> Pong | None:
             pong = Pong(sender_id=self._identity.node_id)
             if self._identity.has_private_key():
                 self._identity.sign_message(pong)
             return pong
-        
-        async def handle_pong(msg: Dict, from_id: str) -> None:
-            pong = Pong.from_dict(msg)
+
+        async def handle_pong(msg: dict, from_id: str) -> None:
+            Pong.from_dict(msg)
             session = self._peers.get(from_id)
             if session:
                 session.missed_pings = 0
@@ -1269,7 +1271,7 @@ class P2PManager:
         self._handlers[MessageType.PING] = handle_ping
         self._handlers[MessageType.PONG] = handle_pong
 
-    def get_session_key(self, node_id: str) -> Optional[bytes]:
+    def get_session_key(self, node_id: str) -> bytes | None:
         session = self._peers.get(node_id)
         if session is None:
             return None
@@ -1278,28 +1280,28 @@ class P2PManager:
         if len(session.session_key) != 32:
             return None
         return session.session_key
-    
+
     # -------------------------------------------------------------------------
     # Queries
     # -------------------------------------------------------------------------
-    
-    def get_connected_peers(self) -> List[str]:
+
+    def get_connected_peers(self) -> list[str]:
         """Get list of connected peer IDs."""
         return [
             node_id for node_id, session in self._peers.items()
             if session.is_ready()
         ]
-    
+
     def get_peer_count(self) -> int:
         """Get number of ready peers."""
         return sum(1 for s in self._peers.values() if s.is_ready())
-    
-    def get_peer_info(self, node_id: str) -> Optional[Dict[str, Any]]:
+
+    def get_peer_info(self, node_id: str) -> dict[str, Any] | None:
         """Get info about a peer."""
         session = self._peers.get(node_id)
         if not session:
             return None
-        
+
         return {
             "node_id": session.node_id,
             "address": f"{session.address}:{session.port}",
@@ -1310,8 +1312,8 @@ class P2PManager:
             "bytes_sent": session.bytes_sent,
             "bytes_received": session.bytes_received,
         }
-    
-    def get_stats(self) -> Dict[str, Any]:
+
+    def get_stats(self) -> dict[str, Any]:
         """Get P2P manager statistics."""
         return {
             "listening": f"{self._config.listen_host}:{self._config.listen_port}",
@@ -1322,11 +1324,11 @@ class P2PManager:
             "total_bytes_sent": sum(s.bytes_sent for s in self._peers.values()),
             "total_bytes_received": sum(s.bytes_received for s in self._peers.values()),
         }
-    
+
     @property
     def node_id(self) -> str:
-        return self._identity.node_id
-    
+        return cast(str, self._identity.node_id)
+
     @property
     def listen_address(self) -> str:
         return f"{self._config.listen_host}:{self._config.listen_port}"

@@ -22,12 +22,11 @@ import base64
 import hashlib
 import json
 import time
-from dataclasses import dataclass, field, asdict
-from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, cast
 
-from idi.ian.models import GoalID, Contribution, ContributionMeta
-
+from idi.ian.models import Contribution, ContributionMeta
 
 # =============================================================================
 # Message Types
@@ -41,17 +40,17 @@ class MessageType(Enum):
 
     # Gossip
     CONTRIBUTION_ANNOUNCE = "contribution_announce"
-    
+
     # Request/Response
     CONTRIBUTION_REQUEST = "contribution_request"
     CONTRIBUTION_RESPONSE = "contribution_response"
     STATE_REQUEST = "state_request"
     STATE_RESPONSE = "state_response"
-    
+
     # State Sync
     SYNC_REQUEST = "sync_request"
     SYNC_RESPONSE = "sync_response"
-    
+
     # Discovery
     PEER_EXCHANGE = "peer_exchange"
     PING = "ping"
@@ -66,7 +65,7 @@ class MessageType(Enum):
 class Message:
     """
     Base P2P message.
-    
+
     All messages include:
     - type: Message type
     - sender_id: Node ID of sender
@@ -78,9 +77,9 @@ class Message:
     sender_id: str
     timestamp: int = field(default_factory=lambda: int(time.time() * 1000))
     nonce: str = field(default_factory=lambda: base64.b64encode(hashlib.sha256(str(time.time_ns()).encode()).digest()[:8]).decode())
-    signature: Optional[bytes] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    signature: bytes | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": self.type.value,
             "sender_id": self.sender_id,
@@ -88,19 +87,19 @@ class Message:
             "nonce": self.nonce,
             "signature": base64.b64encode(self.signature).decode() if self.signature else None,
         }
-    
+
     def signing_payload(self) -> bytes:
         """Get payload for signing (excludes signature)."""
         data = self.to_dict()
         data.pop("signature", None)
         return json.dumps(data, sort_keys=True).encode()
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Message":
-        msg_type = MessageType(data["type"])
-        
+    def from_dict(cls, data: dict[str, Any]) -> Message:
+        msg_type = MessageType(cast(str, data["type"]))
+
         # Dispatch to specific message type
-        type_map = {
+        type_map: dict[MessageType, type[Message]] = {
             MessageType.HANDSHAKE_CHALLENGE: HandshakeChallenge,
             MessageType.HANDSHAKE_RESPONSE: HandshakeResponse,
             MessageType.CONTRIBUTION_ANNOUNCE: ContributionAnnounce,
@@ -112,12 +111,12 @@ class Message:
             MessageType.PING: Ping,
             MessageType.PONG: Pong,
         }
-        
-        msg_cls = type_map.get(msg_type, Message)
+
+        msg_cls: type[Message] = type_map.get(msg_type, Message)
         return msg_cls._from_dict_impl(data)
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "Message":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> Message:
         return cls(
             type=MessageType(data["type"]),
             sender_id=data["sender_id"],
@@ -125,20 +124,23 @@ class Message:
             nonce=data["nonce"],
             signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
         )
-    
+
     def to_wire(self) -> bytes:
         """Serialize to wire format (length-prefixed JSON)."""
         json_bytes = json.dumps(self.to_dict()).encode()
         length = len(json_bytes)
         return length.to_bytes(4, 'big') + json_bytes
-    
+
     @classmethod
-    def from_wire(cls, data: bytes) -> "Message":
+    def from_wire(cls, data: bytes) -> Message:
         """Deserialize from wire format."""
         length = int.from_bytes(data[:4], 'big')
         json_bytes = data[4:4 + length]
-        return cls.from_dict(json.loads(json_bytes))
-    
+        parsed = json.loads(json_bytes)
+        if not isinstance(parsed, dict):
+            raise ValueError("Invalid wire payload: expected JSON object")
+        return cls.from_dict(cast(dict[str, Any], parsed))
+
     def message_id(self) -> str:
         """Unique message ID for deduplication."""
         return f"{self.sender_id}:{self.nonce}"
@@ -152,7 +154,7 @@ class HandshakeChallenge(Message):
     kx_public_key: str = ""
     public_key: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update(
             {
@@ -164,7 +166,7 @@ class HandshakeChallenge(Message):
         return data
 
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "HandshakeChallenge":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> HandshakeChallenge:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -185,7 +187,7 @@ class HandshakeResponse(Message):
     kx_public_key: str = ""
     public_key: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update(
             {
@@ -198,7 +200,7 @@ class HandshakeResponse(Message):
         return data
 
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "HandshakeResponse":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> HandshakeResponse:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -219,18 +221,18 @@ class HandshakeResponse(Message):
 class ContributionAnnounce(Message):
     """
     Announce a new contribution (gossip).
-    
+
     Contains metadata only - peers request full body if interested.
     """
     type: MessageType = field(default=MessageType.CONTRIBUTION_ANNOUNCE, init=False)
-    
+
     goal_id: str = ""
     contribution_hash: str = ""  # SHA-256 of full contribution
     contributor_id: str = ""
-    score: Optional[float] = None
-    log_index: Optional[int] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    score: float | None = None
+    log_index: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update({
             "goal_id": self.goal_id,
@@ -240,9 +242,9 @@ class ContributionAnnounce(Message):
             "log_index": self.log_index,
         })
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "ContributionAnnounce":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> ContributionAnnounce:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -254,13 +256,13 @@ class ContributionAnnounce(Message):
             score=data.get("score"),
             log_index=data.get("log_index"),
         )
-    
+
     @classmethod
-    def from_contribution(cls, sender_id: str, contrib: Contribution, meta: ContributionMeta) -> "ContributionAnnounce":
+    def from_contribution(cls, sender_id: str, contrib: Contribution, meta: ContributionMeta) -> ContributionAnnounce:
         """Create announce from contribution and metadata."""
         contrib_bytes = json.dumps(contrib.to_dict(), sort_keys=True).encode()
         contrib_hash = hashlib.sha256(contrib_bytes).hexdigest()
-        
+
         return cls(
             sender_id=sender_id,
             goal_id=str(contrib.goal_id),
@@ -275,16 +277,16 @@ class ContributionAnnounce(Message):
 class ContributionRequest(Message):
     """Request full contribution body by hash."""
     type: MessageType = field(default=MessageType.CONTRIBUTION_REQUEST, init=False)
-    
+
     contribution_hash: str = ""
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data["contribution_hash"] = self.contribution_hash
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "ContributionRequest":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> ContributionRequest:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -298,12 +300,12 @@ class ContributionRequest(Message):
 class ContributionResponse(Message):
     """Response with full contribution body."""
     type: MessageType = field(default=MessageType.CONTRIBUTION_RESPONSE, init=False)
-    
+
     contribution_hash: str = ""
-    contribution: Optional[Dict[str, Any]] = None  # Serialized Contribution
+    contribution: dict[str, Any] | None = None  # Serialized Contribution
     found: bool = True
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update({
             "contribution_hash": self.contribution_hash,
@@ -311,9 +313,9 @@ class ContributionResponse(Message):
             "found": self.found,
         })
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "ContributionResponse":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> ContributionResponse:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -333,13 +335,13 @@ class ContributionResponse(Message):
 class StateRequest(Message):
     """Request coordinator state for a goal."""
     type: MessageType = field(default=MessageType.STATE_REQUEST, init=False)
-    
+
     goal_id: str = ""
     include_log: bool = False
     include_leaderboard: bool = True
     from_log_index: int = 0  # For incremental sync
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update({
             "goal_id": self.goal_id,
@@ -348,9 +350,9 @@ class StateRequest(Message):
             "from_log_index": self.from_log_index,
         })
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "StateRequest":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> StateRequest:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -367,15 +369,15 @@ class StateRequest(Message):
 class StateResponse(Message):
     """Response with coordinator state."""
     type: MessageType = field(default=MessageType.STATE_RESPONSE, init=False)
-    
+
     goal_id: str = ""
     log_root: str = ""
     log_size: int = 0
     leaderboard_root: str = ""
-    leaderboard: Optional[List[Dict[str, Any]]] = None
-    active_policy_hash: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    leaderboard: list[dict[str, Any]] | None = None
+    active_policy_hash: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update({
             "goal_id": self.goal_id,
@@ -386,9 +388,9 @@ class StateResponse(Message):
             "active_policy_hash": self.active_policy_hash,
         })
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "StateResponse":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> StateResponse:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -411,16 +413,16 @@ class StateResponse(Message):
 class SyncRequest(Message):
     """
     Request contributions for state sync.
-    
+
     Used to request a batch of contributions by log index range.
     """
     type: MessageType = field(default=MessageType.SYNC_REQUEST, init=False)
-    
+
     goal_id: str = ""
     from_index: int = 0  # Start log index (inclusive)
     to_index: int = 0    # End log index (exclusive)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update({
             "goal_id": self.goal_id,
@@ -428,9 +430,9 @@ class SyncRequest(Message):
             "to_index": self.to_index,
         })
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "SyncRequest":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> SyncRequest:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -446,17 +448,17 @@ class SyncRequest(Message):
 class SyncResponse(Message):
     """
     Response with contributions for state sync.
-    
+
     Contains serialized contributions in order.
     """
     type: MessageType = field(default=MessageType.SYNC_RESPONSE, init=False)
-    
+
     goal_id: str = ""
     from_index: int = 0
-    contributions: List[Dict[str, Any]] = field(default_factory=list)
+    contributions: list[dict[str, Any]] = field(default_factory=list)
     has_more: bool = False  # True if more contributions available
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data.update({
             "goal_id": self.goal_id,
@@ -465,9 +467,9 @@ class SyncResponse(Message):
             "has_more": self.has_more,
         })
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "SyncResponse":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> SyncResponse:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -488,16 +490,16 @@ class SyncResponse(Message):
 class PeerExchange(Message):
     """Exchange peer lists."""
     type: MessageType = field(default=MessageType.PEER_EXCHANGE, init=False)
-    
-    peers: List[Dict[str, Any]] = field(default_factory=list)  # List of NodeInfo dicts
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    peers: list[dict[str, Any]] = field(default_factory=list)  # List of NodeInfo dicts
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data["peers"] = self.peers
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "PeerExchange":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> PeerExchange:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -511,9 +513,9 @@ class PeerExchange(Message):
 class Ping(Message):
     """Ping message for liveness check."""
     type: MessageType = field(default=MessageType.PING, init=False)
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "Ping":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> Ping:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
@@ -526,16 +528,16 @@ class Ping(Message):
 class Pong(Message):
     """Pong response to ping."""
     type: MessageType = field(default=MessageType.PONG, init=False)
-    
+
     ping_nonce: str = ""  # Nonce of the ping being responded to
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         data = super().to_dict()
         data["ping_nonce"] = self.ping_nonce
         return data
-    
+
     @classmethod
-    def _from_dict_impl(cls, data: Dict[str, Any]) -> "Pong":
+    def _from_dict_impl(cls, data: dict[str, Any]) -> Pong:
         return cls(
             sender_id=data["sender_id"],
             timestamp=data["timestamp"],
