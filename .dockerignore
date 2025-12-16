@@ -1,0 +1,15 @@
+.git
+.venv
+.pytest_cache
+__pycache__
+*.py[cod]
+*.swp
+mutants
+analysis
+archive
+tau_daemon_alpha/target
+tau_daemon_alpha/**/target
+idi/gui/frontend/node_modules
+idi/gui/frontend/.svelte-kit
+idi/gui/frontend/dist
+idi/gui/.venv
