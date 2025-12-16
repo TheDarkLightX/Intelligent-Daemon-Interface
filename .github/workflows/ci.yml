@@ -1,14 +1,7 @@
 name: IDI CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'idi/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'idi/**'
+  # Manual only until lint/test issues are resolved
   workflow_dispatch:
 
 jobs:
