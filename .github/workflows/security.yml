@@ -1,0 +1,77 @@
+name: Security (Python Dependencies)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - "idi/**"
+      - ".github/workflows/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - "idi/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+jobs:
+  python-deps-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Verify lockfile is up to date
+        run: uv lock --check
+
+      - name: Install locked dependencies
+        run: uv sync --locked --extra dev --extra gui
+
+      - name: Run IAN test suite
+        run: uv run python -m pytest idi/ian/tests -q
+
+      - name: Dependency vulnerability scan (OSV)
+        env:
+          PIP_AUDIT_VULNERABILITY_SERVICE: osv
+          PIP_AUDIT_PROGRESS_SPINNER: off
+        run: uv run pip-audit --local
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          uv pip install cyclonedx-bom
+          uv run cyclonedx-py environment \
+            --output-format json \
+            --outfile sbom.json
+          echo "SBOM generated: sbom.json"
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.json
+          retention-days: 90
+
+      - name: SBOM validation
+        run: |
+          # Verify SBOM is valid JSON and has expected structure
+          python -c "
+          import json
+          with open('sbom.json') as f:
+              sbom = json.load(f)
+          assert 'bomFormat' in sbom, 'Missing bomFormat'
+          assert sbom['bomFormat'] == 'CycloneDX', 'Invalid format'
+          assert 'components' in sbom, 'Missing components'
+          print(f'SBOM valid: {len(sbom[\"components\"])} components')
+          "

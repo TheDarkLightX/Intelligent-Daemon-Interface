@@ -377,24 +377,24 @@ IAN is a decentralized Layer 2 system built on Tau Net that enables:
 │                                                                  │
 │   Client                              Server                     │
 │     │                                   │                        │
-│     │──── HANDSHAKE ───────────────────►│                        │
-│     │     {node_id, version, nonce}     │                        │
+│     │──── HANDSHAKE_CHALLENGE ─────────►│                        │
+│     │     {sender_id, public_key,       │                        │
+│     │      kx_public_key,               │                        │
+│     │      challenge_nonce, signature}  │                        │
 │     │                                   │                        │
-│     │◄─── HANDSHAKE_ACK ───────────────│                        │
-│     │     {node_id, challenge,          │                        │
-│     │      sig(nonce)}                  │                        │
+│     │                      Verify signature + node_id binding    │
+│     │                      Derive per-peer session key           │
 │     │                                   │                        │
-│     │     Verify server sig             │                        │
+│     │◄─── HANDSHAKE_RESPONSE ──────────│                        │
+│     │     {sender_id, public_key,       │                        │
+│     │      kx_public_key,               │                        │
+│     │      challenge_nonce,             │                        │
+│     │      response_nonce, signature}   │                        │
 │     │                                   │                        │
-│     │──── CHALLENGE_RESPONSE ──────────►│                        │
-│     │     {sig(challenge)}              │                        │
+│     │     Verify signature + node_id binding                     │
+│     │     Derive per-peer session key                            │
 │     │                                   │                        │
-│     │                      Verify client sig                     │
-│     │                                   │                        │
-│     │◄─── CONNECTION_READY ────────────│                        │
-│     │     {verified: true}              │                        │
-│     │                                   │                        │
-│     │     Secure channel established    │                        │
+│     │     Connection ready (verified peer)                        │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```

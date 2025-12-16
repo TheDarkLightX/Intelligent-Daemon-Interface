@@ -14,6 +14,7 @@ This module connects the transport layer (TCP) with the protocol layer
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import json
 import logging
@@ -24,11 +25,17 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import serialization
+
 from .transport import TCPTransport
 from .protocol import (
     Message, MessageType,
     ContributionAnnounce, ContributionRequest, ContributionResponse,
     StateRequest, StateResponse, PeerExchange, Ping, Pong,
+    HandshakeChallenge, HandshakeResponse,
 )
 from .node import NodeIdentity, NodeInfo
 
@@ -162,6 +169,12 @@ class PeerSession:
     # Handshake security
     pending_challenge: Optional[bytes] = None  # Our nonce, awaiting signed response
     verified: bool = False  # Whether peer identity is cryptographically verified
+
+    peer_public_key: Optional[bytes] = None
+    kx_private_key: Optional[bytes] = None
+    kx_public_key: Optional[bytes] = None
+    peer_kx_public_key: Optional[bytes] = None
+    session_key: Optional[bytes] = None
     
     # Statistics
     connected_at: float = 0.0
@@ -682,7 +695,18 @@ class P2PManager:
         try:
             # Parse JSON
             msg_dict = json.loads(data.decode('utf-8'))
-            msg_type = MessageType(msg_dict.get("type", ""))
+            msg_type_raw = msg_dict.get("type", "")
+            try:
+                msg_type = MessageType(msg_type_raw)
+            except Exception:
+                legacy_map = {
+                    "HANDSHAKE_CHALLENGE": MessageType.HANDSHAKE_CHALLENGE,
+                    "HANDSHAKE_RESPONSE": MessageType.HANDSHAKE_RESPONSE,
+                }
+                msg_type = legacy_map.get(msg_type_raw)
+                if msg_type is None:
+                    logger.debug(f"Unknown message type: {msg_type_raw}")
+                    return
             
             # Create a temporary Message object for replay checking
             # (uses sender_id + nonce as message_id)
@@ -717,6 +741,39 @@ class P2PManager:
                 
         except Exception as e:
             logger.error(f"Error handling message: {e}")
+
+    @staticmethod
+    def _decode_b64_field(value: Any) -> Optional[bytes]:
+        if not isinstance(value, str) or not value:
+            return None
+        try:
+            return base64.b64decode(value, validate=True)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _derive_node_id(public_key: bytes) -> str:
+        return hashlib.sha256(public_key).hexdigest()[:40]
+
+    @staticmethod
+    def _derive_session_key(
+        shared_secret: bytes,
+        challenge_nonce: bytes,
+        node_id_a: str,
+        node_id_b: str,
+        kx_pub_a: bytes,
+        kx_pub_b: bytes,
+    ) -> bytes:
+        left_id, right_id = sorted([node_id_a, node_id_b])
+        if node_id_a == left_id:
+            left_pub, right_pub = kx_pub_a, kx_pub_b
+        else:
+            left_pub, right_pub = kx_pub_b, kx_pub_a
+
+        salt = hashlib.sha256(challenge_nonce + left_id.encode('utf-8') + right_id.encode('utf-8')).digest()
+        info = b"IAN_P2P_SESSION_KEY_V1" + left_id.encode('utf-8') + right_id.encode('utf-8') + left_pub + right_pub
+        hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=info)
+        return hkdf.derive(shared_secret)
     
     async def send_message(self, node_id: str, message: Any) -> bool:
         """
@@ -738,17 +795,15 @@ class P2PManager:
             return False
         
         try:
-            # Serialize message
-            if hasattr(message, 'to_wire'):
-                data = message.to_wire()
-            elif hasattr(message, 'to_dict'):
-                data = json.dumps(message.to_dict()).encode()
-            else:
-                data = json.dumps(message).encode()
-            
             # Sign message
             if hasattr(message, 'sender_id'):
                 message.sender_id = self._identity.node_id
+
+            # Serialize message
+            if hasattr(message, 'to_dict'):
+                data = json.dumps(message.to_dict()).encode('utf-8')
+            else:
+                data = json.dumps(message).encode('utf-8')
             
             # Queue for sending
             await asyncio.wait_for(
@@ -806,21 +861,27 @@ class P2PManager:
         # Generate challenge nonce
         challenge_nonce = secrets.token_bytes(32)
         session.pending_challenge = challenge_nonce
-        
-        # Build handshake challenge message
-        handshake_msg = {
-            "type": "HANDSHAKE_CHALLENGE",
-            "sender_id": self._identity.node_id,
-            "nonce": challenge_nonce.hex(),
-            "timestamp": int(time.time() * 1000),
-        }
-        
-        # Sign our challenge
+
+        kx_private = X25519PrivateKey.generate()
+        kx_public = kx_private.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        session.kx_private_key = kx_private.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        session.kx_public_key = kx_public
+
+        handshake_msg = HandshakeChallenge(
+            sender_id=self._identity.node_id,
+            challenge_nonce=challenge_nonce.hex(),
+            kx_public_key=base64.b64encode(kx_public).decode('utf-8'),
+            public_key=base64.b64encode(self._identity.public_key).decode('utf-8'),
+        )
         if self._identity.has_private_key():
-            msg_to_sign = f"{handshake_msg['sender_id']}:{handshake_msg['nonce']}:{handshake_msg['timestamp']}"
-            signature = self._identity.sign(msg_to_sign.encode())
-            handshake_msg["signature"] = signature.hex() if signature else None
-        
+            self._identity.sign_message(handshake_msg)
         await self._send_to_peer(session.node_id, handshake_msg)
     
     def _verify_handshake_response(self, session: PeerSession, response: Dict[str, Any]) -> bool:
@@ -905,7 +966,7 @@ class P2PManager:
             logger.warning(f"Handshake verification error: {e}")
             return False
     
-    def _handle_handshake_response(self, session: PeerSession, pong: Pong) -> bool:
+    def _handle_handshake_response(self, session: PeerSession, response: Dict[str, Any]) -> bool:
         """
         Handle handshake response with verification.
         
@@ -916,15 +977,15 @@ class P2PManager:
         Returns:
             True if handshake succeeded, False if peer should be disconnected
         """
-        claimed_id = pong.sender_id
+        claimed_id = response.get("sender_id", "")
         
         # Require challenge-response verification for all connections
         if session.pending_challenge:
             # Verify the response - peer must prove they control the claimed identity
             response_dict = {
-                "sender_id": pong.sender_id,
-                "response_nonce": getattr(pong, 'nonce', ''),
-                "signature": getattr(pong, 'signature', '') or '',
+                "sender_id": response.get("sender_id", ""),
+                "response_nonce": response.get("response_nonce", ""),
+                "signature": response.get("signature", "") or '',
             }
             
             if not self._verify_handshake_response(session, response_dict):
@@ -1049,7 +1110,147 @@ class P2PManager:
     
     def register_default_handlers(self) -> None:
         """Register default protocol handlers."""
-        
+
+        async def handle_handshake_challenge(msg: Dict, from_id: str) -> Optional[HandshakeResponse]:
+            session = self._peers.get(from_id)
+            if session is None:
+                return None
+
+            challenge = HandshakeChallenge.from_dict(msg)
+            peer_pubkey = self._decode_b64_field(challenge.public_key)
+            if peer_pubkey is None or len(peer_pubkey) != 32:
+                return None
+            if self._derive_node_id(peer_pubkey) != challenge.sender_id:
+                return None
+            if challenge.signature is None:
+                return None
+            if not NodeIdentity.verify_with_public_key(peer_pubkey, challenge.signing_payload(), challenge.signature):
+                return None
+
+            peer_kx_pub = self._decode_b64_field(challenge.kx_public_key)
+            if peer_kx_pub is None or len(peer_kx_pub) != 32:
+                return None
+
+            try:
+                challenge_nonce = bytes.fromhex(challenge.challenge_nonce)
+            except Exception:
+                return None
+            if len(challenge_nonce) != 32:
+                return None
+
+            kx_private = X25519PrivateKey.generate()
+            kx_public = kx_private.public_key().public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+
+            try:
+                shared_secret = kx_private.exchange(X25519PublicKey.from_public_bytes(peer_kx_pub))
+            except Exception:
+                return None
+
+            old_id = session.node_id
+            session.node_id = challenge.sender_id
+            session.state = PeerState.HANDSHAKING
+            session.verified = True
+
+            if old_id != session.node_id:
+                async with self._lock:
+                    self._peers.pop(old_id, None)
+                    self._peers[session.node_id] = session
+                    addr_key = f"{session.address}:{session.port}"
+                    self._address_map[addr_key] = session.node_id
+
+            session.peer_public_key = peer_pubkey
+            session.peer_kx_public_key = peer_kx_pub
+            session.kx_private_key = kx_private.private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            session.kx_public_key = kx_public
+            session.session_key = self._derive_session_key(
+                shared_secret=shared_secret,
+                challenge_nonce=challenge_nonce,
+                node_id_a=self._identity.node_id,
+                node_id_b=challenge.sender_id,
+                kx_pub_a=kx_public,
+                kx_pub_b=peer_kx_pub,
+            )
+
+            response_nonce = secrets.token_bytes(32)
+            response = HandshakeResponse(
+                sender_id=self._identity.node_id,
+                challenge_nonce=challenge.challenge_nonce,
+                response_nonce=response_nonce.hex(),
+                kx_public_key=base64.b64encode(kx_public).decode('utf-8'),
+                public_key=base64.b64encode(self._identity.public_key).decode('utf-8'),
+            )
+            if self._identity.has_private_key():
+                self._identity.sign_message(response)
+            return response
+
+        async def handle_handshake_response(msg: Dict, from_id: str) -> None:
+            session = self._peers.get(from_id)
+            if session is None:
+                return
+            response = HandshakeResponse.from_dict(msg)
+
+            if session.pending_challenge is None:
+                return
+            expected_challenge_hex = session.pending_challenge.hex()
+            if response.challenge_nonce != expected_challenge_hex:
+                return
+
+            peer_pubkey = self._decode_b64_field(response.public_key)
+            if peer_pubkey is None or len(peer_pubkey) != 32:
+                return
+            if self._derive_node_id(peer_pubkey) != response.sender_id:
+                return
+            if response.signature is None:
+                return
+            if not NodeIdentity.verify_with_public_key(peer_pubkey, response.signing_payload(), response.signature):
+                return
+
+            peer_kx_pub = self._decode_b64_field(response.kx_public_key)
+            if peer_kx_pub is None or len(peer_kx_pub) != 32:
+                return
+
+            if session.kx_private_key is None or session.kx_public_key is None:
+                return
+            try:
+                kx_private = X25519PrivateKey.from_private_bytes(session.kx_private_key)
+                shared_secret = kx_private.exchange(X25519PublicKey.from_public_bytes(peer_kx_pub))
+            except Exception:
+                return
+
+            session.peer_public_key = peer_pubkey
+            session.peer_kx_public_key = peer_kx_pub
+            session.session_key = self._derive_session_key(
+                shared_secret=shared_secret,
+                challenge_nonce=session.pending_challenge,
+                node_id_a=self._identity.node_id,
+                node_id_b=response.sender_id,
+                kx_pub_a=session.kx_public_key,
+                kx_pub_b=peer_kx_pub,
+            )
+
+            claimed_id = response.sender_id
+            old_id = session.node_id
+            session.node_id = claimed_id
+            session.state = PeerState.READY
+            session.pending_challenge = None
+            session.verified = True
+
+            if old_id != claimed_id:
+                async def update():
+                    async with self._lock:
+                        self._peers.pop(old_id, None)
+                        self._peers[claimed_id] = session
+                        addr_key = f"{session.address}:{session.port}"
+                        self._address_map[addr_key] = claimed_id
+                asyncio.create_task(update())
+
         async def handle_ping(msg: Dict, from_id: str) -> Optional[Pong]:
             pong = Pong(sender_id=self._identity.node_id)
             if self._identity.has_private_key():
@@ -1061,11 +1262,22 @@ class P2PManager:
             session = self._peers.get(from_id)
             if session:
                 session.missed_pings = 0
-                if session.state == PeerState.HANDSHAKING:
-                    self._handle_handshake_response(session, pong)
-        
+                return
+
+        self._handlers[MessageType.HANDSHAKE_CHALLENGE] = handle_handshake_challenge
+        self._handlers[MessageType.HANDSHAKE_RESPONSE] = handle_handshake_response
         self._handlers[MessageType.PING] = handle_ping
         self._handlers[MessageType.PONG] = handle_pong
+
+    def get_session_key(self, node_id: str) -> Optional[bytes]:
+        session = self._peers.get(node_id)
+        if session is None:
+            return None
+        if session.session_key is None:
+            return None
+        if len(session.session_key) != 32:
+            return None
+        return session.session_key
     
     # -------------------------------------------------------------------------
     # Queries

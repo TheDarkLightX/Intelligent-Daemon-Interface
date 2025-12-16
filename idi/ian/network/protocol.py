@@ -35,6 +35,10 @@ from idi.ian.models import GoalID, Contribution, ContributionMeta
 
 class MessageType(Enum):
     """P2P message types."""
+    # Handshake
+    HANDSHAKE_CHALLENGE = "handshake_challenge"
+    HANDSHAKE_RESPONSE = "handshake_response"
+
     # Gossip
     CONTRIBUTION_ANNOUNCE = "contribution_announce"
     
@@ -97,6 +101,8 @@ class Message:
         
         # Dispatch to specific message type
         type_map = {
+            MessageType.HANDSHAKE_CHALLENGE: HandshakeChallenge,
+            MessageType.HANDSHAKE_RESPONSE: HandshakeResponse,
             MessageType.CONTRIBUTION_ANNOUNCE: ContributionAnnounce,
             MessageType.CONTRIBUTION_REQUEST: ContributionRequest,
             MessageType.CONTRIBUTION_RESPONSE: ContributionResponse,
@@ -136,6 +142,73 @@ class Message:
     def message_id(self) -> str:
         """Unique message ID for deduplication."""
         return f"{self.sender_id}:{self.nonce}"
+
+
+@dataclass
+class HandshakeChallenge(Message):
+    type: MessageType = field(default=MessageType.HANDSHAKE_CHALLENGE, init=False)
+
+    challenge_nonce: str = ""
+    kx_public_key: str = ""
+    public_key: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update(
+            {
+                "challenge_nonce": self.challenge_nonce,
+                "kx_public_key": self.kx_public_key,
+                "public_key": self.public_key,
+            }
+        )
+        return data
+
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "HandshakeChallenge":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            challenge_nonce=data.get("challenge_nonce", ""),
+            kx_public_key=data.get("kx_public_key", ""),
+            public_key=data.get("public_key", ""),
+        )
+
+
+@dataclass
+class HandshakeResponse(Message):
+    type: MessageType = field(default=MessageType.HANDSHAKE_RESPONSE, init=False)
+
+    challenge_nonce: str = ""
+    response_nonce: str = ""
+    kx_public_key: str = ""
+    public_key: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update(
+            {
+                "challenge_nonce": self.challenge_nonce,
+                "response_nonce": self.response_nonce,
+                "kx_public_key": self.kx_public_key,
+                "public_key": self.public_key,
+            }
+        )
+        return data
+
+    @classmethod
+    def _from_dict_impl(cls, data: Dict[str, Any]) -> "HandshakeResponse":
+        return cls(
+            sender_id=data["sender_id"],
+            timestamp=data["timestamp"],
+            nonce=data["nonce"],
+            signature=base64.b64decode(data["signature"]) if data.get("signature") else None,
+            challenge_nonce=data.get("challenge_nonce", ""),
+            response_nonce=data.get("response_nonce", ""),
+            kx_public_key=data.get("kx_public_key", ""),
+            public_key=data.get("public_key", ""),
+        )
 
 
 # =============================================================================

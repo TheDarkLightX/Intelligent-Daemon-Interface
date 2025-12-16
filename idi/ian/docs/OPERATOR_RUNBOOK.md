@@ -20,10 +20,10 @@ Operational guide for running and maintaining IAN (Intelligent Agent Network) no
 
 | Endpoint | URL | Purpose |
 |----------|-----|---------|
-| Health | `http://localhost:8080/health` | Liveness check |
-| Ready | `http://localhost:8080/ready` | Readiness check |
-| Metrics | `http://localhost:8080/metrics` | Prometheus metrics |
-| Status | `http://localhost:8080/status` | Detailed status |
+| Health | `http://localhost:8000/health` | Liveness check |
+| Metrics | `http://localhost:8000/metrics` | Prometheus metrics |
+| OpenAPI | `http://localhost:8000/api/v1/openapi.json` | API schema |
+| Goal Status | `http://localhost:8000/api/v1/status/{goal_id}` | Goal status |
 
 ### Key Files
 
@@ -51,11 +51,11 @@ Operational guide for running and maintaining IAN (Intelligent Agent Network) no
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.10+ (3.12 recommended; production images use 3.12)
 - 2+ CPU cores
 - 4+ GB RAM
 - 50+ GB SSD storage
-- Network: Ports 8080, 9000, 9001 accessible
+- Network: Ports 8000, 9000, 9001 accessible
 
 ### Docker Deployment
 
@@ -66,8 +66,9 @@ docker pull ian-network/ian-node:latest
 # Run node
 docker run -d \
   --name ian-node \
-  -p 8080:8080 \
+  -p 8000:8000 \
   -p 9000:9000 \
+  -p 9001:9001 \
   -v /data/ian:/data \
   -e IAN_SEED_NODES="tcp://seed1.ian.network:9000,tcp://seed2.ian.network:9000" \
   -e IAN_LOG_LEVEL="INFO" \
@@ -82,15 +83,16 @@ services:
   ian-node:
     image: ian-network/ian-node:latest
     ports:
-      - "8080:8080"
+      - "8000:8000"
       - "9000:9000"
+      - "9001:9001"
     volumes:
       - ./data:/data
     environment:
       - IAN_SEED_NODES=tcp://seed1.ian.network:9000
       - IAN_LOG_LEVEL=INFO
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -112,18 +114,14 @@ kubectl logs -f deployment/ian-node -n ian
 
 ```bash
 # Check health
-curl http://localhost:8080/health
+curl http://localhost:8000/health
 # Expected: OK
 
-# Check readiness (may take a few minutes to sync)
-curl http://localhost:8080/ready
-# Expected: READY
-
 # Check metrics
-curl http://localhost:8080/metrics
+curl http://localhost:8000/metrics
 
-# Check peer connections
-curl http://localhost:8080/status | jq '.checks.peers'
+# Check goal status
+curl http://localhost:8000/api/v1/status/DEMO_TRADING_AGENT | jq
 ```
 
 ---
@@ -137,9 +135,9 @@ scrape_configs:
   - job_name: 'ian-nodes'
     static_configs:
       - targets:
-        - 'ian-node-1:8080'
-        - 'ian-node-2:8080'
-        - 'ian-node-3:8080'
+        - 'ian-node-1:8000'
+        - 'ian-node-2:8000'
+        - 'ian-node-3:8000'
     metrics_path: /metrics
     scrape_interval: 15s
 ```
@@ -263,16 +261,10 @@ docker-compose restart ian-node
 
 ```bash
 # Get current status
-curl -s http://localhost:8080/status | jq
-
-# Check sync progress
-curl -s http://localhost:8080/status | jq '.checks.sync'
-
-# Get peer list
-curl -s http://localhost:8080/peers | jq
+curl -s http://localhost:8000/api/v1/status/DEMO_TRADING_AGENT | jq
 
 # Check log size
-curl -s http://localhost:8080/metrics | grep ian_log_size
+curl -s http://localhost:8000/metrics | grep ian_log_size
 ```
 
 ### Update Configuration
@@ -361,12 +353,12 @@ chmod 700 /data/ian/certs
 
 ### Node Not Syncing
 
-**Symptoms:** `ian_sync_lag` stays high, `/ready` returns 503
+**Symptoms:** `ian_sync_lag` stays high
 
 **Diagnosis:**
 ```bash
 # Check peer count
-curl -s http://localhost:8080/status | jq '.checks.peers'
+curl -s http://localhost:8000/metrics | grep ian_peer_count
 
 # Check if seeds are reachable
 nc -zv seed1.ian.network 9000
@@ -393,7 +385,7 @@ docker exec ian-node ping seed1.ian.network
 docker stats ian-node
 
 # Check log size (can grow large)
-curl -s http://localhost:8080/metrics | grep ian_log_size
+curl -s http://localhost:8000/metrics | grep ian_log_size
 ```
 
 **Solutions:**
@@ -484,7 +476,7 @@ cat /data/ian/peer_scores.json | jq '.peers["<peer_id>"]'
 **Immediate Actions:**
 ```bash
 # 1. Check metrics
-curl -s http://localhost:8080/metrics | grep rate_limit
+curl -s http://localhost:8000/metrics | grep rate_limit
 
 # 2. Identify attacking peers
 cat /data/ian/peer_scores.json | jq '.peers | to_entries | sort_by(.value.rate_limit_violations) | reverse | .[0:5]'
@@ -515,7 +507,7 @@ tar -xzvf ian-backup-latest.tar.gz -C /
 docker start ian-node
 
 # 5. Monitor sync progress
-watch 'curl -s http://localhost:8080/status | jq .checks.sync'
+watch 'curl -s http://localhost:8000/api/v1/status/DEMO_TRADING_AGENT | jq'
 ```
 
 ### Network Partition Recovery
@@ -525,7 +517,7 @@ watch 'curl -s http://localhost:8080/status | jq .checks.sync'
 **Actions:**
 ```bash
 # 1. Check sync status
-curl -s http://localhost:8080/status
+curl -s http://localhost:8000/api/v1/status/DEMO_TRADING_AGENT
 
 # 2. Node should automatically detect divergence and resync
 # Monitor logs for "sync" messages
@@ -584,7 +576,7 @@ mv /data/ian/certs-new /data/ian/certs
 docker start ian-node
 
 # 5. Verify peers can still connect
-curl -s http://localhost:8080/peers | jq '.total'
+nc -zv localhost 9000
 ```
 
 ### Upgrading Node Software
@@ -602,13 +594,14 @@ docker stop ian-node
 # 4. Start with new image
 docker run -d \
   --name ian-node-new \
-  -p 8080:8080 \
+  -p 8000:8000 \
   -p 9000:9000 \
+  -p 9001:9001 \
   -v /data/ian:/data \
   ian-network/ian-node:v2.0.0
 
 # 5. Verify health
-curl http://localhost:8080/health
+curl http://localhost:8000/health
 
 # 6. Remove old container
 docker rm ian-node

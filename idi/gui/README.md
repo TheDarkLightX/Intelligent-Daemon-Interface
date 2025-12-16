@@ -30,7 +30,7 @@ A visually appealing, instrument-like GUI for the IDI Agent Parameterization Int
 
 ### Prerequisites
 
-- **Python 3.10+** with pip
+- **Python 3.10+** with pip (3.12 recommended; production images use 3.12)
 - **Node.js 18+** with npm
 - **Rust** (for Tauri desktop app, optional)
 

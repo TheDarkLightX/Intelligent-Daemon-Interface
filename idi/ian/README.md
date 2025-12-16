@@ -9,6 +9,8 @@ IAN provides:
 - **Fair Top-K Leaderboards** - With tie-breaking and optional Pareto ranking
 - **Deterministic Processing** - Same inputs always produce same outputs
 - **Security Hardening** - Rate limiting, input validation, timing attack mitigation
+- **Bandwidth-Optimal P2P Sync** - FrontierSync + IBLT-based reconciliation for efficient log synchronization
+- **Authenticated Reconciliation Data** - Optional IBLT HMAC authentication keyed by per-peer session keys
 - **Tau Net Integration** - On-chain state commits and governance upgrades
 
 ## Quick Start
@@ -111,6 +113,25 @@ print(f"Active policy: {active.pack_hash.hex()[:16]}...")
 | `config.py` | Configuration management |
 | `observability.py` | Logging, metrics, tracing |
 | `network/` | P2P networking layer ([see docs](network/README.md)) |
+
+## New Networking Features (How to Use / Try)
+
+### FrontierSync + IBLT (Bandwidth-Optimal Sync)
+
+Use case:
+- Synchronize an append-only log between peers with minimal bandwidth when only a small delta differs.
+
+Value proposition:
+- Reduces reconciliation traffic from O(n) to approximately O(Δ) where Δ is the number of differing log entries.
+
+### Authenticated IBLT Exchange (Tamper Resistance)
+
+If the transport exposes a per-peer `session_key` (32 bytes), FrontierSync uses it as the `auth_key` for IBLT HMAC authentication.
+
+To run the focused tests:
+```bash
+pytest -q idi/ian/tests/test_frontiersync.py::TestFrontierSyncIBLTAuthentication -q
+```
 
 ## Documentation
 
@@ -269,7 +290,7 @@ Example `config.json`:
   },
   "tau": {
     "enabled": true,
-    "endpoint": "http://localhost:8080"
+    "endpoint": "http://localhost:10330"
   },
   "logging": {
     "level": "INFO",

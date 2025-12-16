@@ -151,6 +151,12 @@ archive/                     # Archived content (Alignment Theorem, Lean proofs)
 - **Benchmarking** - Performance metrics and evaluation
 - **Realistic Simulators** - Crypto market simulation with GARCH volatility, regime switching
 
+### IAN Networking (P2P) — FrontierSync + Authenticated IBLT
+- **Bandwidth-efficient sync** - FrontierSync uses an IBLT-based exchange to synchronize logs with O(Δ) bandwidth (falls back safely when decode fails).
+- **Tamper resistance** - IBLT payloads can be HMAC-authenticated to prevent untrusted peers from injecting or mutating reconciliation data.
+- **No global shared secret** - A per-peer ephemeral session key (X25519 + HKDF) is derived during handshake and exposed to higher layers via the transport.
+- **Replay/DoS controls** - Per-message replay detection, bounded caches, message size limits, and rate limiting.
+
 ### Zero-Knowledge Integration ✅ Production Ready
 - **Risc0 zkVM Proofs** - Fully functional end-to-end ZK proof system
   - Guest programs: Manifest verification and Q-table action selection
@@ -204,6 +210,12 @@ pytest idi/devkit/tau_factory/tests/test_supervisor_worker.py -v        # Hierar
 
 # Run training tests
 pytest idi/training/python/tests/ -v
+
+# Run focused IAN security tests (FrontierSync authenticated IBLT)
+pytest -q idi/ian/tests/test_frontiersync.py::TestFrontierSyncIBLTAuthentication -q
+
+# Syntax/import sanity for the handshake and network modules
+python3 -m compileall -q idi/ian/network/p2p_manager.py idi/ian/network/protocol.py idi/ian/network/frontiersync.py
 ```
 
 ## 🔧 Development

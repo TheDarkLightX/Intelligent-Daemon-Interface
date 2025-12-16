@@ -20,8 +20,8 @@ IAN exposes multiple interfaces for interaction:
 
 | Interface | Default Port | Purpose |
 |-----------|--------------|---------|
-| HTTP REST (`/api/v1/*`) | 8080 | Public API for contributions and queries |
-| Health / Metrics | 8080 | Liveness, readiness, Prometheus metrics |
+| HTTP REST (`/api/v1/*`) | 8000 | Public API for contributions and queries |
+| Health / Metrics | 8000 | Liveness and Prometheus metrics (`/health`, `/metrics`) |
 | P2P TCP | 9000 | Node-to-node gossip and state sync |
 | WebSocket | 9001 | Real-time subscriptions (optional) |
 
@@ -37,7 +37,7 @@ IAN exposes multiple interfaces for interaction:
 
 There are **two HTTP surfaces**:
 
-1. `HealthServer` (built-in): `/health`, `/ready`, `/metrics`, `/status` — used by the node lifecycle and K8s.
+1. `HealthServer` (built-in): `/health`, `/ready`, `/metrics`, `/status` — used by `DecentralizedNode`.
 2. `IANApiServer` (aiohttp-based, optional): `/api/v1/*` REST API defined in `idi.ian.network.api` and `openapi.yaml`.
 
 ### 1. Health & Readiness (HealthServer)
@@ -446,6 +446,8 @@ The P2P protocol is implemented in `idi.ian.network.protocol` and `idi.ian.netwo
 
 | Type | Enum | Direction | Purpose |
 |------|------|-----------|---------|
+| `HandshakeChallenge` | `HANDSHAKE_CHALLENGE` | P2P | Authenticated handshake initiation (identity + ephemeral key agreement) |
+| `HandshakeResponse` | `HANDSHAKE_RESPONSE` | P2P | Handshake completion (identity proof + per-peer session key derivation) |
 | `ContributionAnnounce` | `CONTRIBUTION_ANNOUNCE` | Gossip | Announce new contribution |
 | `ContributionRequest` | `CONTRIBUTION_REQUEST` | Request | Request full contribution data |
 | `ContributionResponse` | `CONTRIBUTION_RESPONSE` | Response | Return contribution data |
@@ -487,7 +489,8 @@ assert isinstance(parsed, Ping)
 
 - Each message includes a `nonce` and optional `signature` over the JSON fields.
 - `NodeIdentity` (Ed25519) is used to sign and verify messages.
-- `P2PManager` performs a handshake using signed node info and `Ping`/`Pong` messages; there is no separate `HANDSHAKE` message type yet.
+- `P2PManager` performs a handshake using `HandshakeChallenge` and `HandshakeResponse` messages.
+- The handshake establishes a per-peer `session_key` (32 bytes) which can be used by higher layers for authenticated payloads (e.g., FrontierSync authenticated IBLT exchange).
 
 ### Rate Limiting
 
@@ -639,13 +642,16 @@ class DecentralizedNodeConfig:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `IAN_LISTEN_PORT` | 9000 | P2P listen port |
-| `IAN_HEALTH_PORT` | 8080 | Health endpoint port |
-| `IAN_SEED_NODES` | "" | Comma-separated seed addresses |
-| `IAN_DATA_DIR` | "/data" | Data directory |
+| `IAN_LISTEN_HOST` | "0.0.0.0" | Default listen host (used as fallback for network services) |
+| `IAN_API_PORT` | 8000 | HTTP API port for `idi.ian.cli node start` |
+| `IAN_P2P_PORT` | 9000 | P2P TCP port for `idi.ian.cli node start` |
+| `IAN_WS_PORT` | 9001 | WebSocket port for `idi.ian.cli node start` |
+| `IAN_SEED_NODES` | "" | Comma-separated seed addresses (host:port) |
 | `IAN_LOG_LEVEL` | "INFO" | Log level |
 | `IAN_TAU_HOST` | "localhost" | Tau Net host |
-| `IAN_TAU_PORT` | 12345 | Tau Net port |
+| `IAN_TAU_PORT` | 10330 | Tau Net port |
+
+`DecentralizedNode` exposes a separate `HealthServer` (with `/ready`) and uses `DecentralizedNodeConfig.health_port` (default 8080).
 
 ---
 

@@ -49,7 +49,7 @@ identity.save("node_identity.json")
 loaded = NodeIdentity.load("node_identity.json")
 ```
 
-**Security Note:** If the `cryptography` library is not installed, a warning is emitted and a fallback HMAC-based implementation is used. This fallback is **NOT suitable for production** as it cannot provide public-key verification.
+**Security Note:** The `cryptography` library is required for Ed25519 signatures. If it is not installed, IAN will fail fast during import to avoid any insecure fallback behavior.
 
 ### `protocol.py` — P2P Messages
 
@@ -57,6 +57,8 @@ Defines the message types for IAN P2P communication.
 
 | Message Type | Direction | Purpose |
 |--------------|-----------|---------|
+| `HandshakeChallenge` | P2P | Authenticated handshake initiation (identity + ephemeral key agreement) |
+| `HandshakeResponse` | P2P | Handshake completion (identity proof + derived per-peer session key) |
 | `ContributionAnnounce` | Broadcast | Announce new contribution to peers |
 | `ContributionRequest` | Request | Request full contribution data |
 | `ContributionResponse` | Response | Return contribution data |
@@ -85,6 +87,19 @@ assert isinstance(msg, Ping)
 └──────────────────┴─────────────────────────────────────┘
 ```
 
+## FrontierSync + IBLT (Network Sync)
+
+Use case:
+- Efficiently reconcile log differences between peers.
+
+Security:
+- IBLT payloads may be HMAC-authenticated using a per-peer session key derived during the handshake.
+
+Try it (focused tests):
+```bash
+pytest -q idi/ian/tests/test_frontiersync.py::TestFrontierSyncIBLTAuthentication -q
+```
+
 ### `discovery.py` — Peer Discovery
 
 Seed-node based peer discovery with authenticated peer exchange.
@@ -108,7 +123,7 @@ peers = discovery.get_peers()
 discovery.handle_peer_exchange(peer_exchange_message)
 ```
 
-**Security:** Peer exchange messages are signed when the `cryptography` library is available. Unsigned messages from unknown senders are rejected.
+**Security:** Peer exchange messages are signed and verified using Ed25519. Unsigned messages from unknown senders are rejected.
 
 ### `transport.py` — TCP Transport
 
@@ -116,6 +131,7 @@ Manages TCP connections with connection limits and read timeouts. Used as the
 underlying transport for the P2P manager.
 
 ```python
+from idi.ian.network.protocol import Message, Ping
 from idi.ian.network.transport import TCPTransport
 
 transport = TCPTransport(
@@ -129,10 +145,14 @@ await transport.start("0.0.0.0", 9000)
 conn_id = await transport.connect("192.168.1.20:9000")
 
 # Send message
-await transport.send(conn_id, message.to_wire())
+ping = Ping(sender_id="node_abc123")
+await transport.send(conn_id, ping)
 
 # Messages arrive via callback
-transport.on_message = lambda conn_id, data: handle_message(data)
+def handle_message(conn_id: str, message: Message) -> None:
+    pass
+
+transport.set_message_handler(handle_message)
 ```
 
 **Security Features:**
@@ -188,7 +208,7 @@ from idi.ian.network.api import create_api_app, ApiConfig
 
 config = ApiConfig(
     host="0.0.0.0",
-    port=8080,
+    port=8000,
     api_key="secret123",       # Optional authentication
     rate_limit_per_ip=100,     # Requests per minute per IP
 )
@@ -202,7 +222,7 @@ await aiohttp.web.run_app(app, host=config.host, port=config.port)
 If `api_key` is configured, clients must include it in the header:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/contribute \
+curl -X POST http://localhost:8000/api/v1/contribute \
   -H "X-API-Key: secret123" \
   -H "Content-Type: application/json" \
   -d '{"goal_id": "MY_GOAL", ...}'
@@ -219,7 +239,7 @@ The API is fully documented with OpenAPI 3.0. Access the spec:
 
 ```bash
 # JSON format
-curl http://localhost:8080/api/v1/openapi.json
+curl http://localhost:8000/api/v1/openapi.json
 
 # Or view the YAML source
 cat idi/ian/network/openapi.yaml
@@ -233,7 +253,7 @@ See [SECURITY.md](../SECURITY.md) for comprehensive security documentation.
 
 ### Key Points
 
-1. **Use `cryptography` library in production** — Fallback is HMAC-based and insecure
+1. **Use `cryptography` library** — Ed25519 signatures are enforced in all environments
 2. **Configure connection limits** — Default 1024 global, 64 per-IP
 3. **Enable API key authentication** — Prevent unauthorized contributions
 4. **Use TLS in production** — The transport layer doesn't encrypt; use a reverse proxy
@@ -241,14 +261,14 @@ See [SECURITY.md](../SECURITY.md) for comprehensive security documentation.
 ## Testing
 
 ```bash
-# Run network tests
-pytest idi/ian/tests/test_network.py -v
+# Network unit tests
+pytest -q idi/ian/tests/test_network.py -q
 
-# Specific test classes
-pytest idi/ian/tests/test_network.py::TestNodeIdentity -v
-pytest idi/ian/tests/test_network.py::TestProtocol -v
-pytest idi/ian/tests/test_network.py::TestDiscovery -v
-pytest idi/ian/tests/test_network.py::TestApiHandlers -v
+# Focused FrontierSync authenticated IBLT tests
+pytest -q idi/ian/tests/test_frontiersync.py::TestFrontierSyncIBLTAuthentication -q
+
+# P2P integration tests
+pytest -q idi/ian/tests/test_p2p_integration.py -q
 ```
 
 ## Configuration
@@ -256,10 +276,12 @@ pytest idi/ian/tests/test_network.py::TestApiHandlers -v
 Environment variables:
 
 ```bash
-export IAN_NETWORK_HOST=0.0.0.0
-export IAN_NETWORK_PORT=9000
-export IAN_API_PORT=8080
+export IAN_LISTEN_HOST=0.0.0.0
+export IAN_P2P_PORT=9000
+export IAN_API_HOST=0.0.0.0
+export IAN_API_PORT=8000
+export IAN_WS_PORT=9001
 export IAN_API_KEY=your_secret_key
-export IAN_NETWORK_MAX_CONNECTIONS=1024
-export IAN_NETWORK_MAX_CONNECTIONS_PER_IP=64
+export IAN_API_KEY_REQUIRED=true
+export IAN_SEED_NODES="seed1.example.com:9000,seed2.example.com:9000"
 ```
