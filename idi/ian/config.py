@@ -202,6 +202,18 @@ class IANConfig:
                 except ImportError:
                     logger.warning("TOML parsing not available, install tomllib or toml")
                     return {}
+        elif path.suffix in {".yaml", ".yml"}:
+            try:
+                import yaml
+            except ImportError:
+                logger.warning("YAML parsing not available, install PyYAML")
+                return {}
+
+            parsed = yaml.safe_load(content)
+            if isinstance(parsed, dict):
+                return parsed
+            logger.warning("YAML config must be a mapping at top level")
+            return {}
         else:
             logger.warning(f"Unknown config file format: {path.suffix}")
             return {}

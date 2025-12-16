@@ -29,20 +29,6 @@ data:
 
 ---
 # ===========================================================================
-# Secret - Sensitive configuration
-# ===========================================================================
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ian-secrets
-  namespace: ian
-type: Opaque
-stringData:
-  IAN_API_KEY: "changeme-in-production"
-  # Add node private keys here (base64 encoded)
-
----
-# ===========================================================================
 # PersistentVolumeClaim - Node data storage
 # ===========================================================================
 apiVersion: v1
@@ -105,10 +91,25 @@ spec:
         app: ian-seed
         ian.network/role: seed
     spec:
+      # Security: Pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: ian-node
           image: ian-node:latest
           imagePullPolicy: IfNotPresent
+          # Security: Container-level security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: api
               containerPort: 8000
@@ -124,6 +125,12 @@ spec:
           env:
             - name: IAN_NODE_TYPE
               value: "seed"
+            - name: IAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ian-secrets
+                  key: IAN_API_KEY
+                  optional: false
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -174,16 +181,83 @@ metadata:
   labels:
     app: ian-node
 spec:
-  type: LoadBalancer
+  # Security: Changed from LoadBalancer to ClusterIP for Ingress-based TLS termination
+  type: ClusterIP
   selector:
     app: ian-node
   ports:
     - name: api
-      port: 80
+      port: 8000
       targetPort: 8000
     - name: websocket
-      port: 443
+      port: 9001
       targetPort: 9001
+
+---
+# ===========================================================================
+# Ingress - TLS Termination for API
+# ===========================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ian-api-ingress
+  namespace: ian
+  annotations:
+    # Security: Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # Security: Enable HSTS
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "31536000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    # Security: WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Security: Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.ian.network  # Replace with actual domain
+      secretName: ian-tls-secret
+  rules:
+    - host: api.ian.network  # Replace with actual domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ian-api
+                port:
+                  number: 8000
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: ian-api
+                port:
+                  number: 9001
+
+---
+# ===========================================================================
+# Certificate - TLS Secret (use cert-manager in production)
+# ===========================================================================
+# NOTE: In production, use cert-manager with Let's Encrypt:
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: ian-tls
+#   namespace: ian
+# spec:
+#   secretName: ian-tls-secret
+#   issuerRef:
+#     name: letsencrypt-prod
+#     kind: ClusterIssuer
+#   dnsNames:
+#     - api.ian.network
 
 ---
 # ===========================================================================
@@ -205,10 +279,25 @@ spec:
         app: ian-node
         ian.network/role: full
     spec:
+      # Security: Pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: ian-node
           image: ian-node:latest
           imagePullPolicy: IfNotPresent
+          # Security: Container-level security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: api
               containerPort: 8000
@@ -224,6 +313,12 @@ spec:
           env:
             - name: IAN_NODE_TYPE
               value: "full"
+            - name: IAN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ian-secrets
+                  key: IAN_API_KEY
+                  optional: false
             - name: IAN_SEED_NODES
               value: "ian-seed-0.ian-seed.ian:9000,ian-seed-1.ian-seed.ian:9000,ian-seed-2.ian-seed.ian:9000"
           resources:

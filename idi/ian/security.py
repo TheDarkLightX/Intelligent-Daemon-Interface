@@ -19,15 +19,133 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
+import logging
 import math
 import os
 import secrets
 import struct
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from enum import Enum
+from typing import Any, Dict, Optional, Tuple
 
 from idi.ian.models import AgentPack, Contribution, GoalSpec
+
+# =============================================================================
+# Security Audit Logger
+# =============================================================================
+
+class SecurityEventType(Enum):
+    """Types of security-relevant events for audit logging."""
+    AUTH_SUCCESS = "auth_success"
+    AUTH_FAILURE = "auth_failure"
+    RATE_LIMIT_HIT = "rate_limit_hit"
+    VALIDATION_FAILURE = "validation_failure"
+    SIGNATURE_INVALID = "signature_invalid"
+    REPLAY_DETECTED = "replay_detected"
+    SYBIL_DETECTED = "sybil_detected"
+    POW_FAILURE = "pow_failure"
+    ACCESS_DENIED = "access_denied"
+    SYNC_FORK_DETECTED = "sync_fork_detected"
+    WITNESS_DIVERSITY_FAIL = "witness_diversity_fail"
+    HMAC_VERIFICATION_FAIL = "hmac_verification_fail"
+    PATH_TRAVERSAL_ATTEMPT = "path_traversal_attempt"
+    CRYPTO_FALLBACK_USED = "crypto_fallback_used"
+
+
+class SecurityAuditLogger:
+    """
+    Structured security audit logger for compliance and incident response.
+    
+    Security:
+        - All events include timestamp, event_type, and correlation_id
+        - Sensitive data is redacted (keys, tokens)
+        - Logs are structured JSON for SIEM integration
+    """
+    
+    def __init__(self, logger_name: str = "idi.ian.security.audit"):
+        self._logger = logging.getLogger(logger_name)
+        self._logger.setLevel(logging.INFO)
+    
+    def log_event(
+        self,
+        event_type: SecurityEventType,
+        *,
+        actor_id: Optional[str] = None,
+        target_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        correlation_id: Optional[str] = None,
+        severity: str = "INFO",
+    ) -> None:
+        """
+        Log a security-relevant event.
+        
+        Args:
+            event_type: Type of security event
+            actor_id: ID of actor (user, node, contributor)
+            target_id: ID of target resource
+            ip_address: Source IP (redact last octet in logs)
+            details: Additional event details
+            correlation_id: Request/session correlation ID
+            severity: Log level (INFO, WARNING, ERROR, CRITICAL)
+        """
+        # Build structured log entry
+        entry = {
+            "timestamp_ms": int(time.time() * 1000),
+            "event_type": event_type.value,
+            "severity": severity,
+            "actor_id": actor_id,
+            "target_id": target_id,
+            "correlation_id": correlation_id or secrets.token_hex(8),
+        }
+        
+        # Security: Redact IP address last octet
+        if ip_address:
+            parts = ip_address.split(".")
+            if len(parts) == 4:
+                entry["ip_address"] = f"{parts[0]}.{parts[1]}.{parts[2]}.xxx"
+            else:
+                entry["ip_address"] = ip_address  # IPv6 or invalid
+        
+        # Security: Redact sensitive keys in details
+        if details:
+            entry["details"] = self._redact_sensitive(details)
+        
+        # Log as JSON
+        log_line = json.dumps(entry, default=str)
+        
+        if severity == "CRITICAL":
+            self._logger.critical(log_line)
+        elif severity == "ERROR":
+            self._logger.error(log_line)
+        elif severity == "WARNING":
+            self._logger.warning(log_line)
+        else:
+            self._logger.info(log_line)
+    
+    def _redact_sensitive(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Redact sensitive fields from log data."""
+        sensitive_keys = {"key", "secret", "token", "password", "private", "signature"}
+        redacted = {}
+        for k, v in data.items():
+            if any(s in k.lower() for s in sensitive_keys):
+                if isinstance(v, bytes):
+                    redacted[k] = f"[REDACTED:{len(v)} bytes]"
+                elif isinstance(v, str):
+                    redacted[k] = f"[REDACTED:{len(v)} chars]"
+                else:
+                    redacted[k] = "[REDACTED]"
+            elif isinstance(v, dict):
+                redacted[k] = self._redact_sensitive(v)
+            else:
+                redacted[k] = v
+        return redacted
+
+
+# Global security audit logger instance
+security_audit = SecurityAuditLogger()
 
 
 # =============================================================================

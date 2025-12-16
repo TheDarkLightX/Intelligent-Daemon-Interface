@@ -286,6 +286,30 @@ class Contribution:
     def pack_hash(self) -> bytes:
         return self.agent_pack.pack_hash
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "goal_id": str(self.goal_id),
+            "agent_pack": self.agent_pack.to_dict(),
+            "proofs": {key: value.hex() for key, value in self.proofs.items()},
+            "contributor_id": self.contributor_id,
+            "seed": self.seed,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Contribution":
+        proofs_raw = data.get("proofs", {})
+        proofs: Dict[str, bytes] = {}
+        if isinstance(proofs_raw, dict):
+            proofs = {key: bytes.fromhex(value) for key, value in proofs_raw.items()}
+
+        return cls(
+            goal_id=GoalID(data["goal_id"]),
+            agent_pack=AgentPack.from_dict(data["agent_pack"]),
+            proofs=proofs,
+            contributor_id=data.get("contributor_id", "anonymous"),
+            seed=int(data.get("seed", 0)),
+        )
+
 
 @dataclass(frozen=True)
 class ContributionMeta:

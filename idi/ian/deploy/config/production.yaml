@@ -43,8 +43,7 @@ network:
   api:
     host: 0.0.0.0
     port: 8000
-    cors_origins:
-      - "*"
+    cors_origins: []
     rate_limit:
       enabled: true
       requests_per_minute: 60

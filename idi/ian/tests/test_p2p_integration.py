@@ -603,7 +603,7 @@ class TestByzantineBehavior:
             sender = msg.sender_id
             # Penalize invalid messages
             if msg.payload.get("invalid"):
-                reputation[sender] -= 20
+                reputation[sender] = max(0, reputation[sender] - 20)
         
         for node in nodes[1:]:
             node.register_handler("DATA", reputation_handler)
