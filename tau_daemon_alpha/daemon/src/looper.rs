@@ -1,7 +1,5 @@
 use crate::{
     actuator::Actuator,
-    execution::ExecutionManager,
-    kernel::KernelManager,
     oracle::Oracle,
     state::{DaemonState, State},
     guards::{GuardCoordinator, freshness::FreshnessWitnessImpl, profit::ProfitGuardImpl, failure::FailureEchoImpl, cooldown::CooldownGuardImpl, risk::RiskGuardImpl},
@@ -21,8 +19,6 @@ pub async fn run(config: Config) -> Result<()> {
     // Initialize components
     let mut state = DaemonState::new(config.daemon.quarantine_clear_ticks);
     let oracle = Oracle::new();
-    let kernel_manager = KernelManager::new();
-    let execution_manager = ExecutionManager::new(&config)?;
     let actuator = Actuator::new();
 
     // Initialize safety components
@@ -40,7 +36,7 @@ pub async fn run(config: Config) -> Result<()> {
         risk_guard,
     );
 
-    let monitor_manager = MonitorManager::new(config.clone());
+    let monitor_manager = MonitorManager::new(config.clone(), config.paths.kernel_outputs.clone());
     let tau_runner = TauRunner::new(
         config.paths.tau_bin.clone(),
         config.paths.kernel_inputs.clone(),
@@ -96,11 +92,10 @@ pub async fn run(config: Config) -> Result<()> {
                     }
                 };
 
-                // Convert MarketSnapshot to OracleSnapshot for guards (ensure timestamp is in ms)
-                let oracle_snapshot = OracleSnapshot {
+                let mut oracle_snapshot = OracleSnapshot {
                     median: Fx::from_float((market_snapshot.bid_price + market_snapshot.ask_price) / 2.0),
-                    age_ok: true, // Placeholder; real check done in FreshnessWitness
-                    quorum_ok: true, // Placeholder; real check done in FreshnessWitness
+                    age_ok: true,
+                    quorum_ok: true,
                     sources: vec![
                         OracleSource {
                             price: Fx::from_float(market_snapshot.bid_price),
@@ -138,6 +133,11 @@ pub async fn run(config: Config) -> Result<()> {
                         continue;
                     }
                 };
+
+                // Get guard diagnostics and update oracle snapshot with real freshness values
+                let guard_diag = guard_coordinator.get_diagnostics().await?;
+                oracle_snapshot.age_ok = guard_diag.age_ok;
+                oracle_snapshot.quorum_ok = guard_diag.quorum_ok;
 
                 // 4. Derive core kernel inputs (price/volume/trend) and write guard inputs expected by V35
                 let current_price = (market_snapshot.bid_price + market_snapshot.ask_price) / 2.0;
@@ -220,26 +220,24 @@ pub async fn run(config: Config) -> Result<()> {
 
                 // 10. Process kernel outputs and take action
                 if health.health_ok {
-                    actuator.handle_outputs(&kernel_outputs);
+                    let actions = actuator.handle_outputs(tick_counter, &kernel_outputs);
+
+                    if let Err(e) = ledger.append(
+                        tick_counter,
+                        &oracle_snapshot,
+                        &kernel_outputs,
+                        &monitor_outputs,
+                        &guards,
+                        &health,
+                        guard_diag.economics.as_ref(),
+                        actions,
+                    ).await {
+                        error!("Failed to append ledger record: {}", e);
+                    }
                 } else {
                     warn!("Health check failed: {:?}, entering quarantine", health.failed_bits);
                     state.enter_quarantine();
                     continue;
-                }
-
-                // 11. Commit ledger record
-                let actions = Vec::new(); // Will be populated by actuator
-                if let Err(e) = ledger.append(
-                    tick_counter,
-                    &oracle_snapshot,
-                    &kernel_outputs,
-                    &monitor_outputs,
-                    &guards,
-                    &health,
-                    None, // economics
-                    actions,
-                ).await {
-                    error!("Failed to append ledger record: {}", e);
                 }
 
                 // Update last observed price

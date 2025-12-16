@@ -4,7 +4,6 @@ use tau_core::Config;
 use tracing::{error, info};
 
 mod kernel;
-mod execution;
 mod actuator;
 mod looper;
 mod oracle;

@@ -46,3 +46,86 @@ impl ProfitGuard {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profit_guard_solve_is_deterministic() {
+        let cfg_str = r#"
+[daemon]
+tick_period_ms = 1000
+quarantine_clear_ticks = 10
+
+[tick]
+interval_ms = 250
+fail_hold_ticks = 2
+
+[paths]
+tau_bin = "bin/tau"
+kernel_spec = "../specification/agent4_testnet_v35.tau"
+kernel_inputs = "../inputs"
+kernel_outputs = "../outputs"
+specs_root = "../specification"
+data_dir = "data"
+ledger_dir = "ledger"
+
+[oracle]
+max_age_ms = 1500
+min_quorum = 3
+tolerance_bps = 50
+
+[economics]
+scale = 1000000000
+fee_bps_buy = 30
+fee_bps_sell = 30
+slippage_bps_limit = 10
+gas_unit_cost = 0
+trade_qty = 10000000000
+
+[cooldown]
+enabled = true
+ticks = 8
+
+[risk]
+max_position_ticks = 12
+max_drawdown_bps = 200
+
+[exchanges.kraken]
+rest_url = "https://api.kraken.com"
+pair = "XXBTZUSD"
+
+[thresholds]
+vol_high_percentile = 0.95
+slip_bps = 10
+fee_bps = 20
+min_profit_usd = 0.50
+gas_usd_p99 = 15.0
+burn_alpha = 0.1
+
+[solver]
+engine = "cp-sat"
+max_time_sec = 0.5
+num_workers = 4
+log = false
+scaling_factor = 1000000
+
+[wallet]
+chain = "ethereum"
+rpc = "http://localhost:8545"
+keyfile = "wallet.json"
+"#;
+
+        let config: Config = toml::from_str(cfg_str).expect("config should parse");
+        let snapshot = MarketSnapshot {
+            bid_price: 50000.0,
+            ask_price: 50001.0,
+            timestamp: 1,
+        };
+
+        let solver = ProfitGuard::new();
+        let a = solver.solve(&config, &snapshot).unwrap();
+        let b = solver.solve(&config, &snapshot).unwrap();
+        assert_eq!(a, b);
+    }
+}

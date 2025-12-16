@@ -1,13 +1,18 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use std::sync::Mutex;
 use tau_core::{Config, model::*};
 use tracing::{debug, warn};
 
-pub struct FreshnessWitnessImpl;
+pub struct FreshnessWitnessImpl {
+    last_diagnostics: Mutex<(bool, bool, Vec<String>)>,
+}
 
 impl FreshnessWitnessImpl {
     pub fn new() -> Self {
-        Self
+        Self {
+            last_diagnostics: Mutex::new((true, true, Vec::new())),
+        }
     }
 
     /// Check if oracle data is fresh enough
@@ -76,9 +81,12 @@ impl super::FreshnessWitness for FreshnessWitnessImpl {
         debug!("Checking freshness witness...");
         
         let age_ok = self.check_age(oracle_data, config);
-        let (quorum_ok, _) = self.check_quorum(oracle_data, config);
-        
+        let (quorum_ok, violating_sources) = self.check_quorum(oracle_data, config);
         let fresh_witness = age_ok && quorum_ok;
+
+        if let Ok(mut diag) = self.last_diagnostics.lock() {
+            *diag = (age_ok, quorum_ok, violating_sources);
+        }
         
         debug!(
             "Freshness witness: age_ok={}, quorum_ok={}, fresh_witness={}",
@@ -89,8 +97,11 @@ impl super::FreshnessWitness for FreshnessWitnessImpl {
     }
 
     async fn get_diagnostics(&self) -> Result<(bool, bool, Vec<String>)> {
-        // This would typically return cached diagnostics from the last check
-        // For now, return default values
-        Ok((true, true, Vec::new()))
+        let diag = self
+            .last_diagnostics
+            .lock()
+            .map(|d| d.clone())
+            .unwrap_or((true, true, Vec::new()));
+        Ok(diag)
     }
-} 
+}
