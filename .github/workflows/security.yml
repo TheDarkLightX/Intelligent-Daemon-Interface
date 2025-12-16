@@ -38,6 +38,41 @@ jobs:
           echo "---- pyproject.toml (root) ----"
           sed -n '1,40p' "${{ github.workspace }}/pyproject.toml"
 
+      - name: Validate pyproject discovery
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          from pathlib import Path
+          import sys
+          import tomllib
+
+          root = Path("${{ github.workspace }}")
+
+          offenders: list[Path] = []
+          for path in sorted(root.rglob("pyproject.toml")):
+              try:
+                  data = tomllib.loads(path.read_text(encoding="utf-8"))
+              except Exception as exc:  # pragma: no cover
+                  print(f"PARSE_FAIL: {path.relative_to(root)}: {exc}")
+                  offenders.append(path)
+                  continue
+
+              project = data.get("project")
+              name = project.get("name") if isinstance(project, dict) else None
+              if not name:
+                  print(f"MISSING project.name: {path.relative_to(root)}")
+                  offenders.append(path)
+                  continue
+
+          if offenders:
+              print("\nOffending pyproject.toml files detected; refusing to continue.")
+              sys.exit(2)
+
+          root_data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+          print("\nRoot project.name:", root_data.get("project", {}).get("name"))
+          PY
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -61,18 +96,18 @@ jobs:
         run: uv sync --locked --extra dev --extra gui --project "${{ github.workspace }}"
 
       - name: Run IAN test suite
-        run: uv run python -m pytest idi/ian/tests -q
+        run: uv run --project "${{ github.workspace }}" python -m pytest idi/ian/tests -q
 
       - name: Dependency vulnerability scan (OSV)
         env:
           PIP_AUDIT_VULNERABILITY_SERVICE: osv
           PIP_AUDIT_PROGRESS_SPINNER: off
-        run: uv run pip-audit --local
+        run: uv run --project "${{ github.workspace }}" pip-audit --local
 
       - name: Generate SBOM (CycloneDX)
         run: |
-          uv pip install cyclonedx-bom
-          uv run cyclonedx-py environment \
+          uv pip install --project "${{ github.workspace }}" cyclonedx-bom
+          uv run --project "${{ github.workspace }}" cyclonedx-py environment \
             --output-format json \
             --outfile sbom.json
           echo "SBOM generated: sbom.json"
