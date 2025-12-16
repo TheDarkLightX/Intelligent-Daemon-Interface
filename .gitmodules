@@ -1,0 +1,3 @@
+[submodule "archive/alignment_theorem/AlignmentTheorem"]
+	path = archive/alignment_theorem/AlignmentTheorem
+	url = https://github.com/TheDarkLightX/AlignmentTheorem.git

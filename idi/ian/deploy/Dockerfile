@@ -4,7 +4,9 @@
 # =============================================================================
 # Stage 1: Builder
 # =============================================================================
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:0.7.13 /uv /uvx /usr/local/bin/
 
 WORKDIR /build
 
@@ -14,21 +16,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for caching
-COPY requirements.txt .
-RUN pip wheel --no-cache-dir --wheel-dir=/wheels -r requirements.txt
+# Copy project metadata first for caching
+COPY pyproject.toml uv.lock README.md ./
+RUN uv lock --check --project /build
+RUN uv export --frozen --no-dev --no-editable --no-emit-project --format requirements-txt -o requirements.txt
+RUN pip wheel --no-cache-dir --wheel-dir=/wheels --require-hashes -r requirements.txt
 
 # Copy source
-COPY . .
+COPY idi ./idi/
 
 # Build package
-RUN pip wheel --no-cache-dir --wheel-dir=/wheels .
-
+RUN pip wheel --no-cache-dir --wheel-dir=/wheels --no-deps .
 
 # =============================================================================
 # Stage 2: Production
 # =============================================================================
-FROM python:3.12-slim as production
+FROM python:3.12-slim AS production
 
 # Labels
 LABEL org.opencontainers.image.title="IAN Node"
@@ -47,10 +50,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy wheels and install
 COPY --from=builder /wheels /wheels
-RUN pip install --no-cache-dir /wheels/*.whl && rm -rf /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels idi && rm -rf /wheels
 
 # Copy configuration
-COPY deploy/config/ /app/config/
+COPY idi/ian/deploy/config/ /app/config/
 
 # Create directories
 RUN mkdir -p /app/data /app/logs /app/keys && \
@@ -82,7 +85,7 @@ CMD ["python", "-m", "idi.ian.cli", "node", "start", "--config", "/app/config/pr
 # =============================================================================
 # Stage 3: Development
 # =============================================================================
-FROM production as development
+FROM production AS development
 
 USER root
 
