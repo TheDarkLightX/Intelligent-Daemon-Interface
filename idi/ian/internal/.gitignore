@@ -1,0 +1,5 @@
+# Internal specs - not for public distribution
+# Remove this .gitignore if you want to commit specs to repo
+*
+!.gitignore
+!README.md
