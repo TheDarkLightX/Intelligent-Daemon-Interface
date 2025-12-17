@@ -119,7 +119,7 @@ class LoggingConfig:
 class MetricsConfig:
     """Metrics configuration."""
     enabled: bool = True
-    port: int = 9090
+    port: int = 9100
     path: str = "/metrics"
     namespace: str = "ian"
 

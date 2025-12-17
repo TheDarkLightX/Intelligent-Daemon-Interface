@@ -61,6 +61,9 @@ logger = logging.getLogger(__name__)
 # Configuration
 # =============================================================================
 
+DEFAULT_HEALTH_PORT = 9100
+
+
 @dataclass
 class DecentralizedNodeConfig:
     """Configuration for decentralized node."""
@@ -93,7 +96,7 @@ class DecentralizedNodeConfig:
     log_level: str = "INFO"
     
     # Production
-    health_port: int = 8080
+    health_port: int = DEFAULT_HEALTH_PORT
     enable_health_server: bool = True
     state_persist_path: Optional[str] = None  # Path for state persistence
     peer_scores_path: Optional[str] = None  # Path for peer scores

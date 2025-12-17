@@ -15,6 +15,7 @@ Author: DarkLightX
 
 from __future__ import annotations
 
+from collections import deque
 import hashlib
 import hmac
 import secrets
@@ -239,6 +240,29 @@ class IBLT:
 
         return result
 
+    def _apply_peel(
+        self,
+        work_cells: list[IBLTCell],
+        *,
+        key: bytes,
+        count_sign: int,
+        pure_queue: deque[int],
+        in_queue: list[bool],
+    ) -> None:
+        """Apply a single peeling step for `key` across all affected cells."""
+        key_hash = self._key_hash(key)
+        for idx in self._hash_to_indices(key):
+            work_cell = work_cells[idx]
+            work_cell.count -= count_sign
+            work_cell.key_sum = self._xor_bytes(work_cell.key_sum, key)
+            work_cell.hash_sum = self._xor_bytes(work_cell.hash_sum, key_hash)
+
+            if in_queue[idx]:
+                continue
+            if work_cell.is_pure():
+                pure_queue.append(idx)
+                in_queue[idx] = True
+
     def decode(self) -> tuple[set[bytes], set[bytes], bool]:
         """
         Decode IBLT to recover set differences.
@@ -258,46 +282,41 @@ class IBLT:
             5. Success if all cells empty
         """
         # Work on a copy to preserve original
-        work_cells = [
-            IBLTCell(c.count, c.key_sum, c.hash_sum)
-            for c in self._cells
-        ]
+        work_cells = [IBLTCell(c.count, c.key_sum, c.hash_sum) for c in self._cells]
 
         only_in_self: set[bytes] = set()
         only_in_other: set[bytes] = set()
+        output_for_sign = {1: only_in_self, -1: only_in_other}
+
+        # O(n) peeling decode: maintain a queue of pure cells.
+        pure_queue: deque[int] = deque()
+        in_queue = [False] * len(work_cells)
+        for idx, cell in enumerate(work_cells):
+            if cell.is_pure():
+                pure_queue.append(idx)
+                in_queue[idx] = True
 
         iterations = 0
-        changed = True
-
-        # Security: Bounded iterations
-        while changed and iterations < MAX_DECODE_ITERATIONS:
-            changed = False
+        while pure_queue and iterations < MAX_DECODE_ITERATIONS:
+            idx = pure_queue.popleft()
+            in_queue[idx] = False
             iterations += 1
 
-            for cell in work_cells:
-                if not cell.is_pure():
-                    continue
+            cell = work_cells[idx]
+            if not cell.is_pure():
+                continue
 
-                key = cell.key_sum
-                count_sign = cell.count  # Save before modification (+1 or -1)
+            key = cell.key_sum
+            count_sign = cell.count  # (+1 or -1)
 
-                if count_sign == 1:
-                    only_in_self.add(key)
-                elif count_sign == -1:
-                    only_in_other.add(key)
-
-                # Remove key from all cells it maps to
-                key_hash = self._key_hash(key)
-                indices = self._hash_to_indices(key)
-
-                for idx in indices:
-                    work_cell = work_cells[idx]
-                    work_cell.count -= count_sign
-                    work_cell.key_sum = self._xor_bytes(work_cell.key_sum, key)
-                    work_cell.hash_sum = self._xor_bytes(work_cell.hash_sum, key_hash)
-
-                changed = True
-                break  # Restart scan after modification
+            output_for_sign[count_sign].add(key)
+            self._apply_peel(
+                work_cells,
+                key=key,
+                count_sign=count_sign,
+                pure_queue=pure_queue,
+                in_queue=in_queue,
+            )
 
         # Check if fully decoded
         success = all(c.is_empty() for c in work_cells)

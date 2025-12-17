@@ -27,9 +27,11 @@ import hashlib
 import json
 import logging
 import os
+import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, asdict
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, List, Mapping, Optional, TYPE_CHECKING
 
 try:
@@ -578,6 +580,8 @@ class IANApiServer:
         self._handlers = IANApiHandlers(coordinator, self._config, use_secure=True)
         self._app = None
         self._runner = None
+        self._fallback_server: ThreadingHTTPServer | None = None
+        self._fallback_thread: threading.Thread | None = None
     
     async def start(self) -> None:
         """Start API server."""
@@ -599,12 +603,71 @@ class IANApiServer:
             logger.info(f"API server started on http://{self._config.host}:{self._config.port}")
             
         except ImportError:
-            logger.warning("aiohttp not available, API server disabled")
+            self._start_fallback_server()
+
+    def _start_fallback_server(self) -> None:
+        """Start a minimal HTTP server for /health and /metrics.
+
+        Preconditions:
+            - The configured host/port are bindable.
+        Postconditions:
+            - A background thread is serving HTTP responses.
+        """
+        handlers = self._handlers
+
+        class FallbackHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                if self.path == "/health":
+                    resp = handlers.handle_health()
+                    body = resp.to_json().encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
+                if self.path == "/metrics":
+                    text = handlers.handle_metrics()
+                    body = text.encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+
+                self.send_response(404)
+                self.end_headers()
+
+            def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+                return
+
+        server = ThreadingHTTPServer((self._config.host, self._config.port), FallbackHandler)
+        self._fallback_server = server
+
+        thread = threading.Thread(target=server.serve_forever, name="ian-api-fallback", daemon=True)
+        self._fallback_thread = thread
+        thread.start()
+
+        logger.warning(
+            "aiohttp not available; started minimal fallback API server on "
+            f"http://{self._config.host}:{self._config.port}"
+        )
     
     async def stop(self) -> None:
         """Stop API server."""
         if self._runner:
             await self._runner.cleanup()
+
+        if self._fallback_server is not None:
+            self._fallback_server.shutdown()
+            self._fallback_server.server_close()
+            self._fallback_server = None
+
+        if self._fallback_thread is not None:
+            self._fallback_thread.join(timeout=1.0)
+            self._fallback_thread = None
         logger.info("API server stopped")
 
 

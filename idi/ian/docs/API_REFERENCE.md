@@ -522,7 +522,7 @@ goal_spec = GoalSpec(
 # Create node
 config = DecentralizedNodeConfig(
     listen_port=9000,
-    health_port=8080,
+    health_port=9100,
     seed_addresses=["tcp://seed1.ian.network:9000"],
 )
 
@@ -627,7 +627,7 @@ class DecentralizedNodeConfig:
     commit_to_tau: bool = True
     
     # Production
-    health_port: int = 8080
+    health_port: int = 9100
     enable_health_server: bool = True
     state_persist_path: Optional[str] = None
     peer_scores_path: Optional[str] = None
@@ -651,7 +651,7 @@ class DecentralizedNodeConfig:
 | `IAN_TAU_HOST` | "localhost" | Tau Net host |
 | `IAN_TAU_PORT` | 10330 | Tau Net port |
 
-`DecentralizedNode` exposes a separate `HealthServer` (with `/ready`) and uses `DecentralizedNodeConfig.health_port` (default 8080).
+`DecentralizedNode` exposes a separate `HealthServer` (with `/ready`) and uses `DecentralizedNodeConfig.health_port` (default 9100).
 
 ---
 
