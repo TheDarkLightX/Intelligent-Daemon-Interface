@@ -985,6 +985,7 @@ class P2PManager:
             True if handshake succeeded, False if peer should be disconnected
         """
         claimed_id = response.get("sender_id", "")
+        current_session_id = session.node_id
 
         # Require challenge-response verification for all connections
         if session.pending_challenge:
@@ -1003,7 +1004,7 @@ class P2PManager:
                 session.verified = False
                 session.state = PeerState.DISCONNECTING
                 # Schedule disconnect
-                asyncio.create_task(self._disconnect_peer(claimed_id))
+                asyncio.create_task(self._disconnect_peer(current_session_id))
                 return False
 
             session.verified = True
