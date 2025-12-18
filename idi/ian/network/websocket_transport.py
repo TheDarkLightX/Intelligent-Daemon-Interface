@@ -124,6 +124,7 @@ class WebSocketConfig:
     heartbeat_interval: float = 30.0
     receive_timeout: float = 60.0
     close_timeout: float = 5.0
+    unauthenticated_timeout: float = 10.0
     
     # Reconnection (client mode)
     auto_reconnect: bool = True
@@ -303,6 +304,12 @@ class WebSocketServer:
         # DbC: auth_challenge is a per-connection nonce. It MUST be unpredictable.
         conn = WSClientConnection(id=conn_id, ws=ws, auth_challenge=secrets.token_bytes(32))
         self._connections[conn_id] = conn
+
+        auth_timeout_task: Optional[asyncio.Task] = None
+        if self._config.unauthenticated_timeout > 0:
+            auth_timeout_task = asyncio.create_task(
+                self._enforce_unauthenticated_timeout(conn_id, float(self._config.unauthenticated_timeout))
+            )
         
         logger.debug(f"WebSocket client connected: {conn_id}")
         
@@ -341,6 +348,8 @@ class WebSocketServer:
         except asyncio.CancelledError:
             pass
         finally:
+            if auth_timeout_task is not None:
+                auth_timeout_task.cancel()
             # Cleanup
             self._remove_connection(conn_id)
             logger.debug(f"WebSocket client disconnected: {conn_id}")
@@ -356,6 +365,23 @@ class WebSocketServer:
         # Remove from all subscriptions
         for topic, subscribers in self._topic_subscribers.items():
             subscribers.discard(conn_id)
+
+    async def _enforce_unauthenticated_timeout(self, conn_id: str, timeout_s: float) -> None:
+        try:
+            await asyncio.sleep(timeout_s)
+        except asyncio.CancelledError:
+            return
+
+        conn = self._connections.get(conn_id)
+        if conn is None:
+            return
+        if conn.is_authenticated():
+            return
+
+        try:
+            await conn.ws.close(code=1008)
+        except Exception:
+            return
     
     async def _handle_health(self, request: web.Request) -> web.Response:
         """Health check endpoint."""

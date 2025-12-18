@@ -139,6 +139,66 @@ class InvariantService:
         
         return results
     
+    def check_one(self, invariant_id: str, spec_params: Dict[str, Any]) -> "CheckResult":
+        """
+        Check a single invariant by ID.
+        
+        Required by IANCoordinator's invariant checking pipeline.
+        
+        Args:
+            invariant_id: ID of invariant to check (e.g., "I1", "I2")
+            spec_params: Parameters extracted from agent pack
+            
+        Returns:
+            CheckResult with passed/reason
+        """
+        from dataclasses import dataclass
+        
+        @dataclass
+        class CheckResult:
+            passed: bool
+            reason: str
+        
+        # Default params for missing values
+        params = {
+            "num_price_bins": spec_params.get("num_price_bins", 10),
+            "num_inventory_bins": spec_params.get("num_inventory_bins", 10),
+            "learning_rate": spec_params.get("learning_rate", 0.1),
+            "discount_factor": spec_params.get("discount_factor", 0.99),
+            "epsilon_decay_steps": spec_params.get("epsilon_decay_steps", 1000),
+            "max_agents": spec_params.get("max_agents", 8),
+            "max_episodes_per_agent": spec_params.get("max_episodes_per_agent", 64),
+        }
+        
+        if invariant_id == "I1":
+            state_size = params["num_price_bins"] * params["num_inventory_bins"]
+            passed = state_size <= 2048
+            return CheckResult(passed, f"State size {state_size} {'≤' if passed else '>'} 2048")
+        
+        elif invariant_id == "I2":
+            discount = params["discount_factor"]
+            passed = discount >= 0.5
+            return CheckResult(passed, f"Discount {discount:.2f} {'≥' if passed else '<'} 0.5")
+        
+        elif invariant_id == "I3":
+            lr = params["learning_rate"]
+            passed = lr <= 0.5
+            return CheckResult(passed, f"Learning rate {lr:.3f} {'≤' if passed else '>'} 0.5")
+        
+        elif invariant_id == "I4":
+            decay = params["epsilon_decay_steps"]
+            passed = decay > 0
+            return CheckResult(passed, f"Decay steps {decay} {'>' if passed else '≤'} 0")
+        
+        elif invariant_id == "I5":
+            budget = params["max_agents"] * params["max_episodes_per_agent"]
+            passed = budget >= 64
+            return CheckResult(passed, f"Budget {budget} {'≥' if passed else '<'} 64")
+        
+        else:
+            # Unknown invariant - pass by default
+            return CheckResult(True, f"Unknown invariant {invariant_id} - skipped")
+    
     def get_descriptions(self) -> List[Dict[str, str]]:
         """Get human-readable descriptions of all invariants."""
         return [

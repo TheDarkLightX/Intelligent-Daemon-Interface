@@ -1,0 +1,12 @@
+{
+  "market_sim": {
+    "volatility": 0.01,
+    "drift_bull": 0.002,
+    "drift_bear": -0.002,
+    "fee_bps": 5
+  },
+  "ui": {
+    "theme": "dark",
+    "animations": true
+  }
+}

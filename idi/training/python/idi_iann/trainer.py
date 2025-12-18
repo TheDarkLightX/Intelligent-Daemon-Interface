@@ -90,7 +90,7 @@ class StepResult:
     aux: Dict[str, Any]
 
 
-ProgressCallback = Callable[[int, int, float], None]  # (episode, total_episodes, reward)
+ProgressCallback = Callable[[int, int, float, List[Dict[str, Any]]], None]  # (episode, total, reward, history)
 
 
 class QTrainer:
@@ -108,11 +108,16 @@ class QTrainer:
         seed: Optional[int] = 0,
         env_factory: Optional[Callable[[TrainingConfig, bool, int], object]] = None,
         progress_callback: Optional[ProgressCallback] = None,
+        market_params: Optional[MarketParams] = None,
     ):
         self._config = config
         self._seed = seed if seed is not None else secrets.randbelow(2**32)
-        factory = env_factory or self._default_env_factory
-        self._env = factory(config, use_crypto_env, self._seed)
+        # Use custom factory or default with partial to inject market_params
+        if env_factory:
+             self._env = env_factory(config, use_crypto_env, self._seed)
+        else:
+             self._env = self._default_env_factory_static(config, use_crypto_env, self._seed, market_params)
+        
         self._policy = LookupPolicy()
         self._communication = CommunicationPolicy(config.communication.actions)
         self._emotion = EmotionEngine(config.emote)
@@ -141,11 +146,11 @@ class QTrainer:
         for episode in range(total_episodes):
             if self._cancelled:
                 break
-            self._run_episode()
+            episode_data = self._run_episode()
             # Report progress after each episode
             if self._progress_callback:
                 last_reward = self._episode_rewards[-1] if self._episode_rewards else 0.0
-                self._progress_callback(episode + 1, total_episodes, last_reward)
+                self._progress_callback(episode + 1, total_episodes, last_reward, episode_data)
         trace = self._rollout()
         return self._policy, trace
     
@@ -158,20 +163,42 @@ class QTrainer:
         """Check if training was cancelled."""
         return self._cancelled
 
-    def _run_episode(self) -> None:
+    def _run_episode(self) -> List[Dict[str, Any]]:
         """Run a single training episode."""
         episode_reward = 0.0
         obs = self._env.reset()
         self._emotion.reset()
         base_state = self._as_state(obs)
         state = self._state_key(base_state)
-        for _ in range(self._config.episode_length):
+        
+        history = []
+        
+        # Helper to get price
+        def _get_price(o):
+            for attr in ("price", "close", "mid", "last_price"):
+                if hasattr(o, attr): return float(getattr(o, attr))
+            return 0.0
+
+        start_price = _get_price(obs)
+        history.append({"time": 0, "value": start_price})
+
+        for t in range(self._config.episode_length):
             reward, next_base, next_state = self._step_once(state, base_state)
             episode_reward += reward
             base_state = next_base
             state = next_state
+            
+            # Use current env state if available/reliable, or infer from next_base? 
+            # Best to use the 'new_obs' from _step_once, but _step_once swallows it.
+            # We'll peek at self._env.state.price if using CryptoMarket
+            if hasattr(self._env, "state") and hasattr(self._env.state, "price"):
+                 price = float(self._env.state.price)
+                 # Add buy/sell marker logic later?
+                 history.append({"time": t+1, "value": price})
+                 
         self._exploration *= self._config.exploration_decay
         self._episode_rewards.append(episode_reward)
+        return history
 
     def _step_once(
         self, state: StateKey, base_state: Tuple[int, ...]
@@ -563,6 +590,7 @@ def run_training_in_thread(
     seed: Optional[int] = None,
     progress_callback: Optional[ProgressCallback] = None,
     on_complete: Optional[Callable[[LookupPolicy, TraceBatch, Dict[str, float]], None]] = None,
+    market_params: Optional[MarketParams] = None,
 ) -> Tuple["threading.Thread", QTrainer]:
     """Run training in a background thread with progress updates.
     
@@ -574,6 +602,7 @@ def run_training_in_thread(
         seed: Random seed for reproducibility
         progress_callback: Callback(episode, total, reward) for progress updates
         on_complete: Callback(policy, trace, stats) when training finishes
+        market_params: Optional custom market parameters
         
     Returns:
         Tuple of (thread, trainer) - trainer can be used to cancel training
@@ -600,6 +629,7 @@ def run_training_in_thread(
         seed=seed,
         use_crypto_env=use_crypto_env,
         progress_callback=progress_callback,
+        market_params=market_params,
     )
     
     def _run():

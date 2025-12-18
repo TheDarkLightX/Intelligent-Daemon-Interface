@@ -46,6 +46,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_MIN_CLEANUP_SLEEP_S = 0.25
+
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -170,6 +173,8 @@ class PeerSession:
     pending_challenge: bytes | None = None  # Our nonce, awaiting signed response
     verified: bool = False  # Whether peer identity is cryptographically verified
 
+    handshake_started_at: float = 0.0
+
     peer_public_key: bytes | None = None
     kx_private_key: bytes | None = None
     kx_public_key: bytes | None = None
@@ -268,6 +273,34 @@ class P2PManager:
 
         # Lock for peer modifications
         self._lock = asyncio.Lock()
+
+    @staticmethod
+    def _now_s() -> float:
+        return time.time()
+
+    def _mark_handshake_started(self, session: PeerSession, *, now_s: float) -> None:
+        if session.handshake_started_at <= 0.0:
+            session.handshake_started_at = now_s
+
+    def _mark_handshake_completed(self, session: PeerSession) -> None:
+        session.handshake_started_at = 0.0
+
+    async def _find_handshake_timeouts(self, *, now_s: float) -> list[str]:
+        timeout_s = float(self._config.handshake_timeout)
+        if timeout_s <= 0:
+            return []
+
+        async with self._lock:
+            expired: list[str] = []
+            for node_id, session in list(self._peers.items()):
+                if session.state not in (PeerState.CONNECTED, PeerState.HANDSHAKING):
+                    continue
+                if session.handshake_started_at <= 0.0:
+                    continue
+                if (now_s - session.handshake_started_at) <= timeout_s:
+                    continue
+                expired.append(node_id)
+            return expired
 
     # -------------------------------------------------------------------------
     # Replay Attack Protection
@@ -452,6 +485,7 @@ class P2PManager:
                 writer=writer,
                 state=PeerState.CONNECTED,
                 connected_at=time.time(),
+                handshake_started_at=time.time(),
             )
 
             async with self._lock:
@@ -532,6 +566,7 @@ class P2PManager:
             writer=writer,
             state=PeerState.CONNECTED,
             connected_at=time.time(),
+            handshake_started_at=time.time(),
             rate_limiter=TokenBucketRateLimiter(
                 rate=self._config.max_messages_per_second,
                 burst=self._config.rate_limit_burst,
@@ -651,7 +686,7 @@ class P2PManager:
         except asyncio.TimeoutError:
             logger.debug(f"Read timeout from {session.node_id}")
         except asyncio.CancelledError:
-            pass
+            raise
         except asyncio.IncompleteReadError:
             logger.debug(f"Connection closed by {session.node_id}")
         except Exception as e:
@@ -686,7 +721,7 @@ class P2PManager:
         except asyncio.TimeoutError:
             pass  # Normal - queue empty
         except asyncio.CancelledError:
-            pass
+            raise
         except Exception as e:
             logger.error(f"Write error to {session.node_id}: {e}")
             await self._disconnect_peer(session.node_id)
@@ -805,6 +840,9 @@ class P2PManager:
             # Sign message
             if hasattr(message, 'sender_id'):
                 message.sender_id = self._identity.node_id
+            if self._identity.has_private_key() and hasattr(message, "signature"):
+                # All protocol messages should be authenticated.
+                self._identity.sign_message(message)
 
             # Serialize message
             if hasattr(message, 'to_dict'):
@@ -864,6 +902,8 @@ class P2PManager:
         - Prevents session hijacking
         """
         session.state = PeerState.HANDSHAKING
+
+        self._mark_handshake_started(session, now_s=self._now_s())
 
         # Generate challenge nonce
         challenge_nonce = secrets.token_bytes(32)
@@ -1019,6 +1059,8 @@ class P2PManager:
         session.node_id = claimed_id
         session.state = PeerState.READY
 
+        self._mark_handshake_completed(session)
+
         # Clear challenge
         session.pending_challenge = None
 
@@ -1070,7 +1112,7 @@ class P2PManager:
                     await self._send_to_peer(node_id, ping)
 
             except asyncio.CancelledError:
-                break
+                raise
             except Exception as e:
                 logger.error(f"Ping loop error: {e}")
 
@@ -1078,7 +1120,13 @@ class P2PManager:
         """Periodic cleanup of stale connections."""
         while self._running:
             try:
-                await asyncio.sleep(60.0)
+                sleep_s = min(60.0, max(_MIN_CLEANUP_SLEEP_S, float(self._config.handshake_timeout)))
+                await asyncio.sleep(sleep_s)
+
+                now_s = self._now_s()
+                for node_id in await self._find_handshake_timeouts(now_s=now_s):
+                    logger.warning(f"Handshake timeout for peer {node_id[:16]}...; disconnecting")
+                    await self._disconnect_peer(node_id)
 
                 # Clean up disconnected sessions
                 to_remove = [
@@ -1091,7 +1139,7 @@ class P2PManager:
                         self._peers.pop(node_id, None)
 
             except asyncio.CancelledError:
-                break
+                raise
             except Exception as e:
                 logger.error(f"Cleanup loop error: {e}")
 
@@ -1158,6 +1206,8 @@ class P2PManager:
             session.node_id = challenge.sender_id
             session.state = PeerState.HANDSHAKING
             session.verified = True
+
+            self._mark_handshake_started(session, now_s=self._now_s())
 
             if old_id != session.node_id:
                 async with self._lock:
@@ -1246,6 +1296,8 @@ class P2PManager:
             session.state = PeerState.READY
             session.pending_challenge = None
             session.verified = True
+
+            self._mark_handshake_completed(session)
 
             if old_id != claimed_id:
                 async with self._lock:

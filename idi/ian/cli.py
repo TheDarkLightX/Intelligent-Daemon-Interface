@@ -211,17 +211,24 @@ async def _run_node_start(config_path: Path) -> None:
     ws_host = listen_host or str(ws_cfg.get("host") or "0.0.0.0")
     ws_port = _parse_int(os.environ.get("IAN_WS_PORT"), _parse_int(ws_cfg.get("port"), 9001))
     ws_max_connections = _parse_int(ws_cfg.get("max_connections"), 1000)
+    ws_unauthenticated_timeout = float(ws_cfg.get("unauthenticated_timeout") or 10.0)
     ws_server: Optional[WebSocketServer] = None
     if ws_enabled:
         ws_server = WebSocketServer(
             identity=identity,
-            config=WebSocketConfig(host=ws_host, port=ws_port, max_connections=ws_max_connections),
+            config=WebSocketConfig(
+                host=ws_host,
+                port=ws_port,
+                max_connections=ws_max_connections,
+                unauthenticated_timeout=ws_unauthenticated_timeout,
+            ),
         )
 
     p2p_host = listen_host or str(p2p_cfg.get("host") or "0.0.0.0")
     p2p_port = _parse_int(os.environ.get("IAN_P2P_PORT"), _parse_int(p2p_cfg.get("port"), 9000))
     p2p_max_peers = _parse_int(p2p_cfg.get("max_peers"), 50)
     p2p_timeout = float(p2p_cfg.get("connection_timeout") or 10.0)
+    p2p_handshake_timeout = float(p2p_cfg.get("handshake_timeout") or 5.0)
 
     p2p_manager = P2PManager(
         identity=identity,
@@ -230,6 +237,7 @@ async def _run_node_start(config_path: Path) -> None:
             listen_port=p2p_port,
             max_peers=p2p_max_peers,
             connection_timeout=p2p_timeout,
+            handshake_timeout=p2p_handshake_timeout,
         ),
     )
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 import re
 import signal
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -25,6 +26,10 @@ from typing import Dict, List, Optional, Callable
 
 
 _PROCESS_GROUP_TERMINATION_GRACE_SECONDS = 0.5
+
+
+_IS_WINDOWS = os.name == "nt"
+_WINDOWS_EXECUTABLE_SUFFIXES = {".exe", ".bat", ".cmd"}
 
 
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
@@ -60,8 +65,41 @@ def _should_fallback_to_file_mode(*, config: TauConfig, stderr: str, returncode:
     return all(token in clean_stderr for token in required_tokens)
 
 
+def _is_executable_file(path: Path) -> bool:
+    if not path.exists() or not path.is_file():
+        return False
+    if _IS_WINDOWS:
+        return path.suffix.lower() in _WINDOWS_EXECUTABLE_SUFFIXES
+    return os.access(path, os.X_OK)
+
+
 def _terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
     if proc.poll() is not None:
+        return
+
+    if _IS_WINDOWS:
+        try:
+            proc.terminate()
+        except Exception:
+            return
+
+        try:
+            proc.wait(timeout=_PROCESS_GROUP_TERMINATION_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            pass
+
+        if proc.poll() is not None:
+            return
+
+        try:
+            proc.kill()
+        except Exception:
+            return
+
+        try:
+            proc.wait(timeout=_PROCESS_GROUP_TERMINATION_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            return
         return
 
     try:
@@ -98,13 +136,19 @@ def _run_subprocess(
     if timeout <= 0:
         raise ValueError("timeout must be > 0")
 
+    popen_kwargs: dict[str, object] = {
+        "stdin": stdin,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "cwd": cwd,
+        "start_new_session": not _IS_WINDOWS,
+    }
+    if _IS_WINDOWS and hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
     proc = subprocess.Popen(
         cmd,
-        stdin=stdin,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=cwd,
-        start_new_session=True,
+        **popen_kwargs,
     )
 
     try:
@@ -254,8 +298,15 @@ def find_tau_binary() -> Optional[Path]:
     # Check environment variable first
     if env_tau := os.environ.get("TAU_BIN"):
         path = Path(env_tau)
-        if path.exists() and path.is_file():
+        if _is_executable_file(path):
             return path
+
+    # PATH lookup (portable)
+    which = shutil.which("tau")
+    if which:
+        which_path = Path(which)
+        if _is_executable_file(which_path):
+            return which_path
     
     # Common locations relative to this file
     # runner.py is at idi/devkit/tau_factory/runner.py
@@ -266,22 +317,26 @@ def find_tau_binary() -> Optional[Path]:
         this_file.parent.parent.parent.parent.parent.parent,  # parent of IDI
     ]
     
-    search_paths = []
+    tau_names = ["tau.exe", "tau.cmd", "tau.bat"] if _IS_WINDOWS else ["tau"]
+
+    search_paths: list[Path] = []
     for ws in workspace_candidates:
-        search_paths.extend([
-            ws / "external" / "tau-lang" / "build-Release" / "tau",
-            ws / "tau-lang" / "build-Release" / "tau",
-        ])
+        for name in tau_names:
+            search_paths.extend([
+                ws / "external" / "tau-lang" / "build-Release" / name,
+                ws / "tau-lang" / "build-Release" / name,
+            ])
     
     # Also check PATH and common system locations
-    search_paths.extend([
-        Path("/usr/local/bin/tau"),
-        Path("/usr/bin/tau"),
-        Path.home() / "Downloads" / "IDI" / "external" / "tau-lang" / "build-Release" / "tau",
-    ])
+    if not _IS_WINDOWS:
+        search_paths.extend([
+            Path("/usr/local/bin/tau"),
+            Path("/usr/bin/tau"),
+            Path.home() / "Downloads" / "IDI" / "external" / "tau-lang" / "build-Release" / "tau",
+        ])
     
     for path in search_paths:
-        if path.exists() and path.is_file():
+        if _is_executable_file(path):
             return path
     
     return None
@@ -365,7 +420,7 @@ def run_tau_spec(
             duration_ms=(time.perf_counter() - start_time) * 1000,
         )
 
-    if not os.access(tau_bin, os.X_OK):
+    if not _is_executable_file(tau_bin):
         return TauResult(
             success=False,
             outputs={},

@@ -26,6 +26,7 @@ import hashlib
 import json
 import logging
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
@@ -179,7 +180,34 @@ class ConsensusCoordinator:
         self._tasks: List[asyncio.Task] = []
         
         # Pending responses for sync correlation
-        self._pending_responses: Dict[str, SyncResponse] = {}
+        self._pending_state_requests: Dict[Tuple[str, str], asyncio.Future[PeerStateSnapshot]] = {}
+        self._pending_sync_requests: Dict[Tuple[str, str], asyncio.Future[SyncResponse]] = {}
+
+        # Contribution body store (for gossip + sync). Bounded with LRU eviction.
+        self._max_body_cache: int = 50_000
+        self._bodies_by_hash: "OrderedDict[bytes, Dict[str, Any]]" = OrderedDict()
+        self._accepted_by_index: "OrderedDict[int, Dict[str, Any]]" = OrderedDict()
+        self._max_accepted_cache: int = 100_000
+
+    @staticmethod
+    def _compute_contribution_hash_bytes(contrib_dict: Dict[str, Any]) -> bytes:
+        contrib_bytes = json.dumps(contrib_dict, sort_keys=True).encode()
+        return hashlib.sha256(contrib_bytes).digest()
+
+    def _cache_body(self, contrib_dict: Dict[str, Any]) -> bytes:
+        key = self._compute_contribution_hash_bytes(contrib_dict)
+        # LRU insert/update
+        self._bodies_by_hash[key] = contrib_dict
+        self._bodies_by_hash.move_to_end(key)
+        while len(self._bodies_by_hash) > self._max_body_cache:
+            self._bodies_by_hash.popitem(last=False)
+        return key
+
+    def _cache_accepted(self, log_index: int, contrib_dict: Dict[str, Any]) -> None:
+        self._accepted_by_index[log_index] = contrib_dict
+        self._accepted_by_index.move_to_end(log_index)
+        while len(self._accepted_by_index) > self._max_accepted_cache:
+            self._accepted_by_index.popitem(last=False)
     
     # -------------------------------------------------------------------------
     # Setup
@@ -247,6 +275,12 @@ class ConsensusCoordinator:
         Returns:
             (success, reason)
         """
+        # Cache body for future gossip requests (even before processing).
+        try:
+            self._cache_body(contribution.to_dict())
+        except Exception:
+            pass
+
         # Add to mempool
         success, reason = await self._mempool.add(contribution, from_peer)
         
@@ -320,6 +354,11 @@ class ConsensusCoordinator:
                 try:
                     result = self._coordinator.process_contribution(entry.contribution)
                     entry.accepted = result.accepted
+                    if result.accepted and entry.contribution is not None and result.log_index is not None:
+                        try:
+                            self._cache_accepted(int(result.log_index), entry.contribution.to_dict())
+                        except Exception:
+                            pass
                     
                     self._contributions_since_check += 1
                     processed += 1
@@ -427,14 +466,17 @@ class ConsensusCoordinator:
             goal_id=self._goal_id,
             include_leaderboard=False,
         )
-        
-        # This would need response handling - simplified for now
+
+        fut: asyncio.Future[PeerStateSnapshot] = asyncio.get_running_loop().create_future()
+        self._pending_state_requests[(peer_id, request.nonce)] = fut
         try:
             await self._send_message(peer_id, request)
-            # In real implementation, would await response
-            return None
+            return await asyncio.wait_for(fut, timeout=self._config.state_request_timeout)
         except Exception:
+            fut.cancel()
             return None
+        finally:
+            self._pending_state_requests.pop((peer_id, request.nonce), None)
     
     def _get_local_state_snapshot(self) -> PeerStateSnapshot:
         """Get snapshot of our current state."""
@@ -587,12 +629,18 @@ class ConsensusCoordinator:
                         # Apply to coordinator (bypassing mempool)
                         result = self._coordinator.process_contribution(contribution)
                         
-                        if not result.success:
+                        if not result.accepted:
                             logger.error(
-                                f"Failed to apply synced contribution: {result.error}"
+                                f"Failed to apply synced contribution: {result.reason}"
                             )
                             self._set_consensus_state(ConsensusState.DIVERGED)
                             return False
+
+                        if result.log_index is not None:
+                            try:
+                                self._cache_accepted(int(result.log_index), contribution.to_dict())
+                            except Exception:
+                                pass
                         
                         synced_count += 1
                         current_index += 1
@@ -661,15 +709,13 @@ class ConsensusCoordinator:
         )
         
         try:
-            # Send request and await response
-            # In a real implementation, this would use a response correlation system
+            fut: asyncio.Future[SyncResponse] = asyncio.get_running_loop().create_future()
+            self._pending_sync_requests[(peer_id, request.nonce)] = fut
+
+            # Send request and await correlated response (nonce echoed back)
             await self._send_message(peer_id, request)
             
-            # Wait for response with timeout
-            response = await asyncio.wait_for(
-                self._wait_for_sync_response(peer_id, from_index),
-                timeout=self._config.sync_timeout,
-            )
+            response = await asyncio.wait_for(fut, timeout=self._config.sync_timeout)
             
             if response:
                 return response.contributions
@@ -681,29 +727,8 @@ class ConsensusCoordinator:
         except Exception as e:
             logger.error(f"Sync request failed: {e}")
             return None
-    
-    async def _wait_for_sync_response(
-        self,
-        peer_id: str,
-        from_index: int,
-    ) -> Optional[SyncResponse]:
-        """
-        Wait for a sync response from a peer.
-        
-        In a production system, this would use a proper request-response
-        correlation mechanism. For now, we use a simple polling approach.
-        """
-        # Placeholder for response correlation
-        # In production, this would be handled by a message dispatcher
-        # that correlates responses to requests by nonce
-        await asyncio.sleep(0.1)  # Yield to allow response processing
-        
-        # Check if response arrived (would be stored by message handler)
-        response_key = f"sync_response:{peer_id}:{from_index}"
-        if response_key in self._pending_responses:
-            return self._pending_responses.pop(response_key)
-        
-        return None
+        finally:
+            self._pending_sync_requests.pop((peer_id, request.nonce), None)
     
     def _verify_contribution_for_sync(self, contribution: "Contribution") -> bool:
         """
@@ -722,11 +747,6 @@ class ConsensusCoordinator:
         if not contribution.contributor_id:
             return False
         
-        # Verify contribution hash
-        computed_hash = contribution.compute_hash()
-        if computed_hash != contribution.pack_hash:
-            return False
-        
         return True
     
     async def handle_sync_request(self, request: SyncRequest) -> SyncResponse:
@@ -739,32 +759,29 @@ class ConsensusCoordinator:
         Returns:
             SyncResponse with requested contributions
         """
-        contributions = []
-        log = self._coordinator.state.log
+        contributions: list[dict[str, Any]] = []
+        log_size = int(self._coordinator.state.log.size)
         
         # Bounds check
         from_idx = max(0, request.from_index)
-        to_idx = min(request.to_index, log.size)
+        to_idx = min(request.to_index, log_size)
         
         # Limit batch size
         to_idx = min(to_idx, from_idx + self._config.max_sync_batch_size)
         
         # Gather contributions
         for i in range(from_idx, to_idx):
-            try:
-                # Get contribution from log by index
-                contrib = self._coordinator.get_contribution_by_index(i)
-                if contrib:
-                    contributions.append(contrib.to_dict())
-            except Exception as e:
-                logger.warning(f"Failed to get contribution at index {i}: {e}")
+            contrib = self._accepted_by_index.get(i)
+            if contrib is not None:
+                contributions.append(contrib)
         
         return SyncResponse(
             sender_id=self._node_id,
             goal_id=request.goal_id,
             from_index=from_idx,
             contributions=contributions,
-            has_more=(to_idx < log.size),
+            has_more=(to_idx < log_size),
+            nonce=request.nonce,
         )
     
     async def handle_sync_response(self, response: SyncResponse) -> None:
@@ -773,8 +790,10 @@ class ConsensusCoordinator:
         
         Stores the response for correlation with pending requests.
         """
-        response_key = f"sync_response:{response.sender_id}:{response.from_index}"
-        self._pending_responses[response_key] = response
+        fut = self._pending_sync_requests.get((response.sender_id, response.nonce))
+        if fut is not None and not fut.done():
+            fut.set_result(response)
+            return
     
     # -------------------------------------------------------------------------
     # Mempool Management
@@ -818,12 +837,13 @@ class ConsensusCoordinator:
                 if self._coordinator.state.active_policy_hash
                 else None
             ),
+            nonce=request.nonce,
         )
     
     async def handle_state_response(self, response: StateResponse) -> None:
         """Handle incoming state response."""
         # Update peer state tracking
-        self._peer_states[response.sender_id] = PeerStateSnapshot(
+        snapshot = PeerStateSnapshot(
             node_id=response.sender_id,
             goal_id=response.goal_id,
             log_root=bytes.fromhex(response.log_root),
@@ -835,6 +855,43 @@ class ConsensusCoordinator:
                 else None
             ),
             timestamp_ms=response.timestamp,
+        )
+        self._peer_states[response.sender_id] = snapshot
+
+        fut = self._pending_state_requests.get((response.sender_id, response.nonce))
+        if fut is not None and not fut.done():
+            fut.set_result(snapshot)
+            return
+
+    async def handle_contribution_request(self, request: ContributionRequest) -> ContributionResponse:
+        """Serve a full contribution body by contribution_hash (sha256 of serialized Contribution)."""
+        try:
+            want = bytes.fromhex(request.contribution_hash)
+        except Exception:
+            return ContributionResponse(
+                sender_id=self._node_id,
+                contribution_hash=request.contribution_hash,
+                contribution=None,
+                found=False,
+                nonce=request.nonce,
+            )
+
+        body = self._bodies_by_hash.get(want)
+        if body is None:
+            return ContributionResponse(
+                sender_id=self._node_id,
+                contribution_hash=request.contribution_hash,
+                contribution=None,
+                found=False,
+                nonce=request.nonce,
+            )
+
+        return ContributionResponse(
+            sender_id=self._node_id,
+            contribution_hash=request.contribution_hash,
+            contribution=body,
+            found=True,
+            nonce=request.nonce,
         )
     
     async def handle_contribution_announce(

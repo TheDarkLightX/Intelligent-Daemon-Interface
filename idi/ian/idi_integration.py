@@ -413,19 +413,202 @@ class IDIEvaluationHarness:
         """
         self.harness_type = harness_type
         self.deterministic_seed = deterministic_seed
-        
-        self._trainer = None
-    
-    def _get_trainer(self):
-        """Lazy-load IDI trainer."""
-        if self._trainer is None:
+
+    @staticmethod
+    def _load_training_config_from_pack(agent_pack: AgentPack):
+        """
+        Best-effort reconstruction of `TrainingConfig` from `agent_pack.metadata`.
+
+        GUI training stores a `dataclasses.asdict()` snapshot under `metadata["config"]`.
+        This loader is intentionally forgiving; it falls back to defaults if parsing fails.
+        """
+        try:
+            from idi.training.python.idi_iann.config import (
+                CommunicationConfig,
+                EmoteConfig,
+                EpisodicConfig,
+                FractalConfig,
+                FractalLevelConfig,
+                LayerConfig,
+                MultiLayerConfig,
+                QuantizerConfig,
+                RewardWeights,
+                TileCoderConfig,
+                TrainingConfig,
+            )
+        except Exception:
+            return None
+
+        base = TrainingConfig()
+        raw = agent_pack.metadata.get("config")
+        if not isinstance(raw, dict):
+            return base
+
+        def _coerce_dataclass(obj_type, key: str):
+            val = raw.get(key)
+            if isinstance(val, dict):
+                try:
+                    return obj_type(**val)
+                except Exception:
+                    return getattr(base, key)
+            return getattr(base, key)
+
+        tile_coder = None
+        if isinstance(raw.get("tile_coder"), dict):
             try:
-                from idi.training.python.idi_iann.trainer import Trainer
-                self._trainer = Trainer()
-                logger.info("Loaded IDI Trainer")
-            except ImportError as e:
-                logger.warning(f"Could not load Trainer: {e}")
-        return self._trainer
+                tile_coder = TileCoderConfig(**raw["tile_coder"])
+            except Exception:
+                tile_coder = base.tile_coder
+
+        episodic = None
+        if isinstance(raw.get("episodic"), dict):
+            try:
+                episodic = EpisodicConfig(**raw["episodic"])
+            except Exception:
+                episodic = base.episodic
+
+        fractal = None
+        if isinstance(raw.get("fractal"), dict):
+            try:
+                levels_raw = raw["fractal"].get("levels")
+                if isinstance(levels_raw, list):
+                    levels = []
+                    for item in levels_raw:
+                        if not isinstance(item, dict):
+                            continue
+                        levels.append(FractalLevelConfig(**item))
+                    fractal = FractalConfig(
+                        levels=tuple(levels),
+                        backoff_enabled=bool(raw["fractal"].get("backoff_enabled", True)),
+                        hierarchical_updates=bool(raw["fractal"].get("hierarchical_updates", True)),
+                    )
+                else:
+                    fractal = FractalConfig(**raw["fractal"])
+            except Exception:
+                fractal = base.fractal
+
+        multi_layer = None
+        if isinstance(raw.get("multi_layer"), dict):
+            try:
+                multi_layer = MultiLayerConfig(**raw["multi_layer"])
+            except Exception:
+                multi_layer = base.multi_layer
+
+        try:
+            cfg = TrainingConfig(
+                episodes=int(raw.get("episodes", base.episodes)),
+                episode_length=int(raw.get("episode_length", base.episode_length)),
+                discount=float(raw.get("discount", base.discount)),
+                learning_rate=float(raw.get("learning_rate", base.learning_rate)),
+                exploration_decay=float(raw.get("exploration_decay", base.exploration_decay)),
+                quantizer=_coerce_dataclass(QuantizerConfig, "quantizer"),
+                rewards=_coerce_dataclass(RewardWeights, "rewards"),
+                emote=_coerce_dataclass(EmoteConfig, "emote"),
+                layers=_coerce_dataclass(LayerConfig, "layers"),
+                tile_coder=tile_coder,
+                communication=_coerce_dataclass(CommunicationConfig, "communication"),
+                fractal=fractal,
+                multi_layer=multi_layer,
+                episodic=episodic,
+            )
+            cfg.validate()
+            return cfg
+        except Exception:
+            return base
+
+    @staticmethod
+    def _load_policy_table(agent_pack: AgentPack) -> Dict[tuple[int, ...], Dict[str, float]]:
+        """
+        Load a greedy Q-table from `agent_pack.parameters`.
+
+        The GUI training path serializes `LookupPolicy.to_entries()`, which uses
+        `str(tuple(...))` for the state key.
+        """
+        import ast
+        import json
+
+        try:
+            raw = json.loads(agent_pack.parameters.decode("utf-8"))
+        except Exception:
+            return {}
+
+        if not isinstance(raw, dict):
+            return {}
+
+        table: Dict[tuple[int, ...], Dict[str, float]] = {}
+        for state_str, qvals in raw.items():
+            if not isinstance(state_str, str) or not isinstance(qvals, dict):
+                continue
+            try:
+                parsed = ast.literal_eval(state_str)
+            except Exception:
+                continue
+            if not isinstance(parsed, tuple) or not all(isinstance(x, int) for x in parsed):
+                continue
+            out: Dict[str, float] = {}
+            for action_str, q in qvals.items():
+                if not isinstance(action_str, str):
+                    continue
+                try:
+                    out[action_str] = float(q)
+                except Exception:
+                    continue
+            table[tuple(parsed)] = out
+        return table
+
+    @staticmethod
+    def _obs_to_state(obs: object) -> tuple[int, ...]:
+        # Match `QTrainer._as_state` mappings to ensure compatibility.
+        if hasattr(obs, "as_state"):
+            state = obs.as_state()  # type: ignore[attr-defined]
+            if isinstance(state, tuple) and all(isinstance(x, int) for x in state):
+                return state
+        if hasattr(obs, "price") and hasattr(obs, "regime"):
+            regime_idx = {"bull": 0, "bear": 1, "chop": 2, "panic": 3}.get(getattr(obs, "regime", "chop"), 2)
+            pos = getattr(obs, "position", 0)
+            pnl = getattr(obs, "pnl", 0.0)
+            ret = getattr(obs, "last_return", 0.0)
+            return (int(pos + 1), int(regime_idx), int(abs(ret) > 0.01), int(float(pnl) >= 0.0))
+        raise ValueError(f"Unsupported observation type: {type(obs)}")
+
+    @staticmethod
+    def _select_action(qtable: Dict[tuple[int, ...], Dict[str, float]], state: tuple[int, ...]) -> str:
+        qvals = qtable.get(state)
+        if not qvals:
+            return "hold"
+        return max(qvals.items(), key=lambda kv: kv[1])[0]
+
+    @staticmethod
+    def _compute_sharpe(values: List[float]) -> Optional[float]:
+        if not values:
+            return None
+        mean = sum(values) / len(values)
+        var = sum((v - mean) ** 2 for v in values) / max(1, (len(values) - 1))
+        if var <= 0:
+            return None
+        import math
+        return mean / math.sqrt(var)
+
+    @staticmethod
+    def _update_drawdown_ratio(*, peak: float, current: float, best: float) -> tuple[float, float]:
+        """
+        Update (peak, max_drawdown_ratio) for an equity curve.
+
+        Drawdown ratio is clamped to [0,1] to match IAN `max_risk` thresholds.
+        """
+        if current > peak:
+            return current, best
+
+        if peak <= 0.0:
+            # When peak is non-positive, any further decline is treated as max risk.
+            return peak, max(best, 1.0)
+
+        ratio = (peak - current) / peak
+        if ratio < 0.0:
+            ratio = 0.0
+        if ratio > 1.0:
+            ratio = 1.0
+        return peak, max(best, ratio)
     
     def evaluate(
         self,
@@ -456,37 +639,122 @@ class IDIEvaluationHarness:
         goal_spec: GoalSpec,
         seed: int,
     ) -> Optional[Metrics]:
-        """Run backtest evaluation."""
-        trainer = self._get_trainer()
-        if trainer is None:
-            # Fall back to mock
-            return self._run_mock(agent_pack, goal_spec, seed)
-        
-        try:
-            # Load agent from pack
-            # (In production, this would deserialize the Q-table or policy)
-            
-            # Run backtest
-            results = trainer.run_backtest(
-                max_episodes=goal_spec.eval_limits.max_episodes,
-                max_steps=goal_spec.eval_limits.max_steps_per_episode,
-                seed=seed if self.deterministic_seed else None,
-            )
-            
-            # Convert to Metrics
-            return Metrics(
-                reward=results.get("total_reward", 0.0),
-                risk=results.get("risk_score", 0.0),
-                complexity=len(agent_pack.parameters) / 10000.0,
-                sharpe_ratio=results.get("sharpe_ratio"),
-                max_drawdown=results.get("max_drawdown"),
-                episodes_run=results.get("episodes", 0),
-                steps_run=results.get("steps", 0),
-            )
-            
-        except Exception as e:
-            logger.error(f"Backtest failed: {e}")
-            return self._run_mock(agent_pack, goal_spec, seed)
+        """
+        Deterministic evaluation of the submitted policy against the local simulators.
+
+        No randomized fallback paths: if we can't decode/run, we fail the eval.
+        """
+        from time import perf_counter
+
+        cfg = self._load_training_config_from_pack(agent_pack)
+        qtable = self._load_policy_table(agent_pack)
+
+        use_crypto = bool(agent_pack.metadata.get("use_crypto_env", False))
+        market_params_raw = agent_pack.metadata.get("market_params")
+
+        max_episodes = int(goal_spec.eval_limits.max_episodes)
+        max_steps = int(goal_spec.eval_limits.max_steps_per_episode)
+        timeout_s = float(goal_spec.eval_limits.timeout_seconds)
+        if max_episodes <= 0 or max_steps <= 0 or timeout_s <= 0:
+            return None
+
+        episode_returns: List[float] = []
+        episode_step_means: List[float] = []
+        total_steps = 0
+        risk_events = 0
+        cum_pnl = 0.0
+        peak_pnl = 0.0
+        max_drawdown_ratio = 0.0
+
+        start = perf_counter()
+        for ep in range(max_episodes):
+            if perf_counter() - start > timeout_s:
+                break
+
+            ep_seed = int(seed)
+            if self.deterministic_seed:
+                ep_seed ^= (ep * 0x9E3779B1) & 0xFFFFFFFF
+            else:
+                ep_seed += ep
+
+            if use_crypto:
+                from idi.training.python.idi_iann.crypto_env import CryptoMarket, MarketParams
+                mp = MarketParams()
+                if isinstance(market_params_raw, dict):
+                    try:
+                        mp = MarketParams(**market_params_raw)
+                    except Exception:
+                        mp = MarketParams()
+                mp.seed = ep_seed
+                env = CryptoMarket(mp)
+            else:
+                from idi.training.python.idi_iann.env import SyntheticMarketEnv
+                env = SyntheticMarketEnv(
+                    quantizer=cfg.quantizer,
+                    rewards=cfg.rewards,
+                    seed=ep_seed,
+                )
+
+            obs = env.reset()
+            ep_return = 0.0
+            ep_steps = 0
+            for _ in range(max_steps):
+                if perf_counter() - start > timeout_s:
+                    break
+                state = self._obs_to_state(obs)
+                action = self._select_action(qtable, state)
+
+                step_out = env.step(action)
+                if isinstance(step_out, tuple) and len(step_out) == 3:
+                    obs, reward, info = step_out
+                    if info and float(info.get("risk_event", 0.0)) > 0:
+                        risk_events += 1
+                else:
+                    obs, reward = step_out
+
+                reward_f = float(reward)
+                ep_return += reward_f
+                total_steps += 1
+                ep_steps += 1
+                cum_pnl += reward_f
+                peak_pnl, max_drawdown_ratio = self._update_drawdown_ratio(
+                    peak=peak_pnl,
+                    current=cum_pnl,
+                    best=max_drawdown_ratio,
+                )
+
+            episode_returns.append(ep_return)
+            if ep_steps > 0:
+                episode_step_means.append(ep_return / ep_steps)
+
+        if not episode_returns:
+            return None
+
+        mean_step_reward = (sum(episode_returns) / total_steps) if total_steps > 0 else 0.0
+        sharpe = self._compute_sharpe(episode_step_means) if episode_step_means else None
+
+        if use_crypto:
+            risk = float(risk_events) / float(max(1, total_steps))
+        else:
+            # Normalize volatility into [0,1] using coefficient-of-variation on per-step returns.
+            mean = mean_step_reward
+            var = (
+                sum((r - mean) ** 2 for r in episode_step_means) / max(1, (len(episode_step_means) - 1))
+            ) if episode_step_means else 0.0
+            vol = float(var) ** 0.5
+            cov = vol / max(abs(mean), 1e-6)
+            risk = min(1.0, max(max_drawdown_ratio, cov))
+
+        return Metrics(
+            reward=float(mean_step_reward),
+            risk=float(risk),
+            complexity=len(agent_pack.parameters) / 10000.0,
+            sharpe_ratio=sharpe,
+            max_drawdown=float(max_drawdown_ratio),
+            episodes_run=len(episode_returns),
+            steps_run=total_steps,
+        )
+
     
     def _run_simulation(
         self,
@@ -494,9 +762,8 @@ class IDIEvaluationHarness:
         goal_spec: GoalSpec,
         seed: int,
     ) -> Optional[Metrics]:
-        """Run simulation evaluation."""
-        # Similar to backtest but with simulation environment
-        return self._run_mock(agent_pack, goal_spec, seed)
+        # Standalone simulation uses the same deterministic evaluators for now.
+        return self._run_backtest(agent_pack, goal_spec, seed)
     
     def _run_mock(
         self,

@@ -178,6 +178,7 @@ For a structured, wiki-like overview of all documentation, see the index in [`do
 - [IDI Architecture](docs/IDI_IAN_ARCHITECTURE.md) - System architecture and design (includes IAN overview)
 - [IAN L2 Node & Network](idi/ian/README.md) - Intelligent Augmentation Network (L2) overview and quick start
 - [IAN L2 Detailed Docs](idi/ian/docs/README.md) - Architecture guide, API reference, and operator runbook for IAN
+- [GUI Walkthrough](docs/gui_walkthrough/GUI_WALKTHROUGH.md) - Visual guide to the web-based GUI interface
 - [Tau Agent Factory](idi/devkit/tau_factory/README.md) - Agent generation guide
 - [Pattern Landscape](idi/devkit/tau_factory/PATTERN_LANDSCAPE.md) - Complete pattern taxonomy
 - [Implementation Status](idi/devkit/tau_factory/IMPLEMENTATION_STATUS.md) - Current progress (26/26 patterns, 100% complete ✅)

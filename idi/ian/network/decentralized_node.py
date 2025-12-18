@@ -73,6 +73,12 @@ class DecentralizedNodeConfig:
     listen_port: int = 9000
     seed_addresses: List[str] = field(default_factory=list)
     max_peers: int = 50
+
+    # Transport wiring
+    enable_p2p: bool = True
+    p2p_connection_timeout: float = 10.0
+    p2p_handshake_timeout: float = 5.0
+    enable_discovery: bool = False  # Legacy SeedNodeDiscovery (incomplete)
     
     # Consensus
     consensus: ConsensusConfig = field(default_factory=ConsensusConfig)
@@ -192,12 +198,30 @@ class DecentralizedNode:
             node_id=identity.node_id,
         )
         
-        # Discovery
-        self._discovery = SeedNodeDiscovery(
-            identity=identity,
-            seed_addresses=self._config.seed_addresses,
-            max_peers=self._config.max_peers,
-        )
+        # Transport (real TCP P2P manager)
+        self._p2p = None
+        if self._config.enable_p2p:
+            from .p2p_manager import P2PConfig, P2PManager
+            self._p2p = P2PManager(
+                identity=identity,
+                config=P2PConfig(
+                    listen_host=self._config.listen_address,
+                    listen_port=self._config.listen_port,
+                    max_peers=self._config.max_peers,
+                    connection_timeout=float(self._config.p2p_connection_timeout),
+                    handshake_timeout=float(self._config.p2p_handshake_timeout),
+                ),
+            )
+            self._p2p.register_default_handlers()
+
+        # Legacy discovery (kept for reference; disabled by default)
+        self._discovery = None
+        if self._config.enable_discovery and self._p2p is None:
+            self._discovery = SeedNodeDiscovery(
+                identity=identity,
+                seed_addresses=self._config.seed_addresses,
+                max_peers=self._config.max_peers,
+            )
         
         # Production infrastructure
         self._supervisor = TaskSupervisor(name=f"node-{identity.node_id[:8]}")
@@ -244,13 +268,12 @@ class DecentralizedNode:
             send_message=self._send_message,
             on_state_change=self._on_consensus_state_change,
         )
-        
-        # Discovery callbacks
-        self._discovery.set_callbacks(
-            on_peer_discovered=self._on_peer_discovered,
-            on_peer_lost=self._on_peer_lost,
-            send_message=self._send_message_to_address,
-        )
+        if self._discovery is not None:
+            self._discovery.set_callbacks(
+                on_peer_discovered=self._on_peer_discovered,
+                on_peer_lost=self._on_peer_lost,
+                send_message=self._send_message_to_address,
+            )
         
         # Challenge callbacks
         self._challenges.set_tau_callback(self._submit_challenge_to_tau)
@@ -389,7 +412,10 @@ class DecentralizedNode:
         # Setup graceful shutdown handlers
         self._shutdown.register_handler(self._persist_state)
         self._shutdown.register_handler(self._consensus.stop)
-        self._shutdown.register_handler(self._discovery.stop)
+        if self._discovery is not None:
+            self._shutdown.register_handler(self._discovery.stop)
+        if self._p2p is not None:
+            self._shutdown.register_handler(self._p2p.stop)
         if self._health_server:
             self._shutdown.register_handler(self._health_server.stop)
         self._shutdown.setup_signals()
@@ -398,8 +424,17 @@ class DecentralizedNode:
         if self._health_server:
             await self._health_server.start()
         
-        # Start discovery
-        await self._discovery.start()
+        # Start transport / discovery
+        if self._p2p is not None:
+            started = await self._p2p.start()
+            if not started:
+                logger.warning("P2P transport failed to start; continuing in standalone mode")
+                self._p2p = None
+            else:
+                self._register_p2p_handlers()
+                await self._connect_seed_peers()
+        elif self._discovery is not None:
+            await self._discovery.start()
         
         # Start consensus
         await self._consensus.start()
@@ -459,7 +494,10 @@ class DecentralizedNode:
         
         # Stop components
         await self._consensus.stop()
-        await self._discovery.stop()
+        if self._discovery is not None:
+            await self._discovery.stop()
+        if self._p2p is not None:
+            await self._p2p.stop()
         
         logger.info(f"Node stopped: {self._identity.node_id[:16]}...")
     
@@ -541,6 +579,9 @@ class DecentralizedNode:
                         contribution_hash=announce.contribution_hash,
                     )
             
+            elif message.type == MessageType.CONTRIBUTION_REQUEST:
+                return await self._consensus.handle_contribution_request(message)
+            
             elif message.type == MessageType.CONTRIBUTION_RESPONSE:
                 from .protocol import ContributionResponse
                 await self._consensus.handle_contribution_response(message, from_peer)
@@ -551,12 +592,20 @@ class DecentralizedNode:
             
             elif message.type == MessageType.STATE_RESPONSE:
                 await self._consensus.handle_state_response(message)
+
+            elif message.type == MessageType.SYNC_REQUEST:
+                return await self._consensus.handle_sync_request(message)
+
+            elif message.type == MessageType.SYNC_RESPONSE:
+                await self._consensus.handle_sync_response(message)
             
             elif message.type == MessageType.PEER_EXCHANGE:
-                self._discovery.handle_peer_exchange(message)
+                if self._discovery is not None:
+                    self._discovery.handle_peer_exchange(message)
             
             elif message.type == MessageType.PONG:
-                self._discovery.handle_pong(message)
+                if self._discovery is not None:
+                    self._discovery.handle_pong(message)
             
         except Exception as e:
             logger.error(f"Error handling message from {from_peer[:16]}...: {e}")
@@ -750,27 +799,22 @@ class DecentralizedNode:
     
     def _get_peer_ids(self) -> List[str]:
         """Get list of connected peer IDs."""
+        if self._p2p is not None:
+            return self._p2p.get_connected_peers()
         return list(self._connected_peers.keys())
     
     async def _send_message(self, peer_id: str, message: Any) -> None:
         """Send message to peer by ID."""
-        if peer_id not in self._connected_peers:
-            raise ValueError(f"peer not connected: {peer_id}")
-        
-        # Sign message
-        if hasattr(message, 'sender_id'):
-            message.sender_id = self._identity.node_id
-        
-        if self._identity.has_private_key() and hasattr(message, 'signature'):
-            self._identity.sign_message(message)
-        
-        # Would send via transport layer
-        pass
+        if self._p2p is None:
+            raise ValueError("p2p transport not enabled")
+        ok = await self._p2p.send_message(peer_id, message)
+        if not ok:
+            raise ValueError(f"send failed: {peer_id}")
     
     async def _send_message_to_address(self, address: str, message: Any) -> None:
         """Send message to peer by address."""
-        # Would send via transport layer
-        pass
+        # Legacy discovery path passes node_id strings here; keep compatibility.
+        await self._send_message(address, message)
     
     def _on_peer_discovered(self, info: NodeInfo) -> None:
         """Handle peer discovery."""
@@ -785,6 +829,87 @@ class DecentralizedNode:
     def _on_consensus_state_change(self, state: ConsensusState) -> None:
         """Handle consensus state change."""
         logger.info(f"Consensus state changed to: {state.name}")
+
+    def _register_p2p_handlers(self) -> None:
+        if self._p2p is None:
+            return
+
+        from .protocol import Message, MessageType
+
+        async def _dispatch(msg: dict, from_id: str):
+            try:
+                parsed = Message.from_dict(msg)
+            except Exception:
+                return None
+            return await self.handle_message(parsed, from_peer=from_id)
+
+        for msg_type in (
+            MessageType.CONTRIBUTION_ANNOUNCE,
+            MessageType.CONTRIBUTION_REQUEST,
+            MessageType.CONTRIBUTION_RESPONSE,
+            MessageType.STATE_REQUEST,
+            MessageType.STATE_RESPONSE,
+            MessageType.SYNC_REQUEST,
+            MessageType.SYNC_RESPONSE,
+        ):
+            self._p2p.register_handler(msg_type, _dispatch)
+
+    async def _connect_seed_peers(self) -> None:
+        if self._p2p is None:
+            return
+        for raw in list(self._config.seed_addresses)[:64]:
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            addr = raw.strip()
+            # Accept "tcp://host:port" or "host:port"
+            if addr.startswith("tcp://"):
+                addr = addr[len("tcp://") :]
+            if ":" not in addr:
+                continue
+            host, port_str = addr.rsplit(":", 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                continue
+            try:
+                await self._p2p.connect_to_peer(host, port)
+            except Exception:
+                continue
+
+    def _refresh_connected_peers_from_p2p(self) -> None:
+        if self._p2p is None:
+            return
+
+        # Keep `/peers` and health info populated.
+        connected = set(self._p2p.get_connected_peers())
+
+        # Remove stale entries
+        for node_id in list(self._connected_peers.keys()):
+            if node_id not in connected:
+                self._connected_peers.pop(node_id, None)
+
+        from .node import NodeCapabilities, NodeInfo
+
+        for node_id in connected:
+            if node_id in self._connected_peers:
+                continue
+            info = self._p2p.get_peer_info(node_id) or {}
+            addr = info.get("address")
+            addresses = [f"tcp://{addr}"] if isinstance(addr, str) and addr else []
+            pub = info.get("peer_public_key")
+            public_key = pub if isinstance(pub, (bytes, bytearray)) else b""
+            caps = NodeCapabilities(
+                accepts_contributions=self._config.accept_contributions,
+                serves_leaderboard=True,
+                serves_log_proofs=True,
+                goal_ids=[self._goal_id],
+            )
+            self._connected_peers[node_id] = NodeInfo(
+                node_id=node_id,
+                public_key=bytes(public_key),
+                addresses=addresses,
+                capabilities=caps,
+            )
     
     # -------------------------------------------------------------------------
     # Metrics & Monitoring
@@ -803,6 +928,8 @@ class DecentralizedNode:
     
     def _update_metrics(self) -> None:
         """Update all metrics gauges."""
+        if self._p2p is not None:
+            self._refresh_connected_peers_from_p2p()
         # Log state
         self._metrics.set_gauge("log_size", self._base_coordinator.state.log.size)
         self._metrics.set_gauge(

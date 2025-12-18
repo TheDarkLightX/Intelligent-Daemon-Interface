@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from importlib import resources as importlib_resources
 import json
 import logging
 import os
@@ -548,8 +549,19 @@ class IANApiHandlers:
     def handle_openapi(self) -> Dict[str, Any]:
         """Handle GET /api/v1/openapi.json - Returns OpenAPI spec."""
         import yaml
+
+        try:
+            spec_text = (
+                importlib_resources.files("idi.ian.network")
+                .joinpath("openapi.yaml")
+                .read_text(encoding="utf-8")
+            )
+            return yaml.safe_load(spec_text)
+        except Exception:
+            pass
+
         from pathlib import Path
-        
+
         spec_path = Path(__file__).parent / "openapi.yaml"
         if spec_path.exists():
             with open(spec_path) as f:

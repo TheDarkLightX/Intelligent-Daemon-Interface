@@ -20,12 +20,14 @@ network:
     port: 9000
     max_peers: 10
     connection_timeout: 5.0
+    handshake_timeout: 5.0
     
   websocket:
     enabled: true
     host: 127.0.0.1
     port: 9001
     max_connections: 100
+    unauthenticated_timeout: 10.0
     
   api:
     host: 127.0.0.1
