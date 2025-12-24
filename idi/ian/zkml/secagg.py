@@ -467,6 +467,10 @@ class SecAggSession:
             raise SecAggError("round_id does not match session")
         if len(masked.masked_data) != self.gradient_size:
             raise SecAggError(f"masked_data must be {self.gradient_size} bytes")
+        if masked.epoch != self.epoch:
+            raise SecAggError("epoch does not match session")
+        if len(masked.commitment_hash) != 32:
+            raise SecAggError("commitment_hash must be 32 bytes")
         
         self.masked_gradients[masked.participant_id] = masked
     

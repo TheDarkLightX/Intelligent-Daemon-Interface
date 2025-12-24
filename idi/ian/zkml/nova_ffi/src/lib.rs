@@ -13,6 +13,10 @@ use pyo3::exceptions::PyValueError;
 use sha2::{Sha256, Digest};
 
 const NOVA_DOMAIN: &[u8] = b"IAN_NOVA_V1";
+const STATE_HASH_LEN: usize = 32;
+const MAX_MODEL_DIM: u64 = 1_000_000_000;
+const MAX_STEPS: u64 = 1_000_000;
+const MIN_INSTANCE_LEN: usize = 11 + 32 + 96; // domain + state + commitment + cross_term
 
 /// Supported curve cycles
 #[pyclass]
@@ -98,10 +102,16 @@ impl RustNovaProver {
         if model_dimension == 0 {
             return Err(PyValueError::new_err("model_dimension must be positive"));
         }
+        if model_dimension > MAX_MODEL_DIM {
+            return Err(PyValueError::new_err("model_dimension exceeds maximum"));
+        }
+        if curve > 2 {
+            return Err(PyValueError::new_err("invalid curve (0=Pasta, 1=BnGrumpkin, 2=Bls12381)"));
+        }
         Ok(Self {
             model_dimension,
             curve,
-            state_hash: vec![0u8; 32],
+            state_hash: vec![0u8; STATE_HASH_LEN],
             steps: 0,
         })
     }
@@ -115,6 +125,19 @@ impl RustNovaProver {
         weights_hash: Vec<u8>,
         gradient_hash: Vec<u8>,
     ) -> PyResult<(u64, Vec<u8>, Vec<u8>)> {
+        // Validate input lengths
+        if prev_state.len() != STATE_HASH_LEN {
+            return Err(PyValueError::new_err("prev_state must be 32 bytes"));
+        }
+        if batch_hash.len() != STATE_HASH_LEN {
+            return Err(PyValueError::new_err("batch_hash must be 32 bytes"));
+        }
+        if weights_hash.len() != STATE_HASH_LEN {
+            return Err(PyValueError::new_err("weights_hash must be 32 bytes"));
+        }
+        if gradient_hash.len() != STATE_HASH_LEN {
+            return Err(PyValueError::new_err("gradient_hash must be 32 bytes"));
+        }
         // Compute new state
         let mut h = Sha256::new();
         h.update(NOVA_DOMAIN);
@@ -186,6 +209,12 @@ impl RustNovaVerifier {
         if expected_model_dimension == 0 {
             return Err(PyValueError::new_err("expected_model_dimension must be positive"));
         }
+        if expected_model_dimension > MAX_MODEL_DIM {
+            return Err(PyValueError::new_err("expected_model_dimension exceeds maximum"));
+        }
+        if expected_curve > 2 {
+            return Err(PyValueError::new_err("invalid expected_curve"));
+        }
         Ok(Self { expected_dim: expected_model_dimension, expected_curve })
     }
 
@@ -196,35 +225,48 @@ impl RustNovaVerifier {
         expected_state: Option<Vec<u8>>,
         expected_steps: Option<u64>,
     ) -> PyResult<bool> {
+        // Validate proof bounds first
+        if proof.num_steps == 0 || proof.num_steps > MAX_STEPS {
+            return Err(PyValueError::new_err("num_steps out of bounds"));
+        }
+        if proof.model_dimension == 0 || proof.model_dimension > MAX_MODEL_DIM {
+            return Err(PyValueError::new_err("model_dimension out of bounds"));
+        }
+        if proof.curve > 2 {
+            return Err(PyValueError::new_err("invalid curve in proof"));
+        }
+        if proof.final_instance.len() < MIN_INSTANCE_LEN {
+            return Err(PyValueError::new_err("final_instance too short"));
+        }
+        if !proof.final_instance.starts_with(NOVA_DOMAIN) {
+            return Err(PyValueError::new_err("invalid domain prefix"));
+        }
+
+        // Check expected values
         if proof.model_dimension != self.expected_dim {
-            return Err(PyValueError::new_err("Model dimension mismatch"));
+            return Err(PyValueError::new_err("model dimension mismatch"));
         }
         if proof.curve != self.expected_curve {
-            return Err(PyValueError::new_err("Curve mismatch"));
+            return Err(PyValueError::new_err("curve mismatch"));
         }
         if let Some(s) = expected_steps {
             if proof.num_steps != s {
                 return Err(PyValueError::new_err("num_steps mismatch"));
             }
         }
-
-        let min_len = NOVA_DOMAIN.len() + 32 + 96;
-        if proof.final_instance.len() < min_len {
-            return Err(PyValueError::new_err("Invalid instance length"));
-        }
-        if !proof.final_instance.starts_with(NOVA_DOMAIN) {
-            return Err(PyValueError::new_err("Invalid domain prefix"));
-        }
-
-        if let Some(expected) = expected_state {
+        if let Some(ref expected) = expected_state {
+            if expected.len() != STATE_HASH_LEN {
+                return Err(PyValueError::new_err("expected_state must be 32 bytes"));
+            }
             let offset = NOVA_DOMAIN.len();
-            let state = &proof.final_instance[offset..offset+32];
+            let state = &proof.final_instance[offset..offset + STATE_HASH_LEN];
             if state != expected.as_slice() {
-                return Err(PyValueError::new_err("State mismatch"));
+                return Err(PyValueError::new_err("state mismatch"));
             }
         }
 
-        // TODO: Real SNARK verification
+        // TODO: Real SNARK verification with Nova library
+        // Current implementation performs structural checks only
         Ok(true)
     }
 }

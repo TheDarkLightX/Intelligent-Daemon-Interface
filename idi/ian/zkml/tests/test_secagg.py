@@ -372,7 +372,7 @@ class TestEndToEndSecAgg:
         gradients = [secrets.token_bytes(gradient_size) for _ in participants]
         
         for p, g in zip(participants, gradients):
-            masked = p.mask_gradient(g)
+            masked = p.mask_gradient(g, epoch=1)
             session.submit_masked_gradient(masked)
         
         # Finalize
