@@ -18,6 +18,12 @@ from idi.ian.network.decentralized_node import DecentralizedNode, DecentralizedN
 from idi.ian.network.node import NodeIdentity
 from idi.ian.models import GoalSpec, GoalID, AgentPack, Contribution, Metrics, EvaluationLimits, Thresholds
 from idi.ian.idi_integration import create_idi_coordinator
+from idi.ian.hooks import (
+    CoordinatorHooks,
+    ContributionAcceptedEvent,
+    ContributionRejectedEvent,
+    LeaderboardUpdatedEvent,
+)
 import time
 import hashlib
 import json
@@ -38,6 +44,132 @@ _ALLOW_INCOMPLETE_WIZARD = os.environ.get("IDI_GUI_ALLOW_INCOMPLETE_WIZARD", "0"
 _node: Optional[DecentralizedNode] = None
 _node_task: Optional[asyncio.Task] = None
 _event_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+# =============================================================================
+# WebSocket Event Hub for Real-Time GUI Updates
+# =============================================================================
+
+class WebSocketEventHub:
+    """Manages WebSocket connections for real-time GUI events."""
+    
+    def __init__(self):
+        self.connections: List[WebSocket] = []
+        self._lock = asyncio.Lock()
+    
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        async with self._lock:
+            self.connections.append(websocket)
+        logger.info(f"Event WS connected. Total: {len(self.connections)}")
+    
+    async def disconnect(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            if websocket in self.connections:
+                self.connections.remove(websocket)
+        logger.info(f"Event WS disconnected. Total: {len(self.connections)}")
+    
+    async def broadcast(self, event_type: str, data: Dict[str, Any]) -> int:
+        """Broadcast event to all connected clients."""
+        message = {
+            "type": event_type,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        sent = 0
+        dead_connections = []
+        
+        for ws in self.connections:
+            try:
+                await ws.send_json(message)
+                sent += 1
+            except Exception as e:
+                logger.debug(f"Failed to send to WS: {e}")
+                dead_connections.append(ws)
+        
+        # Cleanup dead connections
+        for ws in dead_connections:
+            await self.disconnect(ws)
+        
+        return sent
+
+
+# Global event hub instance
+_event_hub = WebSocketEventHub()
+
+
+class WebSocketCoordinatorHooks:
+    """
+    Adapter that bridges sync coordinator hooks to async WebSocket broadcasts.
+    
+    Uses asyncio.run_coroutine_threadsafe to safely bridge from sync context.
+    """
+    
+    def __init__(self, event_hub: WebSocketEventHub, loop: Optional[asyncio.AbstractEventLoop] = None):
+        self._hub = event_hub
+        self._loop = loop
+    
+    def set_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Set the event loop (called after startup)."""
+        self._loop = loop
+    
+    def on_contribution_accepted(self, event: ContributionAcceptedEvent) -> None:
+        if not self._loop:
+            logger.warning("Event loop not set for WebSocket hooks")
+            return
+        
+        data = {
+            "goal_id": event.goal_id,
+            "pack_hash": event.pack_hash.hex(),
+            "contributor_id": event.contributor_id,
+            "score": event.score,
+            "log_index": event.log_index,
+            "leaderboard_position": event.leaderboard_position,
+            "is_new_leader": event.is_new_leader,
+            "metrics": {
+                "reward": event.metrics.reward,
+                "risk": event.metrics.risk,
+                "complexity": event.metrics.complexity,
+            },
+        }
+        asyncio.run_coroutine_threadsafe(
+            self._hub.broadcast("contribution_accepted", data),
+            self._loop,
+        )
+    
+    def on_contribution_rejected(self, event: ContributionRejectedEvent) -> None:
+        if not self._loop:
+            return
+        
+        data = {
+            "goal_id": event.goal_id,
+            "pack_hash": event.pack_hash.hex(),
+            "contributor_id": event.contributor_id,
+            "rejection_reason": event.rejection_reason.name,
+            "reason_detail": event.reason_detail,
+        }
+        asyncio.run_coroutine_threadsafe(
+            self._hub.broadcast("contribution_rejected", data),
+            self._loop,
+        )
+    
+    def on_leaderboard_updated(self, event: LeaderboardUpdatedEvent) -> None:
+        if not self._loop:
+            return
+        
+        data = {
+            "goal_id": event.goal_id,
+            "entries": [m.to_dict() for m in event.entries],
+            "active_policy_hash": event.active_policy_hash.hex() if event.active_policy_hash else None,
+        }
+        asyncio.run_coroutine_threadsafe(
+            self._hub.broadcast("leaderboard_updated", data),
+            self._loop,
+        )
+
+
+# Global hooks instance (created at module load, loop set at startup)
+_ws_hooks = WebSocketCoordinatorHooks(_event_hub)
 
 def _create_default_goal_spec() -> GoalSpec:
     """Create default goal spec for local GUI training."""
@@ -352,6 +484,32 @@ async def websocket_trainer(websocket: WebSocket):
                 pass
     except (WebSocketDisconnect, Exception):
         _training_manager.disconnect(websocket)
+
+
+@router.websocket("/ws/events")
+async def websocket_events(websocket: WebSocket):
+    """WebSocket endpoint for real-time contribution/leaderboard events."""
+    await _event_hub.connect(websocket)
+    try:
+        # Send initial connection confirmation
+        await websocket.send_json({
+            "type": "connected",
+            "data": {"message": "Real-time events connected"},
+            "timestamp": int(time.time() * 1000),
+        })
+        
+        # Keep connection alive, listen for client messages (e.g., ping)
+        while True:
+            try:
+                msg = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                # Echo pings
+                if msg == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except asyncio.TimeoutError:
+                # Send keepalive
+                await websocket.send_json({"type": "keepalive"})
+    except (WebSocketDisconnect, Exception):
+        await _event_hub.disconnect(websocket)
 
 
 # --- Agent Management Endpoints ---

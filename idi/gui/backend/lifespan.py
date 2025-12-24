@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
         goal_spec=goal_spec,
         leaderboard_capacity=100,
         harness_type="backtest",  # Real deterministic evaluation (standalone mode)
+        hooks=api._ws_hooks,  # Wire real-time GUI hooks
     )
     
     api._node = api.DecentralizedNode(
@@ -49,6 +50,7 @@ async def lifespan(app: FastAPI):
     
     # Store event loop reference for thread-safe async calls
     api._event_loop = asyncio.get_running_loop()
+    api._ws_hooks.set_loop(api._event_loop)  # Enable WebSocket hooks
     logger.info(f"Stored event loop reference: {api._event_loop}")
     
     logger.info(f"IAN node started with goal: {goal_spec.goal_id}")

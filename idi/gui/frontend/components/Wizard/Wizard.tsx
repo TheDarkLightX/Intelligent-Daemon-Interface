@@ -6,8 +6,11 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CodeBlock } from "@/components/ui/code-block";
+import { useToast } from "@/components/ui/toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
-import { ArrowLeft, ArrowRight, Save, Bot, ChevronLeft, ChevronRight, Activity, Check, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Bot, ChevronLeft, ChevronRight, Activity, Check, Download, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
 
 import { AgentVisualizer } from "@/components/Wizard/AgentVisualizer";
 import { cn } from "@/lib/utils";
@@ -36,6 +39,9 @@ export function Wizard() {
     const [state, setState] = useState<WizardState | null>(null);
     const [loading, setLoading] = useState(true);
     const [generatedSpec, setGeneratedSpec] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const toast = useToast();
+    const { confirm } = useConfirmDialog();
 
     useEffect(() => {
         fetchState();
@@ -43,7 +49,7 @@ export function Wizard() {
 
     const fetchState = async () => {
         try {
-            const data = await api.wizard.getState();
+            const data = (await api.wizard.getState()) as WizardState;
             setState(data);
         } catch (e) {
             console.error(e);
@@ -64,8 +70,12 @@ export function Wizard() {
         if (!state) return;
         try {
             setLoading(true);
-            const newState = await api.wizard.next(state.data);
+            setError(null);
+            const newState = (await api.wizard.next(state.data)) as WizardState;
             setState(newState);
+        } catch (e: any) {
+            console.error(e);
+            setError(e.detail || e.message || "Failed to proceed to next step");
         } finally {
             setLoading(false);
         }
@@ -74,29 +84,50 @@ export function Wizard() {
     const handlePrev = async () => {
         try {
             setLoading(true);
-            const newState = await api.wizard.prev();
+            setError(null);
+            const newState = (await api.wizard.prev()) as WizardState;
             setState(newState);
+        } catch (e: any) {
+            console.error(e);
+            setError(e.detail || e.message || "Failed to go back");
         } finally {
             setLoading(false);
         }
     };
 
     const handleGenerate = async () => {
-        try {
-            setLoading(true);
-            const res = await api.wizard.getSpec();
-            setGeneratedSpec(res.spec);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+        confirm({
+            title: "Generate Agent Specification",
+            message: `Generate the Tau specification for "${state?.data.name}"? This will compile your agent configuration.`,
+            confirmText: "Generate",
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    setError(null);
+                    const res = (await api.wizard.getSpec()) as { spec: string };
+                    setGeneratedSpec(res.spec);
+                    toast.success("Agent specification generated!");
+                } catch (e: any) {
+                    console.error(e);
+                    setError(e.detail || e.message || "Failed to generate spec");
+                    toast.error("Failed to generate specification");
+                } finally {
+                    setLoading(false);
+                }
+            },
+        });
     };
 
     const handleReset = async () => {
-        setGeneratedSpec(null);
-        const newState = await api.wizard.reset();
-        setState(newState);
+        try {
+            setGeneratedSpec(null);
+            setError(null);
+            const newState = (await api.wizard.reset()) as WizardState;
+            setState(newState);
+        } catch (e: any) {
+            console.error(e);
+            setError(e.detail || e.message || "Failed to reset wizard");
+        }
     };
 
 
@@ -105,11 +136,11 @@ export function Wizard() {
         try {
             setLoading(true);
             await api.agents.save(state.data.name);
-            alert("Agent saved successfully!");
+            toast.success(`Agent "${state.data.name}" saved successfully!`);
             handleReset(); // Optionally reset/go back
         } catch (e) {
             console.error(e);
-            alert("Failed to save agent");
+            toast.error("Failed to save agent");
         } finally {
             setLoading(false);
         }
@@ -188,6 +219,14 @@ export function Wizard() {
                                 <CardDescription>Configure your agent parameters.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex-1 space-y-6">
+                                {/* API Errors */}
+                                {error && (
+                                    <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-md text-sm flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4" />
+                                        {error}
+                                    </div>
+                                )}
+
                                 {/* Validation Errors */}
                                 {Object.keys(state.validation_errors).length > 0 && (
                                     <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-md text-sm flex items-center gap-2">
@@ -211,23 +250,31 @@ export function Wizard() {
                                             {state.validation_errors.name && <p className="text-xs text-destructive">{state.validation_errors.name}</p>}
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium">Strategy</label>
+                                            <label className="text-sm font-medium flex items-center gap-2">
+                                                Strategy
+                                                <InfoTooltip content="Choose how your agent will make trading decisions. Each strategy has different strengths." />
+                                            </label>
                                             <div className="grid grid-cols-2 gap-4">
-                                                {["momentum", "mean_reversion", "regime_aware", "custom", "ensemble"].map((strat) => (
+                                                {[
+                                                    { id: "momentum", name: "Momentum", desc: "Follows market trends", tooltip: "Buys assets that are rising and sells those falling. Works well in trending markets but can be hurt by reversals." },
+                                                    { id: "mean_reversion", name: "Mean Reversion", desc: "Bets against trends", tooltip: "Assumes prices will return to their average. Buys dips and sells rallies. Risky in strong trends." },
+                                                    { id: "regime_aware", name: "Regime Aware", desc: "Adapts to market state", tooltip: "Switches between strategies based on detected market regime (bull, bear, sideways). More complex but versatile." },
+                                                    { id: "custom", name: "Custom", desc: "Build your own", tooltip: "Define your own logic using Tau specifications. Full control but requires expertise." },
+                                                    { id: "ensemble", name: "Ensemble", desc: "Combines multiple agents", tooltip: "Runs multiple strategies in parallel and combines their signals. Provides diversification and robustness." },
+                                                ].map((strat) => (
                                                     <div
-                                                        key={strat}
-                                                        onClick={() => updateField("strategy", strat)}
+                                                        key={strat.id}
+                                                        onClick={() => updateField("strategy", strat.id)}
                                                         className={cn(
-                                                            "p-4 rounded-lg border cursor-pointer transition-all hover:bg-secondary",
-                                                            state.data.strategy === strat ? "border-cyan-500 bg-cyan-500/10" : "border-border bg-card"
+                                                            "p-4 rounded-lg border cursor-pointer transition-all hover:bg-secondary group",
+                                                            state.data.strategy === strat.id ? "border-cyan-500 bg-cyan-500/10" : "border-border bg-card"
                                                         )}
                                                     >
-                                                        <div className="font-semibold capitalize">{strat.replace("_", " ")}</div>
-                                                        <div className="text-xs text-muted-foreground mt-1">
-                                                            {strat === "momentum" ? "Follows market trends" :
-                                                                strat === "mean_reversion" ? "Bets against trends" :
-                                                                    strat === "ensemble" ? "Combines multiple agents" : "Custom strategy"}
+                                                        <div className="font-semibold flex items-center justify-between">
+                                                            {strat.name}
+                                                            <InfoTooltip content={strat.tooltip} />
                                                         </div>
+                                                        <div className="text-xs text-muted-foreground mt-1">{strat.desc}</div>
                                                     </div>
                                                 ))}
                                             </div>

@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Play, Square, Activity, Timer, Check } from "lucide-react";
+import { Play, Square, Activity, Timer, Check, RotateCcw, Info } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/toast";
 
 
 type TrainingStats = {
@@ -25,27 +26,43 @@ export function TrainingMonitor() {
     const [currentStats, setCurrentStats] = useState<TrainingStats | null>(null);
     const ws = useRef<WebSocket | null>(null);
     const [useCrypto, setUseCrypto] = useState(false);
+    const [startTime, setStartTime] = useState<number | null>(null);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
+    const toast = useToast();
 
     // Sim Params
     const [volatility, setVolatility] = useState(0.01);
     const [drift, setDrift] = useState(0.002);
     const [fee, setFee] = useState(5.0);
 
+    // Default presets
+    const DEFAULT_VOLATILITY = 0.01;
+    const DEFAULT_DRIFT = 0.002;
+    const DEFAULT_FEE = 5.0;
+
     useEffect(() => {
         loadSettings();
         connectWs();
+        // Elapsed time timer
+        const timer = setInterval(() => {
+            if (startTime) {
+                setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+            }
+        }, 1000);
+
         return () => {
             if (ws.current) ws.current.close();
+            clearInterval(timer);
         };
     }, []);
 
     const loadSettings = async () => {
         try {
-            const settings = await api.settings.get();
+            const settings = (await api.settings.get()) as { market_sim?: { volatility?: number; drift_bull?: number; fee_bps?: number } };
             if (settings?.market_sim) {
-                setVolatility(settings.market_sim.volatility);
-                setDrift(settings.market_sim.drift_bull);
-                setFee(settings.market_sim.fee_bps);
+                setVolatility(settings.market_sim.volatility ?? DEFAULT_VOLATILITY);
+                setDrift(settings.market_sim.drift_bull ?? DEFAULT_DRIFT);
+                setFee(settings.market_sim.fee_bps ?? DEFAULT_FEE);
             }
         } catch (e) {
             console.error("Failed to load settings");
@@ -79,8 +96,11 @@ export function TrainingMonitor() {
                 }
             } else if (msg.status === "completed") {
                 setStatus("completed");
+                toast.success("Training completed successfully!");
             } else if (msg.status === "cancelled") {
                 setStatus("idle");
+                setStartTime(null);
+                toast.info("Training cancelled");
             }
         };
 
@@ -95,6 +115,8 @@ export function TrainingMonitor() {
         try {
             setEpisodeData([]);
             setPriceData([]);
+            setStartTime(Date.now());
+            setElapsedSeconds(0);
             const simConfig = useCrypto ? {
                 vol_base: parseFloat(volatility.toString()),
                 drift_bull: parseFloat(drift.toString()),
@@ -104,9 +126,10 @@ export function TrainingMonitor() {
 
             await api.trainer.start({}, useCrypto, simConfig);
             setStatus("running");
+            toast.info("Training started");
         } catch (e) {
             console.error("Failed to start training", e);
-            alert("Failed to start training");
+            toast.error("Failed to start training");
         }
     };
 
@@ -114,9 +137,24 @@ export function TrainingMonitor() {
         try {
             await api.trainer.stop();
             setStatus("idle");
+            setStartTime(null);
         } catch (e) {
             console.error(e);
+            toast.error("Failed to stop training");
         }
+    };
+
+    const handleResetParams = () => {
+        setVolatility(DEFAULT_VOLATILITY);
+        setDrift(DEFAULT_DRIFT);
+        setFee(DEFAULT_FEE);
+        toast.info("Parameters reset to defaults");
+    };
+
+    const formatElapsed = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, "0")}`;
     };
 
     return (
@@ -181,22 +219,55 @@ export function TrainingMonitor() {
                         </div>
                     )}
 
-                    <div className="flex gap-2">
+                    {/* Reset to Defaults Button */}
+                    {useCrypto && (
                         <Button
-                            onClick={handleStart}
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleResetParams}
                             disabled={status === "running"}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            className="w-full text-muted-foreground hover:text-foreground"
                         >
-                            <Play className="w-4 h-4 mr-2" /> Start
+                            <RotateCcw className="w-3 h-3 mr-2" /> Reset to Defaults
                         </Button>
+                    )}
+
+                    {/* Single Contextual Action Button */}
+                    {status === "running" ? (
                         <Button
                             onClick={handleStop}
-                            disabled={status !== "running"}
                             variant="destructive"
-                            className="flex-1"
+                            className="w-full"
                         >
-                            <Square className="w-4 h-4 mr-2" /> Stop
+                            <Square className="w-4 h-4 mr-2" /> Stop Training
                         </Button>
+                    ) : (
+                        <Button
+                            onClick={handleStart}
+                            className="w-full bg-green-600 hover:bg-green-700"
+                        >
+                            <Play className="w-4 h-4 mr-2" /> Start Training
+                        </Button>
+                    )}
+
+                    {/* Status Pill */}
+                    <div className="flex items-center justify-between p-2 rounded bg-secondary/20 border border-border/50">
+                        <div className="flex items-center gap-2">
+                            <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                status === "running" ? "bg-green-500 animate-pulse" :
+                                    status === "completed" ? "bg-blue-500" : "bg-yellow-500"
+                            )} />
+                            <span className="text-xs font-medium uppercase tracking-wider">
+                                {status}
+                            </span>
+                        </div>
+                        {status === "running" && startTime && (
+                            <span className="text-xs text-muted-foreground font-mono">
+                                <Timer className="w-3 h-3 inline mr-1" />
+                                {formatElapsed(elapsedSeconds)}
+                            </span>
+                        )}
                     </div>
 
                     {currentStats && (
@@ -218,6 +289,27 @@ export function TrainingMonitor() {
                             </div>
                         </div>
                     )}
+
+                    {/* Status Legend */}
+                    <div className="pt-3 border-t border-border/50">
+                        <div className="flex items-center gap-1 mb-2 text-xs text-muted-foreground">
+                            <Info className="w-3 h-3" /> Status Legend
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                                <span>Idle</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-green-500" />
+                                <span>Running</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span>Done</span>
+                            </div>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
