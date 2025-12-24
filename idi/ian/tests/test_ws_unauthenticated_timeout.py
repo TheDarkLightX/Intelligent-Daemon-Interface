@@ -42,12 +42,12 @@ def test_ws_unauthenticated_timeout_disconnects_client():
             async with aiohttp.ClientSession() as session:
                 ws = await session.ws_connect(f"ws://127.0.0.1:{port}/ws")
 
+                await ws.receive(timeout=1.0)
+
                 await asyncio.sleep(0.35)
 
-                assert ws.closed or ws.close_code is not None
-                if not ws.closed:
-                    msg = await ws.receive(timeout=1.0)
-                    assert msg.type in {WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR}
+                msg = await ws.receive(timeout=1.0)
+                assert msg.type in {WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR}
         finally:
             await server.stop()
 

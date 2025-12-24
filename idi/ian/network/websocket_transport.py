@@ -379,9 +379,11 @@ class WebSocketServer:
             return
 
         try:
-            await conn.ws.close(code=1008)
+            await conn.ws.close(code=1008, message=b"unauthenticated", drain=False)
         except Exception:
-            return
+            pass
+        finally:
+            self._remove_connection(conn_id)
     
     async def _handle_health(self, request: web.Request) -> web.Response:
         """Health check endpoint."""
