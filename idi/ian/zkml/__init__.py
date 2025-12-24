@@ -31,6 +31,17 @@ from .commitments import (
     CommitmentError,
 )
 
+from .secagg import (
+    SecAggError,
+    SecAggPhase,
+    ShamirSecretSharing,
+    ParticipantKeys,
+    PairwiseMasking,
+    MaskedGradient,
+    SecAggSession,
+    SecAggParticipant,
+)
+
 __all__ = [
     # Onboarding
     "HardwareCapabilities",
@@ -49,4 +60,13 @@ __all__ = [
     "AggregatedCommitment",
     "CommitmentAggregator",
     "CommitmentError",
+    # Secure Aggregation
+    "SecAggError",
+    "SecAggPhase",
+    "ShamirSecretSharing",
+    "ParticipantKeys",
+    "PairwiseMasking",
+    "MaskedGradient",
+    "SecAggSession",
+    "SecAggParticipant",
 ]
