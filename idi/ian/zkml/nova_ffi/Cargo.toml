@@ -1,0 +1,50 @@
+[package]
+name = "nova_ian"
+version = "0.1.0"
+edition = "2021"
+description = "Nova IVC bindings for IAN zkML training proofs"
+license = "MIT"
+
+[lib]
+name = "nova_ian"
+crate-type = ["cdylib"]
+
+[dependencies]
+# Nova IVC implementation (MIT license)
+nova-snark = { git = "https://github.com/microsoft/Nova", features = ["asm"] }
+
+# Pasta curves (Pallas/Vesta cycle)
+pasta_curves = "0.5"
+
+# Arkworks for field/curve arithmetic
+ark-ff = "0.4"
+ark-ec = "0.4"
+ark-serialize = "0.4"
+
+# PyO3 for Python bindings
+pyo3 = { version = "0.20", features = ["extension-module"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bincode = "1.3"
+
+# Cryptography
+sha2 = "0.10"
+rand = "0.8"
+
+# Error handling
+thiserror = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[features]
+default = []
+# Enable for production builds with full optimizations
+production = []
