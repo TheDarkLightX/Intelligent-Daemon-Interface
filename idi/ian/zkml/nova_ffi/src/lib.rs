@@ -2,6 +2,24 @@
 //!
 //! Provides PyO3 bindings to Nova IVC for IAN zkML training proofs.
 //!
+//! # SECURITY WARNING: SIMULATION MODE
+//!
+//! This implementation provides **structural validation only**.
+//! It does NOT perform real SNARK proof verification.
+//!
+//! For production use, integrate the actual Nova library:
+//! - <https://github.com/microsoft/Nova>
+//!
+//! Current implementation is suitable for:
+//! - Development and testing
+//! - Protocol integration
+//! - API design validation
+//!
+//! NOT suitable for:
+//! - Production deployment
+//! - Adversarial environments
+//! - Privacy-critical applications
+//!
 //! # Build
 //! ```bash
 //! maturin build --release
