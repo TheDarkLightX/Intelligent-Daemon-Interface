@@ -21,7 +21,7 @@ import hashlib
 import logging
 import secrets
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -53,6 +53,16 @@ MAX_CLOCK_SKEW_MS = 5_000  # 5 seconds
 
 # Nonce cache size (prevents replay within window)
 MAX_NONCE_CACHE_SIZE = 10_000
+
+# Signature queue backpressure
+MAX_SIGNATURE_QUEUE = 500
+MAX_SIGNATURE_BACKLOG_PER_PEER = 50
+
+# Capacity negotiation defaults
+IBLT_NEGOTIATION_INITIAL_CAPACITY = 64
+IBLT_NEGOTIATION_MAX_UNACKED = 512
+IBLT_NEGOTIATION_BACKOFF_BASE_S = 5
+IBLT_NEGOTIATION_BACKOFF_MAX_S = 60
 
 # Session limits
 MAX_ACTIVE_SESSIONS = 100
@@ -268,7 +278,12 @@ class CosignedSyncState:
     threshold: int
     min_unique_entities: int = 2  # Security: Prevent single-entity Sybil
 
-    def is_valid(self, now_ms: int | None = None) -> tuple[bool, str]:
+    def is_valid(
+        self,
+        now_ms: int | None = None,
+        *,
+        connected_peers: int | None = None,
+    ) -> tuple[bool, str]:
         """
         Validate cosigned state.
 
@@ -293,14 +308,29 @@ class CosignedSyncState:
         if len(witness_ids) != len(set(witness_ids)):
             return False, "Duplicate witness IDs detected"
 
+        enforce_diversity = True
+        degraded_mode = False
+        if connected_peers is not None:
+            if connected_peers < 8:
+                enforce_diversity = False
+                degraded_mode = True
+            elif connected_peers < 16:
+                enforce_diversity = False
+
         # Security: Check witness diversity (unique public keys)
         # Prevents single entity from controlling multiple witness IDs
         unique_pubkeys = {w.public_key for w in self.witnesses}
         if len(unique_pubkeys) < self.min_unique_entities:
-            return False, (
-                f"Insufficient witness diversity: {len(unique_pubkeys)} unique keys "
-                f"< {self.min_unique_entities} required"
-            )
+            if enforce_diversity:
+                return False, (
+                    f"Insufficient witness diversity: {len(unique_pubkeys)} unique keys "
+                    f"< {self.min_unique_entities} required"
+                )
+            if degraded_mode:
+                logger.warning(
+                    "Degraded diversity mode (connected_peers=%s): accepting best-effort diversity",
+                    connected_peers,
+                )
 
         valid_count = 0
         for witness in self.witnesses:
@@ -497,6 +527,143 @@ class NonceCache:
         return removed
 
 
+@dataclass
+class _SignatureRequest:
+    witness: "WitnessSignature"
+    state: "SyncState"
+    future: asyncio.Future
+    peer_id: str
+
+
+class PerPeerReplayGuard:
+    """
+    Per-peer replay guard enforcing monotonic timestamps and nonce uniqueness.
+    """
+
+    def __init__(self, max_entries_per_peer: int = MAX_NONCE_CACHE_SIZE):
+        self._max_entries_per_peer = max_entries_per_peer
+        self._peer_nonces: dict[str, OrderedDict[bytes, int]] = {}
+        self._peer_last_timestamp_ms: dict[str, int] = {}
+        self._lock = asyncio.Lock()
+
+    async def check_and_add(
+        self,
+        peer_id: str,
+        nonce: bytes,
+        timestamp_ms: int,
+    ) -> tuple[bool, str]:
+        if not isinstance(peer_id, str) or not peer_id:
+            raise ValueError("peer_id must be a non-empty string")
+        if not isinstance(nonce, bytes) or len(nonce) != 32:
+            raise ValueError("Nonce must be 32 bytes")
+        if not isinstance(timestamp_ms, int) or timestamp_ms < 0:
+            raise ValueError("Timestamp must be a positive integer")
+
+        async with self._lock:
+            last_ts = self._peer_last_timestamp_ms.get(peer_id)
+            if last_ts is not None and timestamp_ms <= last_ts:
+                return False, "non_monotonic_timestamp"
+
+            cache = self._peer_nonces.setdefault(peer_id, OrderedDict())
+            if nonce in cache:
+                return False, "nonce_replay"
+
+            cache[nonce] = timestamp_ms
+            cache.move_to_end(nonce)
+
+            while len(cache) > self._max_entries_per_peer:
+                cache.popitem(last=False)
+
+            self._peer_last_timestamp_ms[peer_id] = timestamp_ms
+            return True, ""
+
+
+@dataclass
+class _CapacityState:
+    capacity: int
+    consecutive_failures: int = 0
+    next_attempt_s: float = 0.0
+
+
+class CapacityNegotiator:
+    """
+    Tracks per-peer capacity negotiation with backoff and safe floor.
+    """
+
+    def __init__(
+        self,
+        initial_capacity: int = IBLT_NEGOTIATION_INITIAL_CAPACITY,
+        max_unacked_capacity: int = IBLT_NEGOTIATION_MAX_UNACKED,
+    ):
+        self._initial_capacity = initial_capacity
+        self._max_unacked_capacity = max_unacked_capacity
+        self._states: dict[str, _CapacityState] = {}
+        self._lock = asyncio.Lock()
+
+    async def select_capacity(
+        self,
+        peer_id: str,
+        desired_capacity: int,
+        *,
+        now_s: float | None = None,
+    ) -> int:
+        if now_s is None:
+            now_s = time.time()
+
+        async with self._lock:
+            state = self._states.get(peer_id)
+            if state is None:
+                state = _CapacityState(capacity=self._initial_capacity)
+                self._states[peer_id] = state
+
+            if now_s < state.next_attempt_s:
+                return state.capacity
+
+            desired = max(self._initial_capacity, desired_capacity)
+
+            # Enforce safe ceiling until we have a successful ACK at or above it.
+            if desired > self._max_unacked_capacity and state.capacity < self._max_unacked_capacity:
+                desired = self._max_unacked_capacity
+
+            if desired <= state.capacity:
+                return state.capacity
+
+            return desired
+
+    async def record_result(
+        self,
+        peer_id: str,
+        attempted_capacity: int,
+        *,
+        success: bool,
+        now_s: float | None = None,
+    ) -> None:
+        if now_s is None:
+            now_s = time.time()
+
+        async with self._lock:
+            state = self._states.get(peer_id)
+            if state is None:
+                state = _CapacityState(capacity=self._initial_capacity)
+                self._states[peer_id] = state
+
+            if success:
+                state.capacity = attempted_capacity
+                state.consecutive_failures = 0
+                state.next_attempt_s = 0.0
+                return
+
+            state.consecutive_failures += 1
+            backoff = min(
+                IBLT_NEGOTIATION_BACKOFF_BASE_S * (2 ** (state.consecutive_failures - 1)),
+                IBLT_NEGOTIATION_BACKOFF_MAX_S,
+            )
+            state.next_attempt_s = now_s + backoff
+
+            if state.consecutive_failures >= 3:
+                state.capacity = self._initial_capacity
+
+
 # =============================================================================
 # Rate Limiter
 # =============================================================================
@@ -590,8 +757,13 @@ class WitnessCoordinator:
         self._private_key = private_key
         self._node_id = node_id
         self._threshold = min(max(threshold, MIN_WITNESS_THRESHOLD), MAX_WITNESS_THRESHOLD)
-        self._nonce_cache = NonceCache()
+        self._replay_guard = PerPeerReplayGuard()
         self._known_witnesses: dict[str, bytes] = {}  # witness_id -> public_key
+        self._signature_queue: deque[_SignatureRequest] = deque()
+        self._signature_queue_peer_counts: dict[str, int] = {}
+        self._signature_queue_lock = asyncio.Lock()
+        self._signature_queue_event = asyncio.Event()
+        self._signature_worker: asyncio.Task | None = None
 
     def add_witness(self, witness_id: str, public_key: bytes) -> None:
         """Register a known witness."""
@@ -651,6 +823,95 @@ class WitnessCoordinator:
             4. Timestamp is fresh
             5. Nonce hasn't been used
         """
+        self._ensure_signature_worker()
+        future: asyncio.Future = asyncio.get_running_loop().create_future()
+        request = _SignatureRequest(
+            witness=witness,
+            state=state,
+            future=future,
+            peer_id=witness.witness_id,
+        )
+        await self._enqueue_signature_request(request)
+        return await future
+
+    def _ensure_signature_worker(self) -> None:
+        if self._signature_worker is None or self._signature_worker.done():
+            self._signature_worker = asyncio.create_task(self._signature_worker_loop())
+
+    async def _enqueue_signature_request(self, request: _SignatureRequest) -> None:
+        async with self._signature_queue_lock:
+            peer_id = request.peer_id
+            peer_count = self._signature_queue_peer_counts.get(peer_id, 0)
+
+            if peer_count >= MAX_SIGNATURE_BACKLOG_PER_PEER:
+                dropped = self._drop_oldest_for_peer(peer_id)
+                if dropped is not None and not dropped.future.done():
+                    dropped.future.set_result((False, "Signature backlog cap exceeded"))
+                    logger.warning("Signature backlog cap exceeded for %s", peer_id[:16])
+
+            if len(self._signature_queue) >= MAX_SIGNATURE_QUEUE:
+                dropped = self._signature_queue.popleft()
+                self._signature_queue_peer_counts[dropped.peer_id] = (
+                    self._signature_queue_peer_counts.get(dropped.peer_id, 1) - 1
+                )
+                if self._signature_queue_peer_counts.get(dropped.peer_id, 0) <= 0:
+                    self._signature_queue_peer_counts.pop(dropped.peer_id, None)
+                if not dropped.future.done():
+                    dropped.future.set_result((False, "Signature queue overflow"))
+                logger.warning("Signature queue overflow; dropping oldest request")
+
+            self._signature_queue.append(request)
+            self._signature_queue_peer_counts[peer_id] = self._signature_queue_peer_counts.get(peer_id, 0) + 1
+            self._signature_queue_event.set()
+
+    def _drop_oldest_for_peer(self, peer_id: str) -> _SignatureRequest | None:
+        for request in list(self._signature_queue):
+            if request.peer_id != peer_id:
+                continue
+            self._signature_queue.remove(request)
+            self._signature_queue_peer_counts[peer_id] = self._signature_queue_peer_counts.get(peer_id, 1) - 1
+            if self._signature_queue_peer_counts.get(peer_id, 0) <= 0:
+                self._signature_queue_peer_counts.pop(peer_id, None)
+            return request
+        return None
+
+    def _pop_next_signature_request(self) -> _SignatureRequest | None:
+        if not self._signature_queue_peer_counts:
+            return None
+        peer_id = min(
+            self._signature_queue_peer_counts,
+            key=lambda pid: self._signature_queue_peer_counts[pid],
+        )
+        for request in list(self._signature_queue):
+            if request.peer_id != peer_id:
+                continue
+            self._signature_queue.remove(request)
+            self._signature_queue_peer_counts[peer_id] -= 1
+            if self._signature_queue_peer_counts[peer_id] <= 0:
+                self._signature_queue_peer_counts.pop(peer_id, None)
+            return request
+        return None
+
+    async def _signature_worker_loop(self) -> None:
+        while True:
+            await self._signature_queue_event.wait()
+            while True:
+                async with self._signature_queue_lock:
+                    if not self._signature_queue:
+                        self._signature_queue_event.clear()
+                        break
+                    request = self._pop_next_signature_request()
+                if request is None:
+                    break
+                result = await self._validate_witness_signature_direct(request.witness, request.state)
+                if not request.future.done():
+                    request.future.set_result(result)
+
+    async def _validate_witness_signature_direct(
+        self,
+        witness: WitnessSignature,
+        state: SyncState
+    ) -> tuple[bool, str]:
         now_ms = int(time.time() * 1000)
 
         # Check if witness is known
@@ -669,17 +930,18 @@ class WitnessCoordinator:
         if age_ms < -MAX_CLOCK_SKEW_MS:
             return False, f"Signature from future: {-age_ms}ms ahead"
 
-        # Check nonce hasn't been used (replay prevention)
-        is_fresh = await self._nonce_cache.check_and_add(
+        # Verify signature before marking replay guard
+        if not witness.verify(state):
+            return False, "Invalid signature"
+
+        # Check replay guard (monotonic timestamp + nonce uniqueness)
+        is_fresh, reason = await self._replay_guard.check_and_add(
+            witness.witness_id,
             witness.session_nonce,
             witness.timestamp_ms
         )
         if not is_fresh:
-            return False, "Nonce replay detected"
-
-        # Verify signature
-        if not witness.verify(state):
-            return False, "Invalid signature"
+            return False, reason
 
         return True, ""
 
@@ -757,6 +1019,8 @@ class FrontierSync:
                 hash_seed=secrets.token_bytes(32),
             )
         self._iblt_config = iblt_config
+        self._iblt_capacity_negotiator = CapacityNegotiator()
+        self._last_iblt_config: IBLTConfig | None = None
 
         # Session management
         self._active_sessions: dict[str, SyncSession] = {}
@@ -765,6 +1029,7 @@ class FrontierSync:
         # Security controls
         self._rate_limiter = SyncRateLimiter()
         self._nonce_cache = NonceCache()
+        self._diversity_degraded = False
 
     def get_sync_state(self) -> SyncState:
         """Get current sync state from MMR."""
@@ -774,6 +1039,38 @@ class FrontierSync:
             frontier=self._mmr.frontier if hasattr(self._mmr, 'frontier') else [],
             version=self._mmr.version if hasattr(self._mmr, 'version') else 0,
         )
+
+    def _get_connected_peer_count(self) -> int | None:
+        if hasattr(self._transport, "get_peer_count"):
+            try:
+                return int(self._transport.get_peer_count())
+            except Exception:
+                return None
+        if hasattr(self._transport, "get_connected_peers"):
+            try:
+                return len(self._transport.get_connected_peers())
+            except Exception:
+                return None
+        return None
+
+    def validate_cosigned_state(
+        self,
+        cosigned: CosignedSyncState,
+        *,
+        now_ms: int | None = None,
+    ) -> tuple[bool, str]:
+        connected_peers = self._get_connected_peer_count()
+        if connected_peers is None:
+            return cosigned.is_valid(now_ms)
+
+        if connected_peers < 8:
+            if not self._diversity_degraded:
+                logger.warning("Connected peers < 8: entering degraded diversity mode")
+            self._diversity_degraded = True
+        else:
+            self._diversity_degraded = False
+
+        return cosigned.is_valid(now_ms, connected_peers=connected_peers)
 
     async def _create_session(self, peer_id: str) -> SyncSession:
         """
@@ -884,11 +1181,16 @@ class FrontierSync:
             return SyncResult(status=SyncStatus.RATE_LIMITED, error=reason)
 
         session = None
+        iblt_config: IBLTConfig | None = None
+        ack_recorded = False
         try:
             session = await self._create_session(peer_id)
 
+            iblt_config = await self._select_iblt_config(peer_id)
+            self._last_iblt_config = iblt_config
+
             # Build local IBLT from entry hashes
-            local_iblt = await self._build_iblt_from_log()
+            local_iblt = await self._build_iblt_from_log(iblt_config)
 
             auth_key = None
             if hasattr(self._transport, 'get_session_key'):
@@ -904,10 +1206,24 @@ class FrontierSync:
             # Exchange IBLTs with peer
             peer_iblt_data = await self._exchange_iblts(peer_id, local_iblt_data)
             try:
-                peer_iblt = IBLT.deserialize(peer_iblt_data, self._iblt_config, auth_key=auth_key)
+                peer_iblt = IBLT.deserialize(peer_iblt_data, iblt_config, auth_key=auth_key)
             except ValueError as e:
                 if auth_key is not None and 'HMAC verification failed' in str(e):
+                    if iblt_config is not None and not ack_recorded:
+                        await self._iblt_capacity_negotiator.record_result(
+                            peer_id,
+                            iblt_config.num_cells,
+                            success=False,
+                        )
+                        ack_recorded = True
                     return SyncResult(status=SyncStatus.ERROR, error=str(e))
+                if iblt_config is not None and not ack_recorded:
+                    await self._iblt_capacity_negotiator.record_result(
+                        peer_id,
+                        iblt_config.num_cells,
+                        success=False,
+                    )
+                    ack_recorded = True
                 raise
 
             # Compute and decode difference
@@ -915,6 +1231,13 @@ class FrontierSync:
             only_local, only_peer, success = diff_iblt.decode()
 
             if not success:
+                if iblt_config is not None and not ack_recorded:
+                    await self._iblt_capacity_negotiator.record_result(
+                        peer_id,
+                        iblt_config.num_cells,
+                        success=False,
+                    )
+                    ack_recorded = True
                 # IBLT decode failed, fall back to frontier sync
                 logger.info("IBLT decode failed, falling back to frontier sync")
                 return await self.sync_with_peer(peer_id)
@@ -946,6 +1269,14 @@ class FrontierSync:
             iblt_bytes = len(local_iblt_data) * 2  # Sent + received
             saved = max(0, full_sync_bytes - iblt_bytes)
 
+            if iblt_config is not None and not ack_recorded:
+                await self._iblt_capacity_negotiator.record_result(
+                    peer_id,
+                    iblt_config.num_cells,
+                    success=True,
+                )
+                ack_recorded = True
+
             return SyncResult(
                 status=SyncStatus.SUCCESS,
                 method="iblt",
@@ -956,15 +1287,38 @@ class FrontierSync:
 
         except Exception:
             logger.exception(f"IBLT sync error with {peer_id}")
+            if iblt_config is not None and not ack_recorded:
+                await self._iblt_capacity_negotiator.record_result(
+                    peer_id,
+                    iblt_config.num_cells,
+                    success=False,
+                )
+                ack_recorded = True
             # Fall back to frontier sync
             return await self.sync_with_peer(peer_id)
         finally:
             if session:
                 await self._close_session(session)
 
-    async def _build_iblt_from_log(self) -> IBLT:
+    async def _select_iblt_config(self, peer_id: str) -> IBLTConfig:
+        desired_capacity = self._iblt_config.num_cells
+        selected_capacity = await self._iblt_capacity_negotiator.select_capacity(
+            peer_id,
+            desired_capacity,
+        )
+        if selected_capacity == self._iblt_config.num_cells:
+            return self._iblt_config
+        return IBLTConfig(
+            num_cells=selected_capacity,
+            num_hashes=self._iblt_config.num_hashes,
+            hash_seed=self._iblt_config.hash_seed,
+        )
+
+    async def _build_iblt_from_log(self, iblt_config: IBLTConfig | None = None) -> IBLT:
         """Build IBLT from current log entries."""
-        iblt = IBLT(self._iblt_config)
+        if iblt_config is None:
+            iblt_config = self._last_iblt_config or self._iblt_config
+        iblt = IBLT(iblt_config)
 
         # Get all entry hashes from MMR
         if hasattr(self._mmr, 'get_all_entry_hashes'):

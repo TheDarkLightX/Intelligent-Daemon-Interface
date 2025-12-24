@@ -12,10 +12,9 @@ These tests are designed to expose bugs that simpler unit tests might miss.
 """
 
 import hashlib
-import random
-import time
 import pytest
 from typing import List
+from unittest.mock import patch
 
 from idi.ian.models import (
     GoalID,
@@ -69,7 +68,7 @@ def coordinator(goal_spec):
 
 def make_contribution(goal_id: GoalID, seed: int = None) -> Contribution:
     """Create a unique contribution."""
-    seed = seed or random.randint(0, 2**32)
+    seed = 0 if seed is None else seed
     params = hashlib.sha256(f"params_{seed}".encode()).digest()
     
     return Contribution(
@@ -232,12 +231,16 @@ class TestGauntletEdgeCases:
             config=CoordinatorConfig(leaderboard_capacity=2),
             evaluation_harness=FixedScoreHarness(),
         )
-        
-        # Submit 3 contributions with same score
-        for i in range(3):
-            contrib = make_contribution(goal_spec.goal_id, seed=i)
-            coordinator.process_contribution(contrib)
-            time.sleep(0.01)  # Ensure different timestamps
+
+        with patch("idi.ian.coordinator.time.time") as now:
+            now_s = [1000.0]
+            now.side_effect = lambda: now_s[0]
+
+            # Submit 3 contributions with same score
+            for i in range(3):
+                contrib = make_contribution(goal_spec.goal_id, seed=i)
+                coordinator.process_contribution(contrib)
+                now_s[0] += 0.001  # Ensure different timestamps
         
         leaderboard = coordinator.get_leaderboard()
         
@@ -350,8 +353,8 @@ class TestGauntletStress:
             mmr.append(data)
         
         # Verify random proofs
-        for _ in range(50):
-            idx = random.randint(0, 999)
+        for i in range(50):
+            idx = (i * 37) % 1000
             proof = mmr.get_proof(idx)
             root = mmr.get_root()
             
@@ -426,8 +429,8 @@ class TestGauntletProperties:
         mmr = MerkleMountainRange()
         
         # Random append sequence
-        for i in range(random.randint(50, 200)):
-            data = hashlib.sha256(f"random_{i}_{random.random()}".encode()).digest()
+        for i in range(100):
+            data = hashlib.sha256(f"random_{i}".encode()).digest()
             mmr.append(data)
         
         # All proofs should be valid
@@ -452,8 +455,9 @@ class TestGauntletProperties:
                 coord.process_contribution(contrib)
             return coord
         
-        coord1 = run_coordinator()
-        coord2 = run_coordinator()
+        with patch("idi.ian.coordinator.time.time", return_value=1000.0):
+            coord1 = run_coordinator()
+            coord2 = run_coordinator()
         
         # States should be identical
         assert coord1.get_log_root() == coord2.get_log_root()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import selectors
 import signal
 import socket
 import subprocess
@@ -18,20 +19,55 @@ def _find_free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _wait_for_health(url: str, timeout_seconds: float) -> None:
-    deadline = time.time() + timeout_seconds
+def _wait_for_health(proc: subprocess.Popen[str], url: str, timeout_seconds: float) -> str:
+    deadline = time.monotonic() + timeout_seconds
     last_error: Exception | None = None
+    output_parts: list[str] = []
 
-    while time.time() < deadline:
-        try:
-            with urllib.request.urlopen(url, timeout=1.0) as resp:
-                if resp.status == 200:
-                    return
-        except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
-            last_error = exc
-        time.sleep(0.1)
+    selector: selectors.BaseSelector | None = None
+    if proc.stdout is not None:
+        selector = selectors.DefaultSelector()
+        selector.register(proc.stdout, selectors.EVENT_READ)
 
-    raise AssertionError(f"/health not reachable within {timeout_seconds}s: {last_error}")
+    try:
+        while time.monotonic() < deadline:
+            if proc.poll() is not None:
+                if proc.stdout is not None:
+                    try:
+                        output_parts.append(proc.stdout.read())
+                    except Exception:
+                        pass
+                output = "".join(output_parts)
+                raise AssertionError(
+                    f"node process exited before /health was ready: rc={proc.returncode}\n{output}"
+                )
+
+            try:
+                with urllib.request.urlopen(url, timeout=1.0) as resp:
+                    if resp.status == 200:
+                        return "".join(output_parts)
+            except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
+                last_error = exc
+
+            if selector is None:
+                continue
+
+            for _key, _mask in selector.select(timeout=0.25):
+                if proc.stdout is None:
+                    break
+                try:
+                    line = proc.stdout.readline()
+                except Exception:
+                    line = ""
+                if not line:
+                    continue
+                output_parts.append(line)
+
+        output = "".join(output_parts)
+        raise AssertionError(f"/health not reachable within {timeout_seconds}s: {last_error}\n{output}")
+    finally:
+        if selector is not None:
+            selector.close()
 
 
 def test_cli_node_start_exposes_health_and_exits_cleanly(tmp_path: Path) -> None:
@@ -40,6 +76,7 @@ def test_cli_node_start_exposes_health_and_exits_cleanly(tmp_path: Path) -> None
     ws_port = _find_free_port()
 
     key_dir = tmp_path / "keys"
+    key_dir.mkdir(parents=True, exist_ok=True)
 
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
@@ -75,6 +112,8 @@ def test_cli_node_start_exposes_health_and_exits_cleanly(tmp_path: Path) -> None
             "IAN_KEY_DIR": str(key_dir),
             "IAN_GOAL_ID": "CLI_SMOKE_GOAL",
             "IAN_API_KEY_REQUIRED": "0",
+            "PYTHONUNBUFFERED": "1",
+            "PYTHONHASHSEED": "0",
         }
     )
 
@@ -92,25 +131,33 @@ def test_cli_node_start_exposes_health_and_exits_cleanly(tmp_path: Path) -> None
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        bufsize=1,
     )
 
+    output = ""
+    failure: BaseException | None = None
     try:
-        _wait_for_health(f"http://127.0.0.1:{api_port}/health", timeout_seconds=15.0)
+        output = _wait_for_health(
+            proc,
+            f"http://127.0.0.1:{api_port}/health",
+            timeout_seconds=15.0,
+        )
+    except BaseException as exc:
+        failure = exc
     finally:
         if proc.poll() is None:
             proc.send_signal(signal.SIGTERM)
 
         try:
-            proc.wait(timeout=10.0)
+            output_tail = proc.communicate(timeout=10.0)[0]
         except subprocess.TimeoutExpired:
             proc.kill()
-            proc.wait(timeout=10.0)
+            output_tail = proc.communicate(timeout=10.0)[0]
 
-        output = ""
-        if proc.stdout is not None:
-            try:
-                output = proc.stdout.read()
-            except Exception:
-                output = ""
+        output = (output or "") + (output_tail or "")
 
-        assert proc.returncode == 0, output
+        if failure is None:
+            assert proc.returncode == 0, output
+
+    if failure is not None:
+        raise AssertionError(f"{failure}\n{output}") from failure

@@ -18,7 +18,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
-import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -26,6 +25,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 logger = logging.getLogger(__name__)
+
+
+class _FakeClock:
+    def __init__(self, now_s: float = 1_700_000_000.0):
+        self._now_s = now_s
+
+    def now_s(self) -> float:
+        return self._now_s
+
+    def advance(self, delta_s: float) -> None:
+        self._now_s += float(delta_s)
 
 
 # =============================================================================
@@ -38,7 +48,7 @@ class MockMessage:
     msg_type: str
     sender_id: str
     payload: Dict[str, Any]
-    timestamp: float = field(default_factory=time.time)
+    timestamp: float = field(default_factory=lambda: 0.0)
     signature: bytes = b""
 
 
@@ -64,42 +74,43 @@ class MockNetwork:
     - Network partitions
     - Byzantine behavior
     """
-    
-    def __init__(self):
+    def __init__(self, *, seed: int = 0, clock: _FakeClock | None = None):
         self._nodes: Dict[str, "MockNode"] = {}
         self._partitions: List[Set[str]] = []  # Groups that can't communicate
         self._global_latency_ms: float = 10.0
         self._global_drop_rate: float = 0.0
         self._message_log: List[Dict[str, Any]] = []
-    
+        self._rng = random.Random(seed)
+        self._clock = _FakeClock() if clock is None else clock
+
     def add_node(self, node: "MockNode") -> None:
         """Add node to network."""
         self._nodes[node.node_id] = node
         node.set_network(self)
-    
+
     def remove_node(self, node_id: str) -> None:
         """Remove node from network."""
         self._nodes.pop(node_id, None)
-    
+
     def get_node(self, node_id: str) -> Optional["MockNode"]:
         """Get node by ID."""
         return self._nodes.get(node_id)
-    
+
     def get_all_nodes(self) -> List["MockNode"]:
         """Get all nodes."""
         return list(self._nodes.values())
-    
+
     def create_partition(self, group_a: Set[str], group_b: Set[str]) -> None:
         """Create network partition between two groups."""
         self._partitions.append(group_a)
         self._partitions.append(group_b)
         logger.info(f"Created partition: {group_a} <-> {group_b}")
-    
+
     def heal_partitions(self) -> None:
         """Heal all network partitions."""
         self._partitions.clear()
         logger.info("Healed all network partitions")
-    
+
     def can_communicate(self, from_id: str, to_id: str) -> bool:
         """Check if two nodes can communicate."""
         for partition in self._partitions:
@@ -108,7 +119,7 @@ class MockNetwork:
             if to_id in partition and from_id not in partition:
                 return False
         return True
-    
+
     async def send_message(
         self,
         from_id: str,
@@ -120,32 +131,33 @@ class MockNetwork:
         if not self.can_communicate(from_id, to_id):
             logger.debug(f"Message dropped: partition {from_id} -> {to_id}")
             return False
-        
+
         # Check drop rate
-        if random.random() < self._global_drop_rate:
+        if self._rng.random() < self._global_drop_rate:
             logger.debug(f"Message dropped: random {from_id} -> {to_id}")
             return False
-        
+
         # Get target node
         target = self._nodes.get(to_id)
         if not target:
             return False
-        
+
         # Simulate latency
-        await asyncio.sleep(self._global_latency_ms / 1000.0)
-        
+        self._clock.advance(self._global_latency_ms / 1000.0)
+        await asyncio.sleep(0)
+
         # Log message
         self._message_log.append({
             "from": from_id,
             "to": to_id,
             "type": message.msg_type,
-            "timestamp": time.time(),
+            "timestamp": self._clock.now_s(),
         })
-        
+
         # Deliver message
         await target.receive_message(message)
         return True
-    
+
     async def broadcast(
         self,
         from_id: str,
@@ -263,7 +275,7 @@ class MockNode:
 @pytest.fixture
 def network():
     """Create mock network."""
-    return MockNetwork()
+    return MockNetwork(seed=0)
 
 
 @pytest.fixture
@@ -382,7 +394,7 @@ class TestMessagePropagation:
             # Forward to random peers (gossip)
             node = network.get_node(node_id)
             if node and len(received_by) < 5:
-                for peer_id in list(node._peers)[:2]:
+                for peer_id in sorted(node._peers)[:2]:
                     if peer_id not in received_by:
                         forward_msg = MockMessage(
                             msg_type="GOSSIP",
@@ -399,16 +411,13 @@ class TestMessagePropagation:
         origin = nodes[0]
         received_by.add(origin.node_id)
         
-        for peer_id in list(origin._peers)[:2]:
+        for peer_id in sorted(origin._peers)[:2]:
             msg = MockMessage(
                 msg_type="GOSSIP",
                 sender_id=origin.node_id,
                 payload={"current_node": peer_id, "original": "test_data"},
             )
             await origin.send_to_peer(peer_id, msg)
-        
-        # Allow propagation
-        await asyncio.sleep(0.1)
         
         # Should reach most/all nodes
         assert len(received_by) >= 3
@@ -696,9 +705,9 @@ class TestLoadAndStress:
                 )
                 tasks.append(node.broadcast(msg))
         
-        start = time.time()
+        start = network._clock.now_s()
         await asyncio.gather(*tasks)
-        elapsed = time.time() - start
+        elapsed = network._clock.now_s() - start
         
         total_messages = network.get_message_count()
         
@@ -808,12 +817,12 @@ class TestLatencyAndTiming:
             return await nodes[0].send_to_peer(nodes[1].node_id, msg)
         
         # Should complete despite latency
-        start = time.time()
+        start = network._clock.now_s()
         result = await asyncio.wait_for(slow_operation(), timeout=1.0)
-        elapsed = time.time() - start
+        elapsed = network._clock.now_s() - start
         
         assert result
-        assert elapsed >= 0.1  # Should have waited for latency
+        assert elapsed >= 0.099  # Should have waited for latency (small tolerance for FP precision)
 
 
 # =============================================================================
@@ -839,11 +848,13 @@ class TestFuzzing:
         
         nodes[1].register_handler("FUZZ", safe_handler)
         
+        rng = random.Random(0)
+
         # Send messages with random payloads
         for _ in range(50):
             payload = {
-                "data": random.choice([None, "", 0, [], {}, "valid"]),
-                "extra": random.randint(-1000, 1000),
+                "data": rng.choice([None, "", 0, [], {}, "valid"]),
+                "extra": rng.randint(-1000, 1000),
             }
             
             msg = MockMessage(

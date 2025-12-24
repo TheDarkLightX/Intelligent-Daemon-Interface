@@ -254,11 +254,12 @@ class P2PManager:
         # Connection semaphore (limit concurrent pending connections)
         self._connection_semaphore = asyncio.Semaphore(self._config.max_pending_connections)
 
-        # Replay attack protection: LRU cache of seen message IDs
-        # Key: message_id (sender_id:nonce), Value: timestamp
-        # Messages older than 5 minutes are evicted
-        self._seen_messages: OrderedDict[str, float] = OrderedDict()
-        self._max_seen_messages = 100_000  # Cap to prevent memory exhaustion
+        # Replay attack protection: per-peer monotonic timestamps + nonce LRU
+        # Key: peer_id -> {nonce: seen_at_s}; timestamps are tracked per peer
+        # Messages older than 5 minutes are rejected (freshness window)
+        self._peer_nonce_cache: dict[str, OrderedDict[str, float]] = {}
+        self._peer_last_timestamp_ms: dict[str, int] = {}
+        self._max_nonce_cache_per_peer = 10_000
         self._message_ttl_seconds = 300  # 5 minute window
 
         # Server
@@ -312,6 +313,7 @@ class P2PManager:
 
         Security:
         - Prevents replay attacks by tracking seen message nonces
+        - Enforces per-peer monotonic timestamps
         - Uses LRU eviction to bound memory usage
         - Evicts messages older than TTL
 
@@ -320,11 +322,7 @@ class P2PManager:
         """
         msg_id = message.message_id()
         now = time.time()
-
-        # Check if we've seen this message before
-        if msg_id in self._seen_messages:
-            logger.warning(f"Replay attack detected: {msg_id[:32]}...")
-            return True
+        sender_id = message.sender_id
 
         # Check timestamp freshness (reject messages older than TTL)
         msg_timestamp_s = message.timestamp / 1000.0  # Convert ms to seconds
@@ -332,8 +330,25 @@ class P2PManager:
             logger.warning(f"Message timestamp too old/future: {msg_id[:32]}...")
             return True
 
-        # Record this message
-        self._seen_messages[msg_id] = now
+        # Per-peer monotonic timestamps
+        last_timestamp_ms = self._peer_last_timestamp_ms.get(sender_id)
+        if last_timestamp_ms is not None and message.timestamp <= last_timestamp_ms:
+            logger.warning(f"Non-monotonic timestamp from {sender_id[:16]}...: {msg_id[:32]}...")
+            return True
+
+        # Per-peer nonce cache (LRU)
+        peer_cache = self._peer_nonce_cache.setdefault(sender_id, OrderedDict())
+        if message.nonce in peer_cache:
+            logger.warning(f"Replay attack detected: {msg_id[:32]}...")
+            return True
+
+        peer_cache[message.nonce] = now
+        peer_cache.move_to_end(message.nonce)
+        while len(peer_cache) > self._max_nonce_cache_per_peer:
+            peer_cache.popitem(last=False)
+
+        # Record last timestamp for monotonicity
+        self._peer_last_timestamp_ms[sender_id] = message.timestamp
 
         # Evict old entries
         self._evict_old_messages()
@@ -345,17 +360,24 @@ class P2PManager:
         now = time.time()
         cutoff = now - self._message_ttl_seconds
 
-        # Evict by age (oldest first since OrderedDict maintains insertion order)
-        while self._seen_messages:
-            oldest_id, oldest_time = next(iter(self._seen_messages.items()))
-            if oldest_time < cutoff:
-                self._seen_messages.pop(oldest_id)
-            else:
-                break  # Rest are newer
+        for peer_id, cache in list(self._peer_nonce_cache.items()):
+            # Evict by age (oldest first since OrderedDict maintains insertion order)
+            while cache:
+                _, oldest_time = next(iter(cache.items()))
+                if oldest_time < cutoff:
+                    cache.popitem(last=False)
+                else:
+                    break  # Rest are newer
 
-        # Also enforce size limit
-        while len(self._seen_messages) > self._max_seen_messages:
-            self._seen_messages.popitem(last=False)  # Remove oldest
+            if not cache:
+                self._peer_nonce_cache.pop(peer_id, None)
+
+        # Clean up stale timestamp entries for peers with no cache
+        for peer_id, last_ts in list(self._peer_last_timestamp_ms.items()):
+            if peer_id in self._peer_nonce_cache:
+                continue
+            if (last_ts / 1000.0) < cutoff:
+                self._peer_last_timestamp_ms.pop(peer_id, None)
 
     # -------------------------------------------------------------------------
     # Lifecycle

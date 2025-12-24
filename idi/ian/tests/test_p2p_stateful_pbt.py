@@ -22,8 +22,60 @@ try:
 
     HAS_HYPOTHESIS = True
 except ImportError:
+    class _HealthCheckStub:
+        too_slow = object()
+
+    def settings(*_args: Any, **_kwargs: Any):
+        def _decorator(fn: Any) -> Any:
+            return fn
+
+        return _decorator
+
+    class _StrategiesStub:
+        @staticmethod
+        def text(**_kwargs: Any) -> Any:
+            return None
+
+        @staticmethod
+        def booleans() -> Any:
+            return None
+
+    st = _StrategiesStub()  # type: ignore
+
+    class RuleBasedStateMachine:  # type: ignore
+        class TestCase:  # pragma: no cover
+            pass
+
+    def initialize(*_args: Any, **_kwargs: Any):
+        def _decorator(fn: Any) -> Any:
+            return fn
+
+        return _decorator
+
+    def invariant(*_args: Any, **_kwargs: Any):
+        def _decorator(fn: Any) -> Any:
+            return fn
+
+        return _decorator
+
+    def precondition(*_args: Any, **_kwargs: Any):
+        def _decorator(fn: Any) -> Any:
+            return fn
+
+        return _decorator
+
+    def rule(*_args: Any, **_kwargs: Any):
+        def _decorator(fn: Any) -> Any:
+            return fn
+
+        return _decorator
+
+    HealthCheck = _HealthCheckStub()  # type: ignore
     HAS_HYPOTHESIS = False
 
+if not HAS_HYPOTHESIS:
+    def test_hypothesis_dependency_present() -> None:
+        pytest.importorskip("hypothesis")
 
 _REFERENCE_NOW_S = 1704067200.0
 _REFERENCE_NOW_MS = int(_REFERENCE_NOW_S * 1000)
@@ -37,7 +89,7 @@ class Action:
 
 
 def _make_manager() -> P2PManager:
-    identity = NodeIdentity()
+    identity = NodeIdentity(private_key=b"\x01" * 32)
     config = P2PConfig(
         max_messages_per_second=1.0,
         rate_limit_burst=2,
@@ -48,7 +100,7 @@ def _make_manager() -> P2PManager:
 
 
 def _make_peer_identity() -> NodeIdentity:
-    return NodeIdentity()
+    return NodeIdentity(private_key=b"\x02" * 32)
 
 
 def _make_session(node_id: str) -> PeerSession:
@@ -63,11 +115,18 @@ def _make_session(node_id: str) -> PeerSession:
     return session
 
 
-def _message_dict(*, msg_type: MessageType, sender_id: str, nonce: str, extra: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+def _message_dict(
+    *,
+    msg_type: MessageType,
+    sender_id: str,
+    nonce: str,
+    timestamp_ms: int,
+    extra: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     base: dict[str, Any] = {
         "type": msg_type.value,
         "sender_id": sender_id,
-        "timestamp": _REFERENCE_NOW_MS,
+        "timestamp": timestamp_ms,
         "nonce": nonce,
         "signature": None,
     }
@@ -107,6 +166,12 @@ class TestP2PManagerStateful:
     - Replay cache remains bounded
     """
 
+    @settings(
+        max_examples=50,
+        deadline=None,
+        derandomize=True,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
     class Machine(RuleBasedStateMachine):
         def __init__(self) -> None:
             super().__init__()
@@ -115,6 +180,8 @@ class TestP2PManagerStateful:
             self.session_id = "peer_0"
             self.session: Optional[PeerSession] = None
             self.actions: List[Action] = []
+            self._timestamp_ms = _REFERENCE_NOW_MS
+            self._nonce_timestamps: dict[str, int] = {}
 
         def _persist_failure(self, *, reason: str) -> None:
             payload = {
@@ -140,10 +207,13 @@ class TestP2PManagerStateful:
             if self.session is None:
                 return
 
+            self._timestamp_ms += 1
+            self._nonce_timestamps[nonce] = self._timestamp_ms
             msg = _message_dict(
                 msg_type=MessageType.PING,
                 sender_id=self.peer.node_id,
                 nonce=nonce,
+                timestamp_ms=self._timestamp_ms,
             )
             data = json.dumps(msg).encode("utf-8")
 
@@ -157,18 +227,20 @@ class TestP2PManagerStateful:
             if self.session is None:
                 return
 
+            timestamp_ms = self._nonce_timestamps.get(nonce, self._timestamp_ms)
             msg = _message_dict(
                 msg_type=MessageType.PING,
                 sender_id=self.peer.node_id,
                 nonce=nonce,
+                timestamp_ms=timestamp_ms,
             )
             data = json.dumps(msg).encode("utf-8")
 
             with patch("idi.ian.network.p2p_manager.time.time", lambda: _REFERENCE_NOW_S):
                 asyncio.run(self.mgr._handle_message(self.session, data))
-                size_after_first = len(self.mgr._seen_messages)
+                size_after_first = len(self.mgr._peer_nonce_cache.get(self.peer.node_id, {}))
                 asyncio.run(self.mgr._handle_message(self.session, data))
-                size_after_second = len(self.mgr._seen_messages)
+                size_after_second = len(self.mgr._peer_nonce_cache.get(self.peer.node_id, {}))
 
             self.actions.append(Action(name="replay", payload={"nonce": nonce}))
 
@@ -225,8 +297,13 @@ class TestP2PManagerStateful:
 
         @invariant()
         def replay_cache_bounded(self) -> None:
-            if len(self.mgr._seen_messages) > self.mgr._max_seen_messages:
-                self._persist_failure(reason="replay_cache_exceeded_bound")
-                raise AssertionError("Replay cache exceeded bound")
+            for cache in self.mgr._peer_nonce_cache.values():
+                if len(cache) > self.mgr._max_nonce_cache_per_peer:
+                    self._persist_failure(reason="replay_cache_exceeded_bound")
+                    raise AssertionError("Replay cache exceeded bound")
 
     TestCase = Machine.TestCase
+
+
+if HAS_HYPOTHESIS:
+    TestCase = TestP2PManagerStateful.Machine.TestCase

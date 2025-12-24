@@ -199,37 +199,20 @@ impl MerkleMountainRange {
         if subtree_size == 1 {
             return vec![];
         }
-        
+
         let mut siblings = Vec::new();
-        let mut current_size = subtree_size;
-        let mut current_offset = subtree_start;
-        let mut current_local = local_index;
-        
-        while current_size > 1 {
-            let half = current_size / 2;
-            let is_in_right = current_local >= half;
-            
-            // Compute sibling hash
-            let sibling_start = if is_in_right {
-                current_offset // Left sibling
-            } else {
-                current_offset + half // Right sibling
-            };
-            let sibling_size = half;
-            
-            let sibling_hash = self.compute_subtree_hash(sibling_start, sibling_size);
-            // is_in_right means leaf is in right subtree, so sibling is LEFT
-            // The bool in proof means "sibling is on right", so we negate
-            siblings.push((sibling_hash, !is_in_right));
-            
-            // Move to next level
-            if is_in_right {
-                current_offset += half;
-                current_local -= half;
-            }
-            current_size = half;
+        let mut current_size = 1usize;
+
+        while current_size < subtree_size {
+            let current_block = local_index / current_size;
+            let sibling_block = current_block ^ 1;
+            let sibling_start = subtree_start + sibling_block * current_size;
+            let sibling_hash = self.compute_subtree_hash(sibling_start, current_size);
+            let sibling_is_right = (current_block % 2) == 0;
+            siblings.push((sibling_hash, sibling_is_right));
+            current_size *= 2;
         }
-        
+
         siblings
     }
 
@@ -313,6 +296,7 @@ impl MerkleMountainRange {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_empty_mmr() {
@@ -397,5 +381,60 @@ mod tests {
         
         assert_eq!(mmr.size(), restored.size());
         assert_eq!(mmr.get_root(), restored.get_root());
+    }
+
+    proptest! {
+        #[test]
+        fn proof_verifies_for_any_leaf(
+            leaves in prop::collection::vec(prop::collection::vec(any::<u8>(), 0..64), 1..32),
+            pick in 0usize..32,
+        ) {
+            let mut mmr = MerkleMountainRange::new();
+            for leaf in &leaves {
+                mmr.append(leaf);
+            }
+
+            let root = mmr.get_root();
+            let idx = pick % leaves.len();
+            let proof = mmr.get_proof(idx).unwrap();
+
+            prop_assert!(MerkleMountainRange::verify_proof(&leaves[idx], &proof, &root));
+        }
+
+        #[test]
+        fn tampered_leaf_data_fails_verification(
+            leaves in prop::collection::vec(prop::collection::vec(any::<u8>(), 0..64), 1..32),
+            pick in 0usize..32,
+        ) {
+            let mut mmr = MerkleMountainRange::new();
+            for leaf in &leaves {
+                mmr.append(leaf);
+            }
+
+            let root = mmr.get_root();
+            let idx = pick % leaves.len();
+            let proof = mmr.get_proof(idx).unwrap();
+
+            let mut tampered = leaves[idx].clone();
+            tampered.push(0);
+            prop_assert!(!MerkleMountainRange::verify_proof(&tampered, &proof, &root));
+        }
+
+        #[test]
+        fn serialization_roundtrip_preserves_root(
+            leaves in prop::collection::vec(prop::collection::vec(any::<u8>(), 0..64), 0..32),
+        ) {
+            let mut mmr = MerkleMountainRange::new();
+            for leaf in &leaves {
+                mmr.append(leaf);
+            }
+
+            let root = mmr.get_root();
+            let json = mmr.to_json().unwrap();
+            let restored = MerkleMountainRange::from_json(&json).unwrap();
+
+            prop_assert_eq!(root, restored.get_root());
+            prop_assert_eq!(mmr.size(), restored.size());
+        }
     }
 }

@@ -313,7 +313,60 @@ class MeritRank:
         a block hash or other consensus-agreed value.
         """
         self._rng.seed(seed)
-    
+
+    def _validate_custom_seeds(self, custom_seeds: List[str]) -> List[str]:
+        """Validate and return custom seeds (up to _num_seeds)."""
+        for seed_id in custom_seeds:
+            if seed_id not in self._graph._nodes:
+                raise ValueError(f"Seed {seed_id} not in graph")
+        return custom_seeds[:self._num_seeds]
+
+    def _get_eligible_nodes(self) -> List[EvaluatorNode]:
+        """Return nodes eligible for seed selection (non-slashed, positive stake)."""
+        return [
+            n for n in self._graph.get_all_nodes()
+            if not n.is_slashed and n.stake > 0
+        ]
+
+    def _weighted_sample_one(self, remaining: List[EvaluatorNode], total_stake: float) -> Tuple[str, float]:
+        """Select one node weighted by stake, return (node_id, node_stake)."""
+        weights = [n.stake / total_stake for n in remaining]
+        cumulative = 0.0
+        r = self._rng.random()
+        for i, w in enumerate(weights):
+            cumulative += w
+            if r <= cumulative:
+                return remaining[i].evaluator_id, remaining[i].stake
+        # Fallback to last (floating point edge case)
+        return remaining[-1].evaluator_id, remaining[-1].stake
+
+    def _stake_weighted_selection(self, eligible: List[EvaluatorNode]) -> List[str]:
+        """Select _num_seeds nodes using stake-weighted sampling without replacement."""
+        total_stake = sum(n.stake for n in eligible)
+        selected: List[str] = []
+        remaining = eligible.copy()
+
+        for _ in range(self._num_seeds):
+            if not remaining:
+                break
+            node_id, node_stake = self._weighted_sample_one(remaining, total_stake)
+            selected.append(node_id)
+            total_stake -= node_stake
+            remaining = [n for n in remaining if n.evaluator_id != node_id]
+
+        return selected
+
+    def _finalize_seeds(self) -> None:
+        """Set seed weights and mark seed nodes in graph."""
+        if self._seeds:
+            weight = 1.0 / len(self._seeds)
+            self._seed_weights = {s: weight for s in self._seeds}
+
+        for node_id in self._seeds:
+            node = self._graph.get_node(node_id)
+            if node:
+                node.is_seed = True
+
     def select_seeds(
         self,
         custom_seeds: Optional[List[str]] = None,
@@ -333,63 +386,15 @@ class MeritRank:
             List of selected seed node IDs
         """
         if custom_seeds is not None:
-            # Validate custom seeds
-            for seed_id in custom_seeds:
-                if seed_id not in self._graph._nodes:
-                    raise ValueError(f"Seed {seed_id} not in graph")
-            self._seeds = custom_seeds[:self._num_seeds]
+            self._seeds = self._validate_custom_seeds(custom_seeds)
         else:
-            # Stake-weighted selection
-            nodes = self._graph.get_all_nodes()
-            
-            # Filter eligible nodes (non-slashed, positive stake)
-            eligible = [
-                n for n in nodes
-                if not n.is_slashed and n.stake > 0
-            ]
-            
+            eligible = self._get_eligible_nodes()
             if len(eligible) < self._num_seeds:
-                # Not enough eligible, use all
                 self._seeds = [n.evaluator_id for n in eligible]
             else:
-                # Weighted random selection without replacement
-                total_stake = sum(n.stake for n in eligible)
-                selected = []
-                remaining = eligible.copy()
-                
-                for _ in range(self._num_seeds):
-                    if not remaining:
-                        break
-                    
-                    # Stake-weighted selection
-                    weights = [n.stake / total_stake for n in remaining]
-                    cumulative = []
-                    cum = 0
-                    for w in weights:
-                        cum += w
-                        cumulative.append(cum)
-                    
-                    r = self._rng.random()
-                    for i, c in enumerate(cumulative):
-                        if r <= c:
-                            selected.append(remaining[i].evaluator_id)
-                            total_stake -= remaining[i].stake
-                            remaining.pop(i)
-                            break
-                
-                self._seeds = selected
-        
-        # Compute seed weights (equal for now, could be stake-based)
-        if self._seeds:
-            weight = 1.0 / len(self._seeds)
-            self._seed_weights = {s: weight for s in self._seeds}
-        
-        # Mark seeds in graph
-        for node_id in self._seeds:
-            node = self._graph.get_node(node_id)
-            if node:
-                node.is_seed = True
-        
+                self._seeds = self._stake_weighted_selection(eligible)
+
+        self._finalize_seeds()
         return self._seeds
     
     def _compute_edge_weights(self) -> None:

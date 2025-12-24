@@ -14,10 +14,12 @@ Author: DarkLightX
 import asyncio
 import hashlib
 import secrets
-import time
 from typing import Any
+from unittest.mock import patch
 
 import pytest
+
+NOW_MS = 1_700_000_000_000
 
 from idi.ian.network.frontiersync import (
     CosignedSyncState,
@@ -322,17 +324,17 @@ class TestNonceCache:
     async def test_fresh_nonce_accepted(self):
         """Fresh nonce should be accepted."""
         cache = NonceCache(max_size=100)
-        nonce = secrets.token_bytes(32)
+        nonce = b"\x01" * 32
 
-        result = await cache.check_and_add(nonce, int(time.time() * 1000))
+        result = await cache.check_and_add(nonce, NOW_MS)
         assert result is True
 
     @pytest.mark.asyncio
     async def test_duplicate_nonce_rejected(self):
         """Duplicate nonce should be rejected."""
         cache = NonceCache(max_size=100)
-        nonce = secrets.token_bytes(32)
-        now_ms = int(time.time() * 1000)
+        nonce = b"\x01" * 32
+        now_ms = NOW_MS
 
         # First use
         result1 = await cache.check_and_add(nonce, now_ms)
@@ -415,7 +417,7 @@ class TestCosignedSyncState:
             public_key=b'\x00' * 32,  # Mock
             signature=b'\x00' * 64,   # Mock
             session_nonce=secrets.token_bytes(32),
-            timestamp_ms=int(time.time() * 1000) + timestamp_offset_ms,
+            timestamp_ms=NOW_MS + timestamp_offset_ms,
         )
 
     def test_insufficient_witnesses(self):
@@ -494,15 +496,16 @@ class TestSyncSession:
 
     def test_session_expiry(self):
         """Session should expire after max duration."""
-        session = SyncSession(
-            session_id="test",
-            peer_id="peer1",
-            goal_id="goal1",
-            direction="NONE",
-        )
+        with patch("idi.ian.network.frontiersync.time.time", side_effect=[1000.0, 1000.0]):
+            session = SyncSession(
+                session_id="test",
+                peer_id="peer1",
+                goal_id="goal1",
+                direction="NONE",
+            )
 
         # Not expired immediately
-        assert not session.is_expired()
+        assert not session.is_expired(session.started_ms)
 
         # Expired after max duration
         future_ms = session.started_ms + 400_000  # 400 seconds (> 300s max)
@@ -510,18 +513,18 @@ class TestSyncSession:
 
     def test_session_touch(self):
         """Touch should update last activity."""
-        session = SyncSession(
-            session_id="test",
-            peer_id="peer1",
-            goal_id="goal1",
-            direction="NONE",
-        )
+        with patch("idi.ian.network.frontiersync.time.time", side_effect=[1000.0, 1000.0, 1000.1]):
+            session = SyncSession(
+                session_id="test",
+                peer_id="peer1",
+                goal_id="goal1",
+                direction="NONE",
+            )
 
-        old_activity = session.last_activity_ms
-        time.sleep(0.01)  # Small delay
-        session.touch()
+            old_activity = session.last_activity_ms
+            session.touch()
 
-        assert session.last_activity_ms >= old_activity
+            assert session.last_activity_ms > old_activity
 
 
 # =============================================================================
@@ -541,7 +544,7 @@ try:
             max_size=50,
             unique=True,
         ))
-        @settings(max_examples=50)
+        @settings(max_examples=50, deadline=None, derandomize=True)
         def test_insert_decode_roundtrip(self, keys: list[bytes]):
             """All inserted keys should be recoverable."""
             config = IBLTConfig(num_cells=500)
@@ -561,7 +564,7 @@ try:
             keys_a=st.lists(st.binary(min_size=32, max_size=32), min_size=0, max_size=20, unique=True),
             keys_b=st.lists(st.binary(min_size=32, max_size=32), min_size=0, max_size=20, unique=True),
         )
-        @settings(max_examples=30)
+        @settings(max_examples=30, deadline=None, derandomize=True)
         def test_symmetric_difference_property(self, keys_a: list[bytes], keys_b: list[bytes]):
             """Symmetric difference should match set difference."""
             config = IBLTConfig(num_cells=500)
@@ -675,7 +678,7 @@ class TestWitnessDiversityValidation:
             public_key=public_key,
             signature=b'\x00' * 64,
             session_nonce=secrets.token_bytes(32),
-            timestamp_ms=int(time.time() * 1000),
+            timestamp_ms=NOW_MS,
         )
 
     def test_sufficient_diversity_passes(self):
@@ -802,7 +805,7 @@ class TestWitnessSignatureValidation:
             public_key=b'\x00' * 32,
             signature=b'\x00' * 64,
             session_nonce=b'\x00' * 32,
-            timestamp_ms=int(time.time() * 1000),
+            timestamp_ms=NOW_MS,
         )
         assert ws.witness_id == "witness-1"
 

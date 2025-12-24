@@ -148,6 +148,43 @@ class Thresholds:
     min_sharpe_ratio: Optional[float] = None
     max_drawdown: Optional[float] = None
     
+    def _check_finite(self, value: float, name: str) -> Optional[str]:
+        """Return error message if value is not finite, else None."""
+        import math
+        if not math.isfinite(value):
+            return f"{name} is not finite: {value}"
+        return None
+
+    def _check_core_metrics(self, metrics: Metrics) -> Optional[str]:
+        """Check required metrics (reward, risk, complexity). Return error or None."""
+        if err := self._check_finite(metrics.reward, "reward"):
+            return err
+        if err := self._check_finite(metrics.risk, "risk"):
+            return err
+        if err := self._check_finite(metrics.complexity, "complexity"):
+            return err
+        if metrics.reward < self.min_reward:
+            return f"reward {metrics.reward:.4f} < min {self.min_reward:.4f}"
+        if metrics.risk > self.max_risk:
+            return f"risk {metrics.risk:.4f} > max {self.max_risk:.4f}"
+        if metrics.complexity > self.max_complexity:
+            return f"complexity {metrics.complexity:.4f} > max {self.max_complexity:.4f}"
+        return None
+
+    def _check_optional_metrics(self, metrics: Metrics) -> Optional[str]:
+        """Check optional metrics (sharpe_ratio, max_drawdown). Return error or None."""
+        if self.min_sharpe_ratio is not None and metrics.sharpe_ratio is not None:
+            if err := self._check_finite(metrics.sharpe_ratio, "sharpe_ratio"):
+                return err
+            if metrics.sharpe_ratio < self.min_sharpe_ratio:
+                return f"sharpe {metrics.sharpe_ratio:.4f} < min {self.min_sharpe_ratio:.4f}"
+        if self.max_drawdown is not None and metrics.max_drawdown is not None:
+            if err := self._check_finite(metrics.max_drawdown, "max_drawdown"):
+                return err
+            if metrics.max_drawdown > self.max_drawdown:
+                return f"drawdown {metrics.max_drawdown:.4f} > max {self.max_drawdown:.4f}"
+        return None
+
     def check(self, metrics: Metrics) -> Tuple[bool, str]:
         """
         Check if metrics meet thresholds.
@@ -155,32 +192,10 @@ class Thresholds:
         Returns:
             (passed, reason) where reason explains failure if passed=False
         """
-        import math
-        
-        # Guard against NaN/Inf values
-        if not math.isfinite(metrics.reward):
-            return False, f"reward is not finite: {metrics.reward}"
-        if not math.isfinite(metrics.risk):
-            return False, f"risk is not finite: {metrics.risk}"
-        if not math.isfinite(metrics.complexity):
-            return False, f"complexity is not finite: {metrics.complexity}"
-        
-        if metrics.reward < self.min_reward:
-            return False, f"reward {metrics.reward:.4f} < min {self.min_reward:.4f}"
-        if metrics.risk > self.max_risk:
-            return False, f"risk {metrics.risk:.4f} > max {self.max_risk:.4f}"
-        if metrics.complexity > self.max_complexity:
-            return False, f"complexity {metrics.complexity:.4f} > max {self.max_complexity:.4f}"
-        if self.min_sharpe_ratio is not None and metrics.sharpe_ratio is not None:
-            if not math.isfinite(metrics.sharpe_ratio):
-                return False, f"sharpe_ratio is not finite: {metrics.sharpe_ratio}"
-            if metrics.sharpe_ratio < self.min_sharpe_ratio:
-                return False, f"sharpe {metrics.sharpe_ratio:.4f} < min {self.min_sharpe_ratio:.4f}"
-        if self.max_drawdown is not None and metrics.max_drawdown is not None:
-            if not math.isfinite(metrics.max_drawdown):
-                return False, f"max_drawdown is not finite: {metrics.max_drawdown}"
-            if metrics.max_drawdown > self.max_drawdown:
-                return False, f"drawdown {metrics.max_drawdown:.4f} > max {self.max_drawdown:.4f}"
+        if err := self._check_core_metrics(metrics):
+            return False, err
+        if err := self._check_optional_metrics(metrics):
+            return False, err
         return True, "passed"
 
 

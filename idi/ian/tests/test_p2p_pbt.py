@@ -18,15 +18,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
-from collections import OrderedDict
 from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 try:
-    from hypothesis import given, settings, assume, reproduce_failure, Phase
+    from hypothesis import given, settings, assume
     from hypothesis import strategies as st
 
     HAS_HYPOTHESIS = True
@@ -60,46 +58,35 @@ except ImportError:
         @staticmethod
         def text(**kwargs):
             return None
+        @staticmethod
+        def dictionaries(**kwargs):
+            return None
     st = _StStub()  # type: ignore
 
 from idi.ian.network.protocol import (
     Message,
     MessageType,
-    Ping,
-    Pong,
 )
+from idi.ian.network.node import NodeIdentity
+from idi.ian.network.p2p_manager import P2PConfig, P2PManager, PeerSession, PeerState, TokenBucketRateLimiter
 
 # Import strategies - always import helpers, conditionally import Hypothesis strategies
 from idi.ian.tests.strategies import (
     make_deterministic_node_id,
     make_deterministic_nonce,
-    serialize_message,
-    HAS_HYPOTHESIS as STRATEGIES_HAVE_HYPOTHESIS,
 )
 
 if HAS_HYPOTHESIS:
     from idi.ian.tests.strategies import (
         valid_message_strategy,
         adversarial_message_strategy,
-        replay_message_strategy,
-        stale_timestamp_message_strategy,
-        future_timestamp_message_strategy,
-        malformed_json_strategy,
-        missing_fields_message_strategy,
-        message_burst_strategy,
-        node_id_strategy,
-        nonce_strategy,
-        timestamp_strategy,
     )
 else:
-    # Stubs for when hypothesis not available
-    node_id_strategy = None  # type: ignore
-    nonce_strategy = None  # type: ignore
-    timestamp_strategy = None  # type: ignore
-    valid_message_strategy = None  # type: ignore
-    adversarial_message_strategy = None  # type: ignore
-    malformed_json_strategy = None  # type: ignore
-    missing_fields_message_strategy = None  # type: ignore
+    def valid_message_strategy():
+        return None
+
+    def adversarial_message_strategy():
+        return None
 
 
 # =============================================================================
@@ -111,96 +98,83 @@ class TestReplayProtection:
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(
-        sender_id=node_id_strategy,
-        nonce=nonce_strategy,
+        sender_id=st.text(min_size=40, max_size=40),
+        nonce=st.text(min_size=1, max_size=100),
     )
-    @settings(max_examples=100, deadline=None)
+    @settings(max_examples=100, deadline=None, derandomize=True)
     def test_replay_detected_same_message_id(self, sender_id: str, nonce: str) -> None:
         """Same (sender_id, nonce) pair is detected as replay."""
-        # Simulate the replay cache from P2PManager
-        seen_messages: OrderedDict[str, float] = OrderedDict()
-        message_ttl_seconds = 300
-        max_seen_messages = 100_000
+        now_s = 1704067200.0
+        timestamp_ms = int(now_s * 1000)
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        msg = Message(
+            type=MessageType.PING,
+            sender_id=sender_id,
+            timestamp=timestamp_ms,
+            nonce=nonce,
+        )
 
-        def is_replay(msg_sender_id: str, msg_nonce: str, msg_timestamp: int) -> bool:
-            msg_id = f"{msg_sender_id}:{msg_nonce}"
-            now = time.time()
-
-            if msg_id in seen_messages:
-                return True
-
-            msg_timestamp_s = msg_timestamp / 1000.0
-            if abs(now - msg_timestamp_s) > message_ttl_seconds:
-                return True
-
-            seen_messages[msg_id] = now
-
-            # Evict old entries
-            cutoff = now - message_ttl_seconds
-            while seen_messages:
-                oldest_id, oldest_time = next(iter(seen_messages.items()))
-                if oldest_time < cutoff:
-                    seen_messages.pop(oldest_id)
-                else:
-                    break
-
-            while len(seen_messages) > max_seen_messages:
-                seen_messages.popitem(last=False)
-
-            return False
-
-        timestamp = int(time.time() * 1000)
-
-        # First message should NOT be a replay
-        assert not is_replay(sender_id, nonce, timestamp)
-
-        # Second identical message SHOULD be a replay
-        assert is_replay(sender_id, nonce, timestamp)
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            assert not mgr._is_replay(msg)
+            assert mgr._is_replay(msg)
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(
-        sender_id=node_id_strategy,
-        nonce1=nonce_strategy,
-        nonce2=nonce_strategy,
+        sender_id=st.text(min_size=40, max_size=40),
+        nonce1=st.text(min_size=1, max_size=100),
+        nonce2=st.text(min_size=1, max_size=100),
     )
-    @settings(max_examples=100, deadline=None)
+    @settings(max_examples=100, deadline=None, derandomize=True)
     def test_different_nonces_not_replay(
         self, sender_id: str, nonce1: str, nonce2: str
     ) -> None:
         """Different nonces from same sender are NOT replays."""
         assume(nonce1 != nonce2)
 
-        seen_messages: OrderedDict[str, float] = OrderedDict()
+        now_s = 1704067200.0
+        timestamp_ms = int(now_s * 1000)
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        msg1 = Message(
+            type=MessageType.PING,
+            sender_id=sender_id,
+            timestamp=timestamp_ms,
+            nonce=nonce1,
+        )
+        msg2 = Message(
+            type=MessageType.PING,
+            sender_id=sender_id,
+            timestamp=timestamp_ms + 1,
+            nonce=nonce2,
+        )
 
-        def record_message(msg_sender_id: str, msg_nonce: str) -> bool:
-            msg_id = f"{msg_sender_id}:{msg_nonce}"
-            if msg_id in seen_messages:
-                return True
-            seen_messages[msg_id] = time.time()
-            return False
-
-        # Both should be accepted (not replays)
-        assert not record_message(sender_id, nonce1)
-        assert not record_message(sender_id, nonce2)
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            assert not mgr._is_replay(msg1)
+            assert not mgr._is_replay(msg2)
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(st.integers(min_value=1, max_value=1000))
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_replay_cache_bounded_memory(self, num_messages: int) -> None:
         """Replay cache respects max size bound."""
+        now_s = 1704067200.0
+        timestamp_ms = int(now_s * 1000)
         max_seen = 100
-        seen_messages: OrderedDict[str, float] = OrderedDict()
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        mgr._max_nonce_cache_per_peer = max_seen
+        mgr._message_ttl_seconds = 10**9
 
-        for i in range(num_messages):
-            msg_id = f"sender_{i}:nonce_{i}"
-            seen_messages[msg_id] = time.time()
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            for i in range(num_messages):
+                msg = Message(
+                    type=MessageType.PING,
+                    sender_id=f"sender_{i:06d}"[-40:].rjust(40, "0"),
+                    timestamp=timestamp_ms,
+                    nonce=f"nonce_{i}",
+                )
+                mgr._is_replay(msg)
 
-            # Enforce bound
-            while len(seen_messages) > max_seen:
-                seen_messages.popitem(last=False)
-
-        # Invariant: cache never exceeds max size
-        assert len(seen_messages) <= max_seen
+        for cache in mgr._peer_nonce_cache.values():
+            assert len(cache) <= max_seen
 
 
 # =============================================================================
@@ -212,46 +186,70 @@ class TestTimestampFreshness:
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(drift_ms=st.integers(min_value=300_001, max_value=3_600_000))
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_stale_timestamp_rejected(self, drift_ms: int) -> None:
         """Messages with timestamps > 5 minutes old are rejected."""
-        message_ttl_seconds = 300
-        now = time.time()
-        msg_timestamp_s = now - (drift_ms / 1000.0)
+        now_s = 1704067200.0
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        stale_ts_ms = int((now_s - (mgr._message_ttl_seconds + (drift_ms / 1000.0))) * 1000)
+        msg = Message(
+            type=MessageType.PING,
+            sender_id="0" * 40,
+            timestamp=stale_ts_ms,
+            nonce="stale",
+        )
 
-        # Check freshness
-        is_stale = abs(now - msg_timestamp_s) > message_ttl_seconds
-        assert is_stale
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            assert mgr._is_replay(msg)
+            assert len(mgr._peer_nonce_cache) == 0
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(drift_ms=st.integers(min_value=300_001, max_value=3_600_000))
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_future_timestamp_rejected(self, drift_ms: int) -> None:
         """Messages with timestamps > 5 minutes in future are rejected."""
-        message_ttl_seconds = 300
-        now = time.time()
-        msg_timestamp_s = now + (drift_ms / 1000.0)
+        now_s = 1704067200.0
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        future_ts_ms = int((now_s + (mgr._message_ttl_seconds + (drift_ms / 1000.0))) * 1000)
+        msg = Message(
+            type=MessageType.PING,
+            sender_id="0" * 40,
+            timestamp=future_ts_ms,
+            nonce="future",
+        )
 
-        is_future = abs(now - msg_timestamp_s) > message_ttl_seconds
-        assert is_future
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            assert mgr._is_replay(msg)
+            assert len(mgr._peer_nonce_cache) == 0
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(drift_ms=st.integers(min_value=0, max_value=299_000))
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_fresh_timestamp_accepted(self, drift_ms: int) -> None:
         """Messages within 5 minute window are accepted."""
-        message_ttl_seconds = 300
-        now = time.time()
+        now_s = 1704067200.0
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        past_ts_ms = int((now_s - (drift_ms / 1000.0)) * 1000)
+        future_ts_ms = int((now_s + (drift_ms / 1000.0)) * 1000)
+        if future_ts_ms <= past_ts_ms:
+            future_ts_ms = past_ts_ms + 1
 
-        # Test past
-        msg_timestamp_s = now - (drift_ms / 1000.0)
-        is_fresh = abs(now - msg_timestamp_s) <= message_ttl_seconds
-        assert is_fresh
+        past_msg = Message(
+            type=MessageType.PING,
+            sender_id="0" * 40,
+            timestamp=past_ts_ms,
+            nonce="fresh_past",
+        )
+        future_msg = Message(
+            type=MessageType.PING,
+            sender_id="0" * 40,
+            timestamp=future_ts_ms,
+            nonce="fresh_future",
+        )
 
-        # Test future
-        msg_timestamp_s = now + (drift_ms / 1000.0)
-        is_fresh = abs(now - msg_timestamp_s) <= message_ttl_seconds
-        assert is_fresh
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            assert not mgr._is_replay(past_msg)
+            assert not mgr._is_replay(future_msg)
 
 
 # =============================================================================
@@ -263,7 +261,7 @@ class TestMessageParsingRobustness:
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(msg=valid_message_strategy())
-    @settings(max_examples=100, deadline=None)
+    @settings(max_examples=100, deadline=None, derandomize=True)
     def test_valid_message_roundtrip(self, msg: Dict[str, Any]) -> None:
         """Valid messages serialize and deserialize correctly."""
         # Serialize
@@ -279,33 +277,39 @@ class TestMessageParsingRobustness:
         assert parsed["nonce"] == msg["nonce"]
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
-    @given(data=malformed_json_strategy())
-    @settings(max_examples=100, deadline=None)
+    @given(data=st.binary(min_size=1, max_size=1000))
+    @settings(max_examples=100, deadline=None, derandomize=True)
     def test_malformed_json_no_crash(self, data: bytes) -> None:
         """Malformed JSON doesn't crash parser."""
-        try:
-            json.loads(data.decode("utf-8", errors="ignore"))
-        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
-            pass  # Expected - parser rejects gracefully
+        now_s = 1704067200.0
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        session = PeerSession(
+            node_id="peer",
+            address="127.0.0.1",
+            port=9001,
+            state=PeerState.CONNECTED,
+        )
+
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            asyncio.run(mgr._handle_message(session, data))
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
-    @given(msg=missing_fields_message_strategy())
-    @settings(max_examples=100, deadline=None)
+    @given(msg=st.dictionaries(keys=st.text(), values=st.text()))
+    @settings(max_examples=100, deadline=None, derandomize=True)
     def test_missing_fields_handled(self, msg: Dict[str, Any]) -> None:
         """Messages with missing required fields are handled gracefully."""
-        # Simulate handler's field access with .get() defaults
-        sender_id = msg.get("sender_id", "")
-        nonce = msg.get("nonce", "")
-        timestamp = msg.get("timestamp", 0)
-        msg_type = msg.get("type", "")
+        now_s = 1704067200.0
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        session = PeerSession(
+            node_id="peer",
+            address="127.0.0.1",
+            port=9001,
+            state=PeerState.CONNECTED,
+        )
+        data = json.dumps(msg).encode("utf-8")
 
-        # Handler should check for empty/missing and reject
-        if not sender_id or not nonce or not msg_type:
-            # Would be rejected by handler
-            pass
-        else:
-            # Valid enough to process
-            assert len(sender_id) > 0
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            asyncio.run(mgr._handle_message(session, data))
 
 
 # =============================================================================
@@ -321,41 +325,50 @@ class TestRateLimiting:
         burst=st.integers(min_value=1, max_value=50),
         requests=st.integers(min_value=1, max_value=200),
     )
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_token_bucket_bounds(self, rate: float, burst: int, requests: int) -> None:
         """Token bucket never exceeds capacity or goes negative."""
-        tokens = float(burst)
-        capacity = burst
+        now_s = 0.0
 
-        for _ in range(requests):
-            if tokens >= 1.0:
-                tokens -= 1.0
-            # Simulate small time passing
-            tokens = min(float(capacity), tokens + rate * 0.01)
+        def fake_monotonic() -> float:
+            nonlocal now_s
+            now_s += 0.01
+            return now_s
 
-        # Invariants
-        assert tokens >= 0.0
-        assert tokens <= float(capacity)
+        with patch("idi.ian.network.p2p_manager.time.monotonic", fake_monotonic):
+            limiter = TokenBucketRateLimiter(rate=rate, burst=burst)
+
+            async def scenario() -> None:
+                for _ in range(requests):
+                    await limiter.acquire()
+
+            asyncio.run(scenario())
+
+        assert limiter.tokens >= 0.0
+        assert limiter.tokens <= float(burst)
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(burst_size=st.integers(min_value=10, max_value=100))
-    @settings(max_examples=20, deadline=None)
+    @settings(max_examples=20, deadline=None, derandomize=True)
     def test_burst_exhausts_tokens(self, burst_size: int) -> None:
         """Burst of requests exhausts token bucket."""
         capacity = 20
-        tokens = float(capacity)
 
-        accepted = 0
-        rejected = 0
+        with patch("idi.ian.network.p2p_manager.time.monotonic", lambda: 0.0):
+            limiter = TokenBucketRateLimiter(rate=1.0, burst=capacity)
 
-        for _ in range(burst_size):
-            if tokens >= 1.0:
-                tokens -= 1.0
-                accepted += 1
-            else:
-                rejected += 1
+            async def scenario() -> tuple[int, int]:
+                accepted = 0
+                rejected = 0
+                for _ in range(burst_size):
+                    if await limiter.acquire():
+                        accepted += 1
+                        continue
+                    rejected += 1
+                return accepted, rejected
 
-        # Should accept up to capacity, reject rest
+            accepted, rejected = asyncio.run(scenario())
+
         assert accepted == min(burst_size, capacity)
         assert rejected == max(0, burst_size - capacity)
 
@@ -369,10 +382,10 @@ class TestHandshakeSecurity:
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(
-        claimed_id=node_id_strategy,
+        claimed_id=st.text(min_size=40, max_size=40),
         actual_pubkey=st.binary(min_size=32, max_size=32),
     )
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_node_id_pubkey_binding(
         self, claimed_id: str, actual_pubkey: bytes
     ) -> None:
@@ -393,7 +406,7 @@ class TestHandshakeSecurity:
     @given(
         sig_len=st.integers(min_value=0, max_value=128),
     )
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_signature_length_validation(self, sig_len: int) -> None:
         """Only 64-byte signatures are valid for Ed25519."""
         VALID_SIG_LEN = 64
@@ -415,7 +428,7 @@ class TestMessageHandlerInvariants:
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(msg=valid_message_strategy())
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=50, deadline=None, derandomize=True)
     def test_message_id_uniqueness(self, msg: Dict[str, Any]) -> None:
         """message_id = sender_id:nonce is unique identifier."""
         msg_id = f"{msg['sender_id']}:{msg['nonce']}"
@@ -429,40 +442,21 @@ class TestMessageHandlerInvariants:
 
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
     @given(msg=adversarial_message_strategy())
-    @settings(max_examples=100, deadline=None)
+    @settings(max_examples=100, deadline=None, derandomize=True)
     def test_adversarial_messages_dont_crash(self, msg: Dict[str, Any]) -> None:
         """Adversarial messages are handled without exceptions."""
-        # Simulate the validation checks in _handle_message
-        try:
-            msg_type_raw = msg.get("type", "")
-            sender_id = msg.get("sender_id", "")
-            nonce = msg.get("nonce", "")
-            timestamp = msg.get("timestamp", 0)
+        now_s = 1704067200.0
+        mgr = P2PManager(identity=NodeIdentity(private_key=b"\x01" * 32), config=P2PConfig())
+        session = PeerSession(
+            node_id="peer",
+            address="127.0.0.1",
+            port=9001,
+            state=PeerState.CONNECTED,
+        )
+        data = json.dumps(msg).encode("utf-8")
 
-            # Type validation
-            valid_types = {
-                "ping", "pong", "handshake_challenge", "handshake_response",
-                "contribution_announce", "peer_exchange",
-            }
-            if msg_type_raw not in valid_types:
-                # Unknown type - would be logged and ignored
-                pass
-
-            # Required field validation
-            if not sender_id or not nonce:
-                # Missing fields - would be rejected
-                pass
-
-            # Timestamp validation
-            now = time.time()
-            msg_timestamp_s = timestamp / 1000.0 if timestamp else 0
-            if abs(now - msg_timestamp_s) > 300:
-                # Stale/future - would be rejected
-                pass
-
-        except Exception as e:
-            # This should NOT happen - all paths should be safe
-            pytest.fail(f"Handler crashed on adversarial input: {e}")
+        with patch("idi.ian.network.p2p_manager.time.time", lambda: now_s):
+            asyncio.run(mgr._handle_message(session, data))
 
 
 # =============================================================================

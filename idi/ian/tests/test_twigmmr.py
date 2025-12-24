@@ -498,7 +498,7 @@ try:
             min_size=1,
             max_size=100,
         ))
-        @settings(max_examples=20)
+        @settings(max_examples=20, deadline=None, derandomize=True)
         def test_all_entries_provable(self, entries):
             """All appended entries should be provable."""
             mmr = TwigMMR()
@@ -515,7 +515,7 @@ try:
             min_size=2,
             max_size=50,
         ))
-        @settings(max_examples=20, deadline=None)
+        @settings(max_examples=20, deadline=None, derandomize=True)
         def test_append_order_matters(self, entries):
             """Different append orders should give different roots."""
             if len(set(entries)) != len(entries):

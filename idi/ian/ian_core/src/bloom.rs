@@ -9,7 +9,7 @@
 //! - Cache-friendly bit access
 //! - SIMD-friendly hash computation (using multiple SHA-256 derivations)
 
-use crate::{sha256, Hash32};
+use crate::sha256;
 use serde::{Deserialize, Serialize};
 
 /// Bloom filter for probabilistic set membership

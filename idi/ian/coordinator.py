@@ -48,6 +48,12 @@ from .models import (
 from .mmr import MerkleMountainRange
 from .leaderboard import Leaderboard, ParetoFrontier
 from .dedup import DedupService
+from .hooks import (
+    CoordinatorHooks,
+    ContributionAcceptedEvent,
+    ContributionRejectedEvent,
+    LeaderboardUpdatedEvent,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -252,6 +258,7 @@ class IANCoordinator:
         invariant_checker: Optional[InvariantChecker] = None,
         proof_verifier: Optional[ProofVerifier] = None,
         evaluation_harness: Optional[EvaluationHarness] = None,
+        hooks: Optional[CoordinatorHooks] = None,
     ) -> None:
         """
         Initialize coordinator for a goal.
@@ -262,6 +269,7 @@ class IANCoordinator:
             invariant_checker: Plugin for invariant checking
             proof_verifier: Plugin for proof verification
             evaluation_harness: Plugin for sandboxed evaluation
+            hooks: Optional event hooks for real-time notifications
         """
         self.config = config or CoordinatorConfig()
         self.goal_spec = goal_spec
@@ -282,6 +290,7 @@ class IANCoordinator:
         self._invariant_checker = invariant_checker or PassthroughInvariantChecker()
         self._proof_verifier = proof_verifier or PassthroughProofVerifier()
         self._evaluation_harness = evaluation_harness or DummyEvaluationHarness()
+        self._hooks = hooks
         
         logger.info(
             f"IANCoordinator initialized for goal {goal_spec.goal_id}, "
@@ -426,6 +435,42 @@ class IANCoordinator:
             f"score={score:.4f}, log_index={log_index}, "
             f"on_leaderboard={added_to_leaderboard}"
         )
+        
+        # Notify hooks (exception-safe to preserve determinism)
+        if self._hooks:
+            try:
+                # Compute leaderboard position
+                leaderboard = self.get_leaderboard()
+                position = next(
+                    (i + 1 for i, m in enumerate(leaderboard) if m.pack_hash == pack_hash),
+                    None,
+                )
+                is_new_leader = position == 1 and active and active.pack_hash == pack_hash
+                
+                self._hooks.on_contribution_accepted(
+                    ContributionAcceptedEvent(
+                        goal_id=str(self.goal_spec.goal_id),
+                        pack_hash=pack_hash,
+                        contributor_id=contrib.contributor_id,
+                        score=score,
+                        log_index=log_index,
+                        metrics=metrics,
+                        leaderboard_position=position,
+                        is_new_leader=is_new_leader,
+                    )
+                )
+                
+                # Also emit leaderboard update if entry was added
+                if added_to_leaderboard:
+                    self._hooks.on_leaderboard_updated(
+                        LeaderboardUpdatedEvent(
+                            goal_id=str(self.goal_spec.goal_id),
+                            entries=leaderboard,
+                            active_policy_hash=self.state.active_policy_hash,
+                        )
+                    )
+            except Exception as e:
+                logger.warning(f"Hook exception (ignored for determinism): {e}")
         
         return ProcessResult.success(
             metrics=metrics,

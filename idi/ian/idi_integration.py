@@ -823,6 +823,7 @@ def create_idi_coordinator(
     use_mpb_invariants: bool = True,
     require_proofs: bool = False,
     harness_type: str = "backtest",
+    hooks: Optional["CoordinatorHooks"] = None,
 ) -> "IANCoordinator":
     """
     Create a fully-integrated IAN coordinator with IDI components.
@@ -837,11 +838,13 @@ def create_idi_coordinator(
         use_mpb_invariants: Enable MPB VM checks
         require_proofs: Require proofs for all contributions
         harness_type: Type of evaluation harness ('backtest', 'simulation', 'mock')
+        hooks: Optional event hooks for real-time notifications
         
     Returns:
         Configured IANCoordinator instance
     """
     from .coordinator import IANCoordinator, CoordinatorConfig
+    from .hooks import CoordinatorHooks
     
     return IANCoordinator(
         goal_spec=goal_spec,
@@ -859,4 +862,5 @@ def create_idi_coordinator(
         evaluation_harness=create_idi_evaluation_harness(
             harness_type=harness_type,
         ),
+        hooks=hooks,
     )

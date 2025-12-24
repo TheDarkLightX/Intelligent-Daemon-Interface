@@ -7,13 +7,13 @@
 //!
 //! Optimized for high-frequency updates with stable ordering.
 
-use crate::{sha256, Hash32, IanError, Result};
+use crate::{sha256, Hash32};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
 /// Entry in the leaderboard
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LeaderboardEntry {
     pub pack_hash: Hash32,
     pub score: f64,
@@ -206,6 +206,7 @@ impl Leaderboard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     fn make_entry(score: f64, ts: u64) -> LeaderboardEntry {
         LeaderboardEntry::new(
@@ -284,5 +285,105 @@ mod tests {
         // This should be rejected (score too low)
         assert!(!lb.add(make_entry(0.5, 3000)));
         assert_eq!(lb.len(), 2);
+    }
+
+    fn make_hash(i: u32) -> Hash32 {
+        let mut h = [0u8; 32];
+        h[..4].copy_from_slice(&i.to_le_bytes());
+        h
+    }
+
+    proptest! {
+        #[test]
+        fn leaderboard_never_exceeds_capacity(
+            capacity in 1usize..32,
+            scores in prop::collection::vec(0i64..1_000_000i64, 0..128),
+            timestamps in prop::collection::vec(0u64..1_000_000, 0..128),
+        ) {
+            let mut lb = Leaderboard::new(capacity);
+
+            let n = scores.len().min(timestamps.len());
+            for i in 0..n {
+                let entry = LeaderboardEntry::new(
+                    make_hash(i as u32),
+                    scores[i] as f64,
+                    timestamps[i],
+                    i,
+                    format!("c{}", i),
+                );
+                lb.add(entry);
+                prop_assert!(lb.len() <= capacity);
+            }
+        }
+
+        #[test]
+        fn top_k_sorted_by_score_then_timestamp(
+            capacity in 1usize..32,
+            entries in prop::collection::vec(
+                (0i64..1_000_000i64, 0u64..1_000_000),
+                0..128
+            )
+        ) {
+            let mut lb = Leaderboard::new(capacity);
+
+            for (i, (score, ts)) in entries.iter().copied().enumerate() {
+                let entry = LeaderboardEntry::new(
+                    make_hash(i as u32),
+                    score as f64,
+                    ts,
+                    i,
+                    format!("c{}", i),
+                );
+                lb.add(entry);
+            }
+
+            let top = lb.top_k();
+            prop_assert!(top.len() <= capacity);
+
+            for w in top.windows(2) {
+                let a = &w[0];
+                let b = &w[1];
+
+                let score_order = b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal);
+                if score_order == Ordering::Equal {
+                    prop_assert!(a.timestamp_ms <= b.timestamp_ms);
+                } else {
+                    prop_assert!(a.score >= b.score);
+                }
+            }
+        }
+
+        #[test]
+        fn serde_roundtrip_preserves_root_and_top_k(
+            capacity in 1usize..32,
+            entries in prop::collection::vec(
+                (0i64..1_000_000i64, 0u64..1_000_000),
+                0..128
+            )
+        ) {
+            let mut lb = Leaderboard::new(capacity);
+
+            for (i, (score, ts)) in entries.iter().copied().enumerate() {
+                let entry = LeaderboardEntry::new(
+                    make_hash(i as u32),
+                    score as f64,
+                    ts,
+                    i,
+                    format!("c{}", i),
+                );
+                lb.add(entry);
+            }
+
+            let expected_root = lb.root_hash();
+            let expected_top = lb.top_k();
+
+            lb.prepare_serialize();
+            let json = serde_json::to_string(&lb).unwrap();
+            let mut restored: Leaderboard = serde_json::from_str(&json).unwrap();
+            restored.restore_from_entries();
+
+            prop_assert_eq!(expected_root, restored.root_hash());
+            prop_assert_eq!(expected_top, restored.top_k());
+        }
     }
 }
