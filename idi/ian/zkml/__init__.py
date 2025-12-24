@@ -45,6 +45,21 @@ from .secagg import (
     SecAggParticipant,
 )
 
+from .nova import (
+    NovaError,
+    ProofVerificationError,
+    CircuitError,
+    CurveCycle,
+    StepInput,
+    StepOutput,
+    TrainingStepCircuit,
+    FoldingInstance,
+    NovaProof,
+    NovaProver,
+    NovaVerifier,
+    NovaTrainingSession,
+)
+
 __all__ = [
     # Onboarding
     "HardwareCapabilities",
@@ -75,4 +90,17 @@ __all__ = [
     "MaskedGradient",
     "SecAggSession",
     "SecAggParticipant",
+    # Nova Folding
+    "NovaError",
+    "ProofVerificationError",
+    "CircuitError",
+    "CurveCycle",
+    "StepInput",
+    "StepOutput",
+    "TrainingStepCircuit",
+    "FoldingInstance",
+    "NovaProof",
+    "NovaProver",
+    "NovaVerifier",
+    "NovaTrainingSession",
 ]
