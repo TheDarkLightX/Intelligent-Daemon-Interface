@@ -10,6 +10,7 @@ dependencies = [
     "cryptography>=41.0.0",
     "aiohttp>=3.9.2",
     "PyYAML>=6.0.1",
+    "py-ecc>=7.0.0",
 ]
 
 [project.scripts]

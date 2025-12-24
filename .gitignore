@@ -32,6 +32,7 @@ practice/
 .idea/
 .vscode/
 .cursor/
+.windsurf/
 *.swp
 *.swo
 /.venv/
@@ -58,6 +59,10 @@ tectonic
 
 # Tau development artifacts
 .tau_history
+
+# Generated artifacts
+mutants/
+idi/ian/ian_core/proptest-regressions/
 
 # Lean build artifacts
 .lake/
