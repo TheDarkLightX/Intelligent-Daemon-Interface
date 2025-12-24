@@ -3,16 +3,21 @@
 import secrets
 import pytest
 
+from idi.ian.algorithms import BLSOperations
 from idi.ian.zkml import (
     SecAggError,
     SecAggPhase,
     ShamirSecretSharing,
-    ParticipantKeys,
     PairwiseMasking,
     MaskedGradient,
     SecAggSession,
     SecAggParticipant,
 )
+
+def make_participant(round_id: bytes, gradient_size: int, threshold: int = 2) -> SecAggParticipant:
+    bls = BLSOperations()
+    sk, pk = bls.generate_keypair()
+    return SecAggParticipant(pk, round_id, gradient_size, sk, threshold=threshold)
 
 
 class TestShamirSecretSharing:
@@ -191,12 +196,8 @@ class TestSecAggSession:
         )
         
         for i in range(3):
-            pid = secrets.token_bytes(48)
-            keys = ParticipantKeys(
-                participant_id=pid,
-                ephemeral_public=secrets.token_bytes(32),
-                round_id=round_id,
-            )
+            participant = make_participant(round_id, 1000, 2)
+            keys = participant.keys
             session.register_participant(keys)
         
         assert session.num_participants == 3
@@ -214,12 +215,8 @@ class TestSecAggSession:
         # Register participants
         participants = []
         for i in range(3):
-            pid = secrets.token_bytes(48)
-            keys = ParticipantKeys(
-                participant_id=pid,
-                ephemeral_public=secrets.token_bytes(32),
-                round_id=round_id,
-            )
+            participant = make_participant(round_id, 100, 2)
+            keys = participant.keys
             session.register_participant(keys)
             participants.append(keys)
         
@@ -240,12 +237,8 @@ class TestSecAggSession:
         
         participants = []
         for i in range(3):
-            pid = secrets.token_bytes(48)
-            keys = ParticipantKeys(
-                participant_id=pid,
-                ephemeral_public=secrets.token_bytes(32),
-                round_id=round_id,
-            )
+            participant = make_participant(round_id, 100, 2)
+            keys = participant.keys
             session.register_participant(keys)
             participants.append(keys)
         
@@ -273,7 +266,8 @@ class TestSecAggParticipant:
     
     def test_participant_creation(self):
         """Test participant creation."""
-        pid = secrets.token_bytes(48)
+        bls = BLSOperations()
+        sk, pid = bls.generate_keypair()
         round_id = secrets.token_bytes(32)
         
         participant = SecAggParticipant(
@@ -281,6 +275,7 @@ class TestSecAggParticipant:
             round_id=round_id,
             gradient_size=1000,
             threshold=2,
+            bls_private_key=sk,
         )
         
         assert participant.keys.participant_id == pid
@@ -288,42 +283,37 @@ class TestSecAggParticipant:
     
     def test_add_peer(self):
         """Test adding peer keys."""
-        pid = secrets.token_bytes(48)
+        bls = BLSOperations()
+        sk, pid = bls.generate_keypair()
         round_id = secrets.token_bytes(32)
         
-        participant = SecAggParticipant(pid, round_id, 1000, 2)
+        participant = SecAggParticipant(pid, round_id, 1000, sk, threshold=2)
         
-        peer_keys = ParticipantKeys(
-            participant_id=secrets.token_bytes(48),
-            ephemeral_public=secrets.token_bytes(32),
-            round_id=round_id,
-        )
-        participant.add_peer(peer_keys)
+        peer = make_participant(round_id, 1000, 2)
+        participant.add_peer(peer.keys)
     
     def test_cannot_add_self_as_peer(self):
         """Test that adding self as peer fails."""
-        pid = secrets.token_bytes(48)
+        bls = BLSOperations()
+        sk, pid = bls.generate_keypair()
         round_id = secrets.token_bytes(32)
         
-        participant = SecAggParticipant(pid, round_id, 1000, 2)
+        participant = SecAggParticipant(pid, round_id, 1000, sk, threshold=2)
         
         with pytest.raises(SecAggError):
             participant.add_peer(participant.keys)
     
     def test_mask_gradient(self):
         """Test gradient masking."""
-        pid = secrets.token_bytes(48)
+        bls = BLSOperations()
+        sk, pid = bls.generate_keypair()
         round_id = secrets.token_bytes(32)
         
-        participant = SecAggParticipant(pid, round_id, 100, 2)
+        participant = SecAggParticipant(pid, round_id, 100, sk, threshold=2)
         
         # Add a peer
-        peer_keys = ParticipantKeys(
-            participant_id=secrets.token_bytes(48),
-            ephemeral_public=secrets.token_bytes(32),
-            round_id=round_id,
-        )
-        participant.add_peer(peer_keys)
+        peer = make_participant(round_id, 100, 2)
+        participant.add_peer(peer.keys)
         
         gradient = secrets.token_bytes(100)
         masked = participant.mask_gradient(gradient)
@@ -345,8 +335,7 @@ class TestEndToEndSecAgg:
         # Create participants
         participants = []
         for _ in range(num_participants):
-            pid = secrets.token_bytes(48)
-            p = SecAggParticipant(pid, round_id, gradient_size, 2)
+            p = make_participant(round_id, gradient_size, 2)
             participants.append(p)
         
         # Exchange keys

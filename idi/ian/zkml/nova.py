@@ -48,6 +48,13 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Protocol, Tuple
 
+try:
+    import nova_ian
+    _RUST_AVAILABLE = True
+except ImportError:
+    nova_ian = None
+    _RUST_AVAILABLE = False
+
 from .commitments import GradientCommitment, GradientTensor
 
 
@@ -60,6 +67,8 @@ STATE_HASH_LEN = 32
 COMMITMENT_LEN = 48
 CROSS_TERM_LEN = 48
 PROOF_VERSION = 1
+RUST_PROOF_VERSION = 2
+SUPPORTED_PROOF_VERSIONS = (PROOF_VERSION, RUST_PROOF_VERSION)
 MAX_STEPS = 1_000_000
 MAX_MODEL_DIM = 1_000_000_000  # 1B parameters
 
@@ -89,6 +98,32 @@ class ProofVerificationError(NovaError):
 class CircuitError(NovaError):
     """Error in step circuit definition."""
     pass
+
+
+# =============================================================================
+# Rust FFI helpers
+# =============================================================================
+
+_RUST_CURVE_MAP = {
+    CurveCycle.PASTA: 0,
+    CurveCycle.BN_GRUMPKIN: 1,
+    CurveCycle.BLS12_381: 2,
+}
+_RUST_CURVE_MAP_INV = {value: key for key, value in _RUST_CURVE_MAP.items()}
+
+
+def _curve_to_rust(curve: CurveCycle) -> int:
+    try:
+        return _RUST_CURVE_MAP[curve]
+    except KeyError as exc:
+        raise NovaError(f"Unsupported curve for Rust backend: {curve}") from exc
+
+
+def _curve_from_rust(curve: int) -> CurveCycle:
+    try:
+        return _RUST_CURVE_MAP_INV[curve]
+    except KeyError as exc:
+        raise NovaError(f"Unsupported curve from Rust backend: {curve}") from exc
 
 
 # =============================================================================
@@ -361,7 +396,7 @@ class NovaProof:
     commitment_roots: Tuple[bytes, ...] = field(default_factory=tuple)
     
     def __post_init__(self) -> None:
-        if self.version != PROOF_VERSION:
+        if self.version not in SUPPORTED_PROOF_VERSIONS:
             raise NovaError(f"Unsupported proof version: {self.version}")
         if self.num_steps <= 0:
             raise NovaError("num_steps must be positive")
@@ -530,6 +565,7 @@ class NovaVerifier:
         expected_curve: CurveCycle = CurveCycle.PASTA,
         rust_backend: Optional[Any] = None,
         allow_simulation: bool = False,
+        use_rust: bool = True,
     ) -> None:
         """
         Initialize Nova verifier.
@@ -540,13 +576,21 @@ class NovaVerifier:
             rust_backend: Rust FFI backend for real SNARK verification
             allow_simulation: If True, allow verification without Rust backend.
                               WARNING: Simulation does NOT verify SNARK proofs!
+            use_rust: If True, auto-detect and use Rust backend when available.
         """
         if expected_model_dimension <= 0:
             raise NovaError("expected_model_dimension must be positive")
         
         self._expected_dim = expected_model_dimension
         self._expected_curve = expected_curve
-        self._rust_backend = rust_backend
+        self._rust_verifier: Optional[Any] = None
+        if rust_backend is not None:
+            self._rust_verifier = rust_backend
+        elif use_rust and _RUST_AVAILABLE:
+            self._rust_verifier = nova_ian.RustNovaVerifier(
+                expected_model_dimension,
+                _curve_to_rust(expected_curve),
+            )
         self._allow_simulation = allow_simulation
     
     def verify(
@@ -571,6 +615,27 @@ class NovaVerifier:
         Raises:
             ProofVerificationError: If verification fails or no backend
         """
+        if self._rust_verifier:
+            if expected_commitment_roots is not None:
+                if proof.commitment_roots != expected_commitment_roots:
+                    raise ProofVerificationError("commitment_roots mismatch")
+            try:
+                rust_proof = nova_ian.RustNovaProof(
+                    proof.version,
+                    _curve_to_rust(proof.curve),
+                    proof.final_instance,
+                    proof.snark_proof,
+                    proof.num_steps,
+                    proof.model_dimension,
+                )
+                return self._rust_verifier.verify(
+                    rust_proof,
+                    expected_final_state,
+                    expected_num_steps,
+                )
+            except Exception as exc:
+                raise ProofVerificationError(str(exc)) from exc
+
         # Check proof metadata
         if proof.model_dimension != self._expected_dim:
             raise ProofVerificationError(
@@ -612,9 +677,6 @@ class NovaVerifier:
             raise ProofVerificationError("Final state mismatch")
         
         # Verify SNARK proof with Rust backend
-        if self._rust_backend:
-            return self._rust_backend.verify_snark(proof.final_instance, proof.snark_proof)
-        
         # No Rust backend - require explicit simulation opt-in
         if not self._allow_simulation:
             raise ProofVerificationError(
@@ -646,6 +708,7 @@ class NovaTrainingSession:
         model_dimension: int,
         learning_rate: float = 0.01,
         curve: CurveCycle = CurveCycle.PASTA,
+        use_rust: bool = True,
     ) -> None:
         """
         Initialize training session.
@@ -654,6 +717,7 @@ class NovaTrainingSession:
             model_dimension: Number of model parameters
             learning_rate: Learning rate
             curve: Elliptic curve cycle
+            use_rust: If True, auto-detect and use Rust backend when available.
         """
         self._circuit = TrainingStepCircuit(
             model_dimension=model_dimension,
@@ -661,18 +725,29 @@ class NovaTrainingSession:
             curve=curve,
         )
         self._prover = NovaProver(self._circuit)
+        self._rust_prover = None
+        self._rust_weights_hash: Optional[bytes] = None
+        if use_rust and _RUST_AVAILABLE:
+            self._rust_prover = nova_ian.RustNovaProver(
+                model_dimension,
+                _curve_to_rust(curve),
+            )
         self._batch_hashes: List[bytes] = []
         self._gradient_commitments: List[GradientCommitment] = []
     
     @property
     def epoch(self) -> int:
+        if self._rust_prover:
+            return self._rust_prover.current_epoch
         return self._prover.current_epoch
     
     @property
     def state_hash(self) -> bytes:
+        if self._rust_prover:
+            return self._rust_prover.current_state_hash
         return self._prover.current_state_hash
-    
-    def add_training_step(
+
+    def step(
         self,
         batch_data: bytes,
         gradient: GradientTensor,
@@ -697,11 +772,45 @@ class NovaTrainingSession:
         if commitment:
             self._gradient_commitments.append(commitment)
         
+        if self._rust_prover:
+            prev_state = self._rust_prover.current_state_hash
+            prev_weights = weights_hash
+            if self._rust_weights_hash is not None:
+                if weights_hash != self._rust_weights_hash:
+                    raise NovaError("weights_hash mismatch with Rust prover state")
+                prev_weights = self._rust_weights_hash
+            epoch, new_state, new_weights = self._rust_prover.step(
+                epoch=self._rust_prover.current_epoch,
+                prev_state=prev_state,
+                weights_hash=prev_weights,
+                batch_hash=batch_hash,
+                gradient_hash=gradient.hash,
+            )
+            new_state_bytes = bytes(new_state)
+            new_weights_bytes = bytes(new_weights)
+            self._rust_weights_hash = new_weights_bytes
+            return StepOutput(
+                epoch=epoch,
+                new_state_hash=new_state_bytes,
+                new_weights_hash=new_weights_bytes,
+                gradient_commitment=commitment,
+            )
+        
         return self._prover.step(
             batch_hash=batch_hash,
             gradient=gradient,
             prev_weights_hash=weights_hash,
         )
+    
+    def add_training_step(
+        self,
+        batch_data: bytes,
+        gradient: GradientTensor,
+        weights_hash: bytes,
+        commitment: Optional[GradientCommitment] = None,
+    ) -> StepOutput:
+        """Alias for step()."""
+        return self.step(batch_data, gradient, weights_hash, commitment)
     
     def finalize(self) -> NovaProof:
         """
@@ -710,6 +819,16 @@ class NovaTrainingSession:
         Returns:
             Nova proof for all training steps
         """
+        if self._rust_prover:
+            rust_proof = self._rust_prover.finalize()
+            return NovaProof(
+                version=rust_proof.version,
+                curve=_curve_from_rust(rust_proof.curve),
+                final_instance=bytes(rust_proof.final_instance),
+                snark_proof=bytes(rust_proof.snark_proof),
+                num_steps=rust_proof.num_steps,
+                model_dimension=rust_proof.model_dimension,
+            )
         return self._prover.finalize()
     
     def get_batch_merkle_root(self) -> bytes:

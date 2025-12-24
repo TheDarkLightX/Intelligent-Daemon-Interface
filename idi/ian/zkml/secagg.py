@@ -3,29 +3,25 @@ Secure Aggregation Primitives for IAN zkML Training.
 
 This module provides BUILDING BLOCKS for secure aggregation:
 - Shamir (t,n) threshold secret sharing
-- Pairwise mask generation with symmetric shared secrets
+- Pairwise mask generation using X25519/ECDH shared secrets
 - XOR-based gradient aggregation
 
 IMPORTANT: This is NOT a complete secure aggregation protocol.
 
 Current limitations:
-- Shared secrets derived from public keys only (not real ECDH)
 - No dropout recovery: All participants must complete the round
-- Server with all public keys CAN compute masks and recover gradients
-
-For actual privacy guarantees, this module must be extended with:
-- Real X25519/ECDH key agreement (private key required for shared secret)
-- This would make masks uncomputable by the server
+- No key confirmation or transcript binding (ephemeral keys are signed)
+- XOR-based masking is illustrative, not a full SecAgg protocol
 
 What this module DOES provide:
 - Correct Shamir secret sharing with validation
-- Symmetric pairwise mask derivation (masks cancel on XOR aggregation)
+- Real X25519/ECDH pairwise mask derivation (server cannot compute masks)
 - Protocol structure for secure aggregation flows
 
 Use cases:
 - Learning secure aggregation concepts
-- Integration testing with mock privacy
-- Foundation for adding real ECDH later
+- Integration testing with real ECDH-based masking
+- Foundation for a full SecAgg protocol
 """
 
 from __future__ import annotations
@@ -36,8 +32,16 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Dict, List, Optional, Set, Tuple
 
-from ..algorithms.crypto import BLS_PUBKEY_LEN
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 
+from ..algorithms.crypto import (
+    BLSError,
+    BLSOperations,
+    BLS_PRIVKEY_LEN,
+    BLS_PUBKEY_LEN,
+    BLS_SIGNATURE_LEN,
+)
 
 # =============================================================================
 # Constants
@@ -45,6 +49,7 @@ from ..algorithms.crypto import BLS_PUBKEY_LEN
 
 # Security parameters
 SECAGG_DOMAIN = b"IAN_SECAGG_V1"
+SECAGG_BLS_CONTEXT = b"IAN_SECAGG_EPHEMERAL_V1"
 MIN_PARTICIPANTS = 3
 MAX_PARTICIPANTS = 1000
 DEFAULT_THRESHOLD = 2  # t-of-n threshold (minimum survivors)
@@ -219,8 +224,9 @@ class ShamirSecretSharing:
 class ParticipantKeys:
     """Ephemeral keys for a participant in secure aggregation."""
     participant_id: bytes  # BLS public key (identity)
-    ephemeral_public: bytes  # Ephemeral DH public key (32 bytes)
+    ephemeral_public: bytes  # Ephemeral X25519 public key (32 bytes)
     round_id: bytes  # Round identifier (32 bytes)
+    ephemeral_signature: bytes  # BLS signature over ephemeral key material
     
     def __post_init__(self) -> None:
         if len(self.participant_id) != BLS_PUBKEY_LEN:
@@ -229,6 +235,19 @@ class ParticipantKeys:
             raise SecAggError("ephemeral_public must be 32 bytes")
         if len(self.round_id) != 32:
             raise SecAggError("round_id must be 32 bytes")
+        if len(self.ephemeral_signature) != BLS_SIGNATURE_LEN:
+            raise SecAggError(f"ephemeral_signature must be {BLS_SIGNATURE_LEN} bytes")
+
+
+def _ephemeral_signing_payload(participant_id: bytes, round_id: bytes, ephemeral_public: bytes) -> bytes:
+    """Build the signable payload for ephemeral key authentication."""
+    return (
+        SECAGG_DOMAIN +
+        b"EPHEMERAL_KEY" +
+        participant_id +
+        round_id +
+        ephemeral_public
+    )
 
 
 class PairwiseMasking:
@@ -256,9 +275,11 @@ class PairwiseMasking:
         self._round_id = round_id
         
         # Generate ephemeral X25519 keypair
-        # Using secrets for simplicity; production should use X25519
-        self._ephemeral_private = secrets.token_bytes(32)
-        self._ephemeral_public = self._derive_public(self._ephemeral_private)
+        self._ephemeral_private = X25519PrivateKey.generate()
+        self._ephemeral_public = self._ephemeral_private.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
     
     @property
     def participant_id(self) -> bytes:
@@ -272,46 +293,31 @@ class PairwiseMasking:
     def ephemeral_public(self) -> bytes:
         return self._ephemeral_public
     
-    def get_keys(self) -> ParticipantKeys:
+    def get_keys(self, signature: bytes) -> ParticipantKeys:
         """Get participant keys for sharing with others."""
         return ParticipantKeys(
             participant_id=self._participant_id,
             ephemeral_public=self._ephemeral_public,
             round_id=self._round_id,
+            ephemeral_signature=signature,
         )
     
     def compute_shared_secret(self, other_id: bytes, other_public: bytes) -> bytes:
         """
         Compute shared secret with another participant.
         
-        IMPORTANT: Uses a symmetric derivation so both parties get the same secret.
-        The secret is derived from the sorted concatenation of both parties' IDs
-        and public keys, ensuring symmetry regardless of who computes it.
-        
-        In production, this should use X25519 key agreement with proper ECDH.
+        IMPORTANT: Uses X25519 ECDH so only participants with private keys
+        can compute the shared secret (the server cannot).
         """
         if len(other_id) != BLS_PUBKEY_LEN:
             raise SecAggError(f"other_id must be {BLS_PUBKEY_LEN} bytes")
         if len(other_public) != 32:
             raise SecAggError("other_public must be 32 bytes")
         
-        # Sort IDs to ensure symmetric derivation regardless of who computes
-        if self._participant_id < other_id:
-            id_pair = self._participant_id + other_id
-            pub_pair = self._ephemeral_public + other_public
-        else:
-            id_pair = other_id + self._participant_id
-            pub_pair = other_public + self._ephemeral_public
-        
-        # Derive shared secret symmetrically
-        shared = hashlib.sha256(
-            SECAGG_DOMAIN +
-            b"SHARED" +
-            id_pair +
-            pub_pair +
-            self._round_id
-        ).digest()
-        
+        peer_public = X25519PublicKey.from_public_bytes(other_public)
+        shared = self._ephemeral_private.exchange(peer_public)
+        if shared == b"\x00" * len(shared):
+            raise SecAggError("low-order point detected")
         return shared
     
     def compute_pairwise_mask(
@@ -337,12 +343,21 @@ class PairwiseMasking:
         
         shared_secret = self.compute_shared_secret(other_id, other_public)
         
-        # Generate mask using PRF (expand shared secret to gradient size)
-        return self._expand_mask(shared_secret, gradient_size)
-    
-    def _derive_public(self, private: bytes) -> bytes:
-        """Derive public key from private (simplified, not real X25519)."""
-        return hashlib.sha256(SECAGG_DOMAIN + b"PUB" + private).digest()
+        # Bind masks to round and identities while preserving ECDH secrecy.
+        if self._participant_id < other_id:
+            id_pair = self._participant_id + other_id
+        else:
+            id_pair = other_id + self._participant_id
+        mask_seed = hashlib.sha256(
+            SECAGG_DOMAIN +
+            b"PAIRWISE_MASK" +
+            shared_secret +
+            id_pair +
+            self._round_id
+        ).digest()
+        
+        # Generate mask using PRF (expand mask seed to gradient size)
+        return self._expand_mask(mask_seed, gradient_size)
     
     def _expand_mask(self, seed: bytes, size: int) -> bytes:
         """Expand seed to mask of given size using HKDF-style expansion."""
@@ -517,18 +532,24 @@ class SecAggParticipant:
         participant_id: bytes,
         round_id: bytes,
         gradient_size: int,
+        bls_private_key: bytes,
         threshold: int = DEFAULT_THRESHOLD,
     ) -> None:
         if len(participant_id) != BLS_PUBKEY_LEN:
             raise SecAggError(f"participant_id must be {BLS_PUBKEY_LEN} bytes")
+        if len(bls_private_key) != BLS_PRIVKEY_LEN:
+            raise SecAggError(f"bls_private_key must be {BLS_PRIVKEY_LEN} bytes")
         
         self._participant_id = participant_id
         self._round_id = round_id
         self._gradient_size = gradient_size
         self._threshold = threshold
+        self._bls_private_key = bls_private_key
+        self._bls = BLSOperations()
         
         # Initialize masking
         self._masking = PairwiseMasking(participant_id, round_id)
+        self._ephemeral_signature = self._sign_ephemeral_public()
         
         # Store other participants' keys
         self._other_keys: Dict[bytes, ParticipantKeys] = {}
@@ -536,7 +557,27 @@ class SecAggParticipant:
     @property
     def keys(self) -> ParticipantKeys:
         """Get this participant's keys."""
-        return self._masking.get_keys()
+        return self._masking.get_keys(self._ephemeral_signature)
+
+    def _sign_ephemeral_public(self) -> bytes:
+        """Sign the ephemeral public key with the participant identity key."""
+        payload = _ephemeral_signing_payload(
+            self._participant_id,
+            self._round_id,
+            self._masking.ephemeral_public,
+        )
+        try:
+            signature = self._bls.sign(self._bls_private_key, payload, context=SECAGG_BLS_CONTEXT)
+        except BLSError as exc:
+            raise SecAggError(f"Failed to sign ephemeral key: {exc}")
+        if not self._bls.verify(
+            self._participant_id,
+            payload,
+            signature,
+            context=SECAGG_BLS_CONTEXT,
+        ):
+            raise SecAggError("BLS private key does not match participant_id")
+        return signature
     
     def add_peer(self, keys: ParticipantKeys) -> None:
         """Add another participant's keys."""
@@ -544,6 +585,18 @@ class SecAggParticipant:
             raise SecAggError("Cannot add self as peer")
         if keys.round_id != self._round_id:
             raise SecAggError("Peer round_id does not match")
+        payload = _ephemeral_signing_payload(
+            keys.participant_id,
+            keys.round_id,
+            keys.ephemeral_public,
+        )
+        if not self._bls.verify(
+            keys.participant_id,
+            payload,
+            keys.ephemeral_signature,
+            context=SECAGG_BLS_CONTEXT,
+        ):
+            raise SecAggError("Invalid signature for peer ephemeral key")
         
         self._other_keys[keys.participant_id] = keys
     
