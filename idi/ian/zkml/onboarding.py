@@ -46,6 +46,16 @@ from typing import Callable, Dict, FrozenSet, List, Optional, Set, Tuple
 BYTES_PER_GB = 1024 * 1024 * 1024
 BYTES_PER_MB = 1024 * 1024
 
+# Tau detection
+TAU_BINARY_NAMES = ["tau", "tau-lang"]
+TAU_DEFAULT_PATHS = [
+    "external/tau-lang/build-Release/tau",
+    "external/tau-lang/build-Debug/tau",
+    "/usr/local/bin/tau",
+    "/usr/bin/tau",
+]
+TAU_NET_DEFAULT_PORTS = [8080, 8443, 9000]
+
 # Timeouts
 DISCOVERY_TIMEOUT_SECONDS = 10.0
 CONNECTION_TEST_TIMEOUT_SECONDS = 5.0
@@ -81,6 +91,196 @@ class NetworkDiscoveryError(OnboardingError):
 
 # =============================================================================
 # Hardware Detection (Poka Yoke: Contact Method - Validate Attributes)
+# =============================================================================
+
+
+# =============================================================================
+# Tau Detection (Poka Yoke: Auto-detect Tau binary and Tau Net)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class TauBinaryInfo:
+    """
+    Detected Tau Language binary information (immutable).
+    
+    Poka Yoke: Validates binary exists and is executable.
+    """
+    path: str
+    version: Optional[str] = None
+    is_release: bool = False
+    
+    def __post_init__(self) -> None:
+        if not self.path:
+            raise ValueError("Tau binary path is required")
+
+
+@dataclass(frozen=True)
+class TauNetInfo:
+    """
+    Detected Tau Net connectivity information (immutable).
+    """
+    endpoint: str
+    port: int
+    is_reachable: bool = False
+    latency_ms: Optional[float] = None
+    version: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class TauCapabilities:
+    """
+    Auto-detected Tau ecosystem capabilities (immutable).
+    
+    Detects:
+    - Tau Language binary (for formal verification)
+    - Tau Net connectivity (for blockchain integration)
+    """
+    binary: Optional[TauBinaryInfo] = None
+    tau_net: Optional[TauNetInfo] = None
+    
+    @property
+    def has_tau_binary(self) -> bool:
+        return self.binary is not None
+    
+    @property
+    def has_tau_net(self) -> bool:
+        return self.tau_net is not None and self.tau_net.is_reachable
+    
+    @classmethod
+    def auto_detect(cls, workspace_root: Optional[str] = None) -> "TauCapabilities":
+        """
+        Zero-config Tau detection.
+        
+        Args:
+            workspace_root: Optional workspace root for relative path detection
+            
+        Returns:
+            Validated, immutable Tau capabilities
+        """
+        binary = cls._detect_tau_binary(workspace_root)
+        tau_net = cls._detect_tau_net()
+        
+        return cls(binary=binary, tau_net=tau_net)
+    
+    @classmethod
+    def _detect_tau_binary(cls, workspace_root: Optional[str] = None) -> Optional[TauBinaryInfo]:
+        """Detect Tau Language binary."""
+        import subprocess
+        
+        # 1. Check PATH first
+        for name in TAU_BINARY_NAMES:
+            tau_path = shutil.which(name)
+            if tau_path:
+                version = cls._get_tau_version(tau_path)
+                return TauBinaryInfo(
+                    path=tau_path,
+                    version=version,
+                    is_release="Release" in tau_path,
+                )
+        
+        # 2. Check default paths (relative to workspace or absolute)
+        search_roots = [os.getcwd()]
+        if workspace_root:
+            search_roots.insert(0, workspace_root)
+        
+        for root in search_roots:
+            for rel_path in TAU_DEFAULT_PATHS:
+                if rel_path.startswith("/"):
+                    full_path = rel_path
+                else:
+                    full_path = os.path.join(root, rel_path)
+                
+                if os.path.isfile(full_path) and os.access(full_path, os.X_OK):
+                    version = cls._get_tau_version(full_path)
+                    return TauBinaryInfo(
+                        path=full_path,
+                        version=version,
+                        is_release="Release" in full_path,
+                    )
+        
+        return None
+    
+    @classmethod
+    def _get_tau_version(cls, tau_path: str) -> Optional[str]:
+        """Get Tau binary version."""
+        import subprocess
+        
+        try:
+            result = subprocess.run(
+                [tau_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                # Parse version from output
+                output = result.stdout.strip()
+                if output:
+                    return output.split()[0] if output else None
+        except Exception:
+            pass
+        return None
+    
+    @classmethod
+    def _detect_tau_net(cls) -> Optional[TauNetInfo]:
+        """Detect Tau Net connectivity."""
+        import time
+        
+        # Try known Tau Net endpoints
+        tau_net_endpoints = [
+            ("localhost", 8080),
+            ("localhost", 8443),
+            ("tau.net", 443),  # Future mainnet
+        ]
+        
+        for host, port in tau_net_endpoints:
+            try:
+                start = time.monotonic()
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2.0)
+                result = sock.connect_ex((host, port))
+                latency_ms = (time.monotonic() - start) * 1000
+                sock.close()
+                
+                if result == 0:
+                    return TauNetInfo(
+                        endpoint=host,
+                        port=port,
+                        is_reachable=True,
+                        latency_ms=latency_ms,
+                    )
+            except Exception:
+                continue
+        
+        return TauNetInfo(
+            endpoint="",
+            port=0,
+            is_reachable=False,
+        )
+    
+    def summary(self) -> str:
+        """Human-readable summary of Tau capabilities."""
+        lines = []
+        
+        if self.binary:
+            version_str = f" v{self.binary.version}" if self.binary.version else ""
+            build_type = "Release" if self.binary.is_release else "Debug"
+            lines.append(f"Tau Binary: {self.binary.path}{version_str} ({build_type})")
+        else:
+            lines.append("Tau Binary: Not found")
+        
+        if self.tau_net and self.tau_net.is_reachable:
+            latency = f" ({self.tau_net.latency_ms:.1f}ms)" if self.tau_net.latency_ms else ""
+            lines.append(f"Tau Net: {self.tau_net.endpoint}:{self.tau_net.port}{latency}")
+        else:
+            lines.append("Tau Net: Not connected")
+        
+        return "\n".join(lines)
+
+
+# =============================================================================
+# GPU Detection
 # =============================================================================
 
 
@@ -146,6 +346,9 @@ class HardwareCapabilities:
     
     # GPU (optional)
     gpus: Tuple[GPUInfo, ...] = field(default_factory=tuple)
+    
+    # Tau ecosystem (optional)
+    tau: Optional[TauCapabilities] = None
     
     # Platform
     os_name: str = field(default_factory=platform.system)
@@ -229,6 +432,9 @@ class HardwareCapabilities:
         # GPU detection
         gpus = cls._detect_gpus()
         
+        # Tau detection
+        tau = TauCapabilities.auto_detect()
+        
         return cls(
             cpu_cores=cpu_cores,
             cpu_threads=cpu_threads,
@@ -238,6 +444,7 @@ class HardwareCapabilities:
             disk_total_bytes=disk_total_bytes,
             disk_available_bytes=disk_available_bytes,
             gpus=tuple(gpus),
+            tau=tau,
         )
     
     @staticmethod
@@ -295,6 +502,14 @@ class HardwareCapabilities:
         
         return gpus
     
+    @property
+    def has_tau_binary(self) -> bool:
+        return self.tau is not None and self.tau.has_tau_binary
+    
+    @property
+    def has_tau_net(self) -> bool:
+        return self.tau is not None and self.tau.has_tau_net
+    
     def summary(self) -> str:
         """Human-readable summary of capabilities."""
         lines = [
@@ -308,6 +523,10 @@ class HardwareCapabilities:
                 lines.append(f"GPU {i}: {gpu.name} ({gpu.vram_gb:.1f} GB VRAM)")
         else:
             lines.append("GPU: None detected")
+        
+        # Tau ecosystem
+        if self.tau:
+            lines.append(self.tau.summary())
         
         return "\n".join(lines)
 

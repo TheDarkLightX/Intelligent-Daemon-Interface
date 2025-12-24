@@ -13,6 +13,9 @@ Modules:
 from .onboarding import (
     HardwareCapabilities,
     GPUInfo,
+    TauBinaryInfo,
+    TauNetInfo,
+    TauCapabilities,
     NetworkEndpoint,
     NetworkDiscovery,
     TaskRequirements,
@@ -46,6 +49,9 @@ __all__ = [
     # Onboarding
     "HardwareCapabilities",
     "GPUInfo",
+    "TauBinaryInfo",
+    "TauNetInfo",
+    "TauCapabilities",
     "NetworkEndpoint",
     "NetworkDiscovery",
     "TaskRequirements",
