@@ -1329,38 +1329,281 @@ class FrontierSync:
         return iblt
 
     async def _exchange_states(self, peer_id: str, local_state: SyncState) -> SyncState:
-        """Exchange sync states with peer."""
-        # This would use the transport layer
-        # Placeholder for actual implementation
-        raise NotImplementedError("Subclass must implement _exchange_states")
+        """
+        Exchange sync states with peer via transport layer.
+        
+        Sends local state and receives peer's state for comparison.
+        """
+        if not hasattr(self._transport, 'request_response'):
+            raise RuntimeError("Transport must implement request_response")
+        
+        # Serialize local state
+        request_data = {
+            "type": "sync_state_exchange",
+            "goal_id": local_state.goal_id,
+            "size": local_state.size,
+            "frontier": [p.hex() for p in local_state.frontier],
+            "version": local_state.version,
+            "timestamp_ms": local_state.timestamp_ms,
+        }
+        
+        try:
+            response = await asyncio.wait_for(
+                self._transport.request_response(peer_id, request_data),
+                timeout=DEFAULT_ASYNC_TIMEOUT,
+            )
+            
+            # Parse peer state
+            return SyncState(
+                goal_id=response["goal_id"],
+                size=response["size"],
+                frontier=[bytes.fromhex(p) for p in response.get("frontier", [])],
+                version=response.get("version", 0),
+                timestamp_ms=response.get("timestamp_ms", int(time.time() * 1000)),
+            )
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"Timeout exchanging states with {peer_id}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to exchange states with {peer_id}: {e}")
 
     async def _exchange_iblts(self, peer_id: str, local_iblt_data: bytes) -> bytes:
-        """Exchange IBLT data with peer."""
-        raise NotImplementedError("Subclass must implement _exchange_iblts")
+        """
+        Exchange IBLT data with peer for set reconciliation.
+        
+        Sends local IBLT and receives peer's IBLT for XOR-based diff detection.
+        """
+        if not hasattr(self._transport, 'request_response'):
+            raise RuntimeError("Transport must implement request_response")
+        
+        import base64
+        request_data = {
+            "type": "iblt_exchange",
+            "goal_id": self._goal_id,
+            "iblt_data": base64.b64encode(local_iblt_data).decode(),
+        }
+        
+        try:
+            response = await asyncio.wait_for(
+                self._transport.request_response(peer_id, request_data),
+                timeout=DEFAULT_ASYNC_TIMEOUT,
+            )
+            return base64.b64decode(response.get("iblt_data", ""))
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"Timeout exchanging IBLTs with {peer_id}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to exchange IBLTs with {peer_id}: {e}")
 
     async def _request_entries_by_hash(
         self,
         peer_id: str,
         hashes: list[bytes]
     ) -> list[bytes]:
-        """Request specific entries by hash from peer."""
-        raise NotImplementedError("Subclass must implement _request_entries_by_hash")
+        """
+        Request specific entries by hash from peer.
+        
+        Used after IBLT reconciliation to fetch missing entries.
+        """
+        if not hasattr(self._transport, 'request_response'):
+            raise RuntimeError("Transport must implement request_response")
+        
+        if not hashes:
+            return []
+        
+        # Batch requests to avoid overwhelming peer
+        results: list[bytes] = []
+        batch_size = MAX_ENTRIES_PER_BATCH
+        
+        for i in range(0, len(hashes), batch_size):
+            batch = hashes[i:i + batch_size]
+            request_data = {
+                "type": "entries_by_hash_request",
+                "goal_id": self._goal_id,
+                "hashes": [h.hex() for h in batch],
+            }
+            
+            try:
+                response = await asyncio.wait_for(
+                    self._transport.request_response(peer_id, request_data),
+                    timeout=DEFAULT_ASYNC_TIMEOUT,
+                )
+                import base64
+                for entry_b64 in response.get("entries", []):
+                    if entry_b64:
+                        results.append(base64.b64decode(entry_b64))
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout requesting entries from {peer_id}")
+                break
+            except Exception as e:
+                logger.warning(f"Failed to request entries from {peer_id}: {e}")
+                break
+        
+        return results
 
     async def _get_entries_by_hash(self, hashes: list[bytes]) -> list[bytes]:
-        """Get local entries by hash."""
-        raise NotImplementedError("Subclass must implement _get_entries_by_hash")
+        """
+        Get local entries by hash from MMR storage.
+        
+        Used to respond to peer entry requests.
+        """
+        results: list[bytes] = []
+        
+        if hasattr(self._mmr, 'get_entry_by_hash'):
+            for h in hashes:
+                try:
+                    entry = self._mmr.get_entry_by_hash(h)
+                    if entry is not None:
+                        results.append(entry)
+                except Exception:
+                    pass
+        elif hasattr(self._mmr, 'get_all_entries'):
+            # Fallback: scan all entries
+            hash_set = set(hashes)
+            try:
+                for entry in self._mmr.get_all_entries():
+                    entry_hash = hashlib.sha256(entry).digest()
+                    if entry_hash in hash_set:
+                        results.append(entry)
+            except Exception:
+                pass
+        
+        return results
 
     async def _send_entries(self, peer_id: str, entries: list[bytes]) -> None:
-        """Send entries to peer."""
-        raise NotImplementedError("Subclass must implement _send_entries")
+        """
+        Send entries to peer that requested them.
+        
+        Used to push entries peer is missing.
+        """
+        if not hasattr(self._transport, 'send_message'):
+            raise RuntimeError("Transport must implement send_message")
+        
+        if not entries:
+            return
+        
+        import base64
+        
+        # Send in batches
+        batch_size = MAX_ENTRIES_PER_BATCH
+        for i in range(0, len(entries), batch_size):
+            batch = entries[i:i + batch_size]
+            message_data = {
+                "type": "entries_push",
+                "goal_id": self._goal_id,
+                "entries": [base64.b64encode(e).decode() for e in batch],
+            }
+            
+            try:
+                await self._transport.send_message(peer_id, message_data)
+            except Exception as e:
+                logger.warning(f"Failed to send entries to {peer_id}: {e}")
+                break
 
     async def _pull_from_peer(self, session: SyncSession) -> SyncResult:
-        """Pull missing entries from peer."""
-        raise NotImplementedError("Subclass must implement _pull_from_peer")
+        """
+        Pull missing entries from peer using IBLT reconciliation.
+        
+        Algorithm:
+        1. Build local IBLT
+        2. Exchange IBLTs with peer
+        3. XOR IBLTs to find symmetric difference
+        4. Request missing entries by hash
+        5. Validate and append to local MMR
+        """
+        peer_id = session.peer_id
+        
+        try:
+            # Build and exchange IBLTs
+            iblt_config = await self._select_iblt_config(peer_id)
+            local_iblt = await self._build_iblt_from_log(iblt_config)
+            local_iblt_data = local_iblt.serialize()
+            
+            peer_iblt_data = await self._exchange_iblts(peer_id, local_iblt_data)
+            peer_iblt = IBLT.deserialize(peer_iblt_data, iblt_config)
+            
+            # XOR to find difference
+            diff_iblt = local_iblt.subtract(peer_iblt)
+            success, our_missing, their_missing = diff_iblt.decode()
+            
+            if not success:
+                return SyncResult(
+                    status=SyncStatus.IBLT_DECODE_FAILED,
+                    error="IBLT decode failed - falling back to frontier sync",
+                )
+            
+            # Request missing entries
+            if our_missing:
+                entries = await self._request_entries_by_hash(peer_id, our_missing)
+                
+                # Validate and append
+                added = 0
+                for entry in entries:
+                    try:
+                        if hasattr(self._mmr, 'append'):
+                            self._mmr.append(entry)
+                            added += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to append entry: {e}")
+                
+                session.entries_received = added
+            
+            return SyncResult(
+                status=SyncStatus.SUCCESS,
+                entries_received=session.entries_received,
+            )
+            
+        except Exception as e:
+            return SyncResult(
+                status=SyncStatus.ERROR,
+                error=str(e),
+            )
 
     async def _push_to_peer(self, session: SyncSession) -> SyncResult:
-        """Push entries to peer that's behind."""
-        raise NotImplementedError("Subclass must implement _push_to_peer")
+        """
+        Push entries to peer that's behind using IBLT reconciliation.
+        
+        Algorithm:
+        1. Build local IBLT
+        2. Exchange IBLTs with peer
+        3. XOR IBLTs to find what peer is missing
+        4. Send missing entries
+        """
+        peer_id = session.peer_id
+        
+        try:
+            # Build and exchange IBLTs
+            iblt_config = await self._select_iblt_config(peer_id)
+            local_iblt = await self._build_iblt_from_log(iblt_config)
+            local_iblt_data = local_iblt.serialize()
+            
+            peer_iblt_data = await self._exchange_iblts(peer_id, local_iblt_data)
+            peer_iblt = IBLT.deserialize(peer_iblt_data, iblt_config)
+            
+            # XOR to find difference
+            diff_iblt = local_iblt.subtract(peer_iblt)
+            success, our_missing, their_missing = diff_iblt.decode()
+            
+            if not success:
+                return SyncResult(
+                    status=SyncStatus.IBLT_DECODE_FAILED,
+                    error="IBLT decode failed",
+                )
+            
+            # Send entries peer is missing
+            if their_missing:
+                entries = await self._get_entries_by_hash(their_missing)
+                await self._send_entries(peer_id, entries)
+                session.entries_sent = len(entries)
+            
+            return SyncResult(
+                status=SyncStatus.SUCCESS,
+                entries_sent=session.entries_sent,
+            )
+            
+        except Exception as e:
+            return SyncResult(
+                status=SyncStatus.ERROR,
+                error=str(e),
+            )
 
     async def _handle_fork(self, session: SyncSession) -> SyncResult:
         """Handle detected fork between nodes."""

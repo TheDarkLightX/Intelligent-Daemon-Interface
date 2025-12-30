@@ -1,0 +1,122 @@
+ir_version: "esso-ir/v1"
+meta:
+  model_id: "ian_state_machine_control_min"
+  created_by: "idi"
+  source: "idi/ian/rules/ian_state_machine.tau"
+  notes: "Auto-minimized (ESSO evolver) under control-plane observables."
+observables:
+  state_vars:
+    - "registered"
+    - "log_committed"
+    - "upgraded"
+    - "upgrade_count"
+  effects: []
+types: []
+state_vars:
+  - id: "log_committed"
+    role: "control"
+    type: { kind: "bool" }
+  - id: "registered"
+    role: "control"
+    type: { kind: "bool" }
+  - id: "upgrade_count"
+    role: "control"
+    type: { kind: "int", min: 0, max: 3 }
+  - id: "upgraded"
+    role: "control"
+    type: { kind: "bool" }
+invariants:
+  - id: "inv_true"
+    kind: "safety"
+    expr: { bool: true }
+init:
+  - var: "registered"
+    expr: { bool: false }
+  - var: "log_committed"
+    expr: { bool: false }
+  - var: "upgraded"
+    expr: { bool: false }
+  - var: "upgrade_count"
+    expr: { const: 0 }
+actions:
+  - id: "tick"
+    params:
+      - id: "tx_register"
+        type: { kind: "bool" }
+      - id: "tx_commit"
+        type: { kind: "bool" }
+      - id: "tx_upgrade"
+        type: { kind: "bool" }
+      - id: "valid_signature"
+        type: { kind: "bool" }
+      - id: "valid_proof"
+        type: { kind: "bool" }
+      - id: "cooldown_ok"
+        type: { kind: "bool" }
+      - id: "governance_ok"
+        type: { kind: "bool" }
+      - id: "in_log_root"
+        type: { kind: "bitvec", width: 32 }
+      - id: "in_pack_hash"
+        type: { kind: "bitvec", width: 32 }
+    guard: { bool: true }
+    updates:
+      - var: "registered"
+        expr:
+          op: "or"
+          args:
+            - op: "and"
+              args:
+                - op: "not"
+                  args:
+                    - { var: "registered" }
+                - { param: "tx_register" }
+                - { param: "valid_signature" }
+            - { var: "registered" }
+      - var: "log_committed"
+        expr:
+          op: "and"
+          args:
+            - { param: "tx_commit" }
+            - { param: "valid_proof" }
+            - { var: "registered" }
+      - var: "upgraded"
+        expr:
+          op: "and"
+          args:
+            - op: "or"
+              args:
+                - { param: "cooldown_ok" }
+                - { param: "governance_ok" }
+            - { param: "tx_upgrade" }
+            - { param: "valid_proof" }
+            - { var: "registered" }
+      - var: "upgrade_count"
+        expr:
+          op: "ite"
+          cond:
+            op: "and"
+            args:
+              - op: "or"
+                args:
+                  - { param: "cooldown_ok" }
+                  - { param: "governance_ok" }
+              - { param: "tx_upgrade" }
+              - { param: "valid_proof" }
+              - { var: "registered" }
+          then:
+            op: "ite"
+            cond:
+              op: "="
+              args:
+                - { const: 3 }
+                - { var: "upgrade_count" }
+            then: { const: 0 }
+            else:
+              op: "+"
+              args:
+                - { const: 1 }
+                - { var: "upgrade_count" }
+          else: { var: "upgrade_count" }
+    effects: {}
+

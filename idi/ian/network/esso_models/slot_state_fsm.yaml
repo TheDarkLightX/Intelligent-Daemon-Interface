@@ -1,0 +1,100 @@
+actions:
+- effects:
+    transition_valid:
+      bool: true
+  guard:
+    args:
+    - args:
+      - args:
+        - enum: COLLECTING
+        - var: state
+        op: '='
+      - args:
+        - args:
+          - enum: CANCELLED
+          - param: to_state
+          op: '='
+        - args:
+          - enum: ORDERING
+          - param: to_state
+          op: '='
+        op: or
+      op: and
+    - args:
+      - args:
+        - enum: COMMITTED
+        - var: state
+        op: '='
+      - args:
+        - args:
+          - enum: CANCELLED
+          - param: to_state
+          op: '='
+        - args:
+          - enum: EXECUTED
+          - param: to_state
+          op: '='
+        op: or
+      op: and
+    - args:
+      - args:
+        - enum: ORDERING
+        - var: state
+        op: '='
+      - args:
+        - args:
+          - enum: CANCELLED
+          - param: to_state
+          op: '='
+        - args:
+          - enum: COMMITTED
+          - param: to_state
+          op: '='
+        op: or
+      op: and
+    op: or
+  id: transition
+  params:
+  - id: to_state
+    type:
+      kind: enum
+      symbols:
+      - COLLECTING
+      - ORDERING
+      - COMMITTED
+      - EXECUTED
+      - CANCELLED
+  updates:
+  - expr:
+      param: to_state
+    var: state
+init:
+- expr:
+    enum: COLLECTING
+  var: state
+invariants:
+- expr:
+    bool: true
+  id: inv_true
+  kind: safety
+ir_version: esso-ir/v1
+meta:
+  model_id: slot_state_fsm
+  source: idi/ian/network/slotbatcher.py:SlotState
+observables:
+  effects:
+  - transition_valid
+  state_vars:
+  - state
+state_vars:
+- id: state
+  role: control
+  type:
+    kind: enum
+    symbols:
+    - COLLECTING
+    - ORDERING
+    - COMMITTED
+    - EXECUTED
+    - CANCELLED
+types: []

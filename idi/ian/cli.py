@@ -188,12 +188,20 @@ async def _run_node_start(config_path: Path) -> None:
     coordinator = IANCoordinator(goal_spec=goal_spec, config=CoordinatorConfig())
 
     key_dir = Path(os.environ.get("IAN_KEY_DIR") or str(node_cfg.get("key_dir") or "./keys"))
-    identity_path = key_dir / "node_identity.json"
-    if identity_path.exists():
-        identity = NodeIdentity.load(identity_path)
+    identity_ref = os.environ.get("IAN_IDENTITY_REF") or str(node_cfg.get("identity_ref") or "")
+    if identity_ref:
+        try:
+            identity = NodeIdentity.load_from_ref(identity_ref)
+        except FileNotFoundError:
+            identity = NodeIdentity.generate()
+            identity.save_to_ref(identity_ref)
     else:
-        identity = NodeIdentity.generate()
-        identity.save(identity_path)
+        identity_path = key_dir / "node_identity.json"
+        if identity_path.exists():
+            identity = NodeIdentity.load(identity_path)
+        else:
+            identity = NodeIdentity.generate()
+            identity.save(identity_path)
 
     api_server = IANApiServer(
         coordinator,

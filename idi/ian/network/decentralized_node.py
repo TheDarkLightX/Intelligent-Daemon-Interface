@@ -329,6 +329,12 @@ class DecentralizedNode:
         
         # Consensus check
         def check_consensus() -> HealthCheck:
+            if not self._consensus.is_running:
+                return HealthCheck(
+                    name="consensus",
+                    status=HealthStatus.UNHEALTHY,
+                    message="Consensus stopped",
+                )
             state = self._consensus.get_state()
             if state == ConsensusState.SYNCING:
                 return HealthCheck(
@@ -336,11 +342,11 @@ class DecentralizedNode:
                     status=HealthStatus.DEGRADED,
                     message="Consensus syncing",
                 )
-            elif state == ConsensusState.STOPPED:
+            if state == ConsensusState.DIVERGED:
                 return HealthCheck(
                     name="consensus",
-                    status=HealthStatus.UNHEALTHY,
-                    message="Consensus stopped",
+                    status=HealthStatus.DEGRADED,
+                    message="Consensus diverged",
                 )
             return HealthCheck(
                 name="consensus",
@@ -1107,12 +1113,11 @@ def create_decentralized_node(
     
     # Load or create identity
     if identity_path:
-        path = Path(identity_path)
-        if path.exists():
-            identity = NodeIdentity.load(path)
-        else:
+        try:
+            identity = NodeIdentity.load_from_ref(identity_path)
+        except FileNotFoundError:
             identity = NodeIdentity.generate()
-            identity.save(path)
+            identity.save_to_ref(identity_path)
     else:
         identity = NodeIdentity.generate()
     

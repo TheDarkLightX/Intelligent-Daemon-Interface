@@ -1,0 +1,131 @@
+name: fast_lane
+schema: "foundry-req/v1"
+req_id: "fast_lane"
+req_version: "0.0.1"
+
+# State Variables
+state:
+  status: [IDLE, SAMPLING, VOTING, ACCEPTED, REJECTED, INDETERMINATE, TIMEOUT]
+  votes_received: { type: int, min: 0, max: 20 }
+  votes_accept: { type: int, min: 0, max: 20 }
+  votes_reject: { type: int, min: 0, max: 20 }
+  sample_size: { type: int, min: 1, max: 20 }
+  threshold_pct: { type: int, min: 50, max: 100 }
+
+# Actions
+actions:
+  - name: start_sampling
+    params: {}
+    pre: ["status = IDLE"]
+    eff:
+      - "status' = SAMPLING"
+      - "votes_received' = 0"
+      - "votes_accept' = 0"
+      - "votes_reject' = 0"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: sampling_complete
+    params: {}
+    pre: ["status = SAMPLING"]
+    eff:
+      - "status' = VOTING"
+      - "votes_received' = 0"
+      - "votes_accept' = 0"
+      - "votes_reject' = 0"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: vote_accept
+    params: {}
+    pre: ["status = VOTING", "votes_received < sample_size", "votes_received < 20"]
+    eff:
+      - "votes_received' = votes_received + 1"
+      - "votes_accept' = votes_accept + 1"
+      - "votes_reject' = votes_reject"
+      - "status' = VOTING"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: vote_reject
+    params: {}
+    pre: ["status = VOTING", "votes_received < sample_size", "votes_received < 20"]
+    eff:
+      - "votes_received' = votes_received + 1"
+      - "votes_reject' = votes_reject + 1"
+      - "votes_accept' = votes_accept"
+      - "status' = VOTING"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: decide_accept
+    params: {}
+    pre: ["status = VOTING", "votes_received >= sample_size", "votes_accept * 100 >= votes_received * threshold_pct"]
+    eff:
+      - "status' = ACCEPTED"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: decide_reject
+    params: {}
+    pre: ["status = VOTING", "votes_received >= sample_size", "votes_accept * 100 < votes_received * threshold_pct"]
+    eff:
+      - "status' = REJECTED"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: decide_indeterminate
+    params: {}
+    pre: ["status = VOTING", "votes_received < sample_size"]
+    eff:
+      - "status' = INDETERMINATE"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: timeout
+    params: {}
+    pre: ["status = VOTING"]
+    eff:
+      - "status' = TIMEOUT"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+  - name: reset
+    params: {}
+    pre: ["status != IDLE", "status != SAMPLING", "status != VOTING"]
+    eff:
+      - "status' = IDLE"
+      - "votes_received' = 0"
+      - "votes_accept' = 0"
+      - "votes_reject' = 0"
+      - "sample_size' = sample_size"
+      - "threshold_pct' = threshold_pct"
+
+# Invariants
+invariants:
+  - name: votes_sum
+    expr: "votes_received = votes_accept + votes_reject"
+  - name: votes_bounded
+    expr: "votes_received <= sample_size"
+  - name: idle_no_votes
+    expr: "(status != IDLE) or (votes_received = 0)"
+  - name: accepted_threshold
+    expr: "(status != ACCEPTED) or (votes_accept * 100 >= votes_received * threshold_pct)"
+
+observations:
+  - name: is_voting
+    expr: "status = VOTING"
+  - name: is_decided
+    expr: "(status = ACCEPTED) or (status = REJECTED) or (status = INDETERMINATE)"

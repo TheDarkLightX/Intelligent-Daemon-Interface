@@ -26,6 +26,14 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
+from .kernels.peer_tier_fsm_ref import (
+    State as PeerTierKernelState,
+    Command as PeerTierKernelCommand,
+    step as peer_tier_step,
+    init_state as peer_tier_init_state,
+    check_invariants as peer_tier_check_invariants,
+)
+
 logger = logging.getLogger(__name__)
 
 

@@ -35,6 +35,14 @@ if TYPE_CHECKING:
     from idi.ian.models import Contribution, ContributionMeta
     from idi.ian.mmr import MerkleMountainRange, MembershipProof
 
+from .kernels.fraud_proof_fsm_ref import (
+    State as FraudKernelState,
+    Command as FraudKernelCommand,
+    StepResult as FraudKernelStepResult,
+    check_invariants as fraud_check_invariants,
+    step as fraud_step,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,6 +61,20 @@ class FraudType(Enum):
     INVALID_COMMIT_SIGNATURE = "invalid_commit_signature"
 
 
+class FraudStatus(Enum):
+    CREATED = "created"
+    SUBMITTED = "submitted"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
+class RejectionReason(Enum):
+    NONE = "none"
+    INVALID_SIG = "invalid_sig"
+    STATE_MATCH = "state_match"
+    EXPIRED = "expired"
+
+
 # =============================================================================
 # Fraud Proofs
 # =============================================================================
@@ -64,6 +86,8 @@ class FraudProof:
     
     A fraud proof demonstrates that a committer submitted
     an invalid state transition to Tau Net.
+    
+    Wired to ESSO-verified kernel: fraud_proof_fsm_ref.
     """
     fraud_type: FraudType
     goal_id: str
@@ -71,6 +95,86 @@ class FraudProof:
     timestamp_ms: int = field(default_factory=lambda: int(time.time() * 1000))
     challenger_id: Optional[str] = None
     challenger_signature: Optional[bytes] = None
+    
+    # Kernel integration
+    _status: FraudStatus = FraudStatus.CREATED
+    _rejection_reason: RejectionReason = RejectionReason.NONE
+    _kstate: FraudKernelState = field(default=None, repr=False)  # type: ignore
+
+    def __post_init__(self) -> None:
+        """Initialize kernel state."""
+        status_map = {
+            FraudStatus.CREATED: 'CREATED',
+            FraudStatus.SUBMITTED: 'SUBMITTED',
+            FraudStatus.VERIFIED: 'VERIFIED',
+            FraudStatus.REJECTED: 'REJECTED',
+        }
+        reason_map = {
+            RejectionReason.NONE: 'NONE',
+            RejectionReason.INVALID_SIG: 'INVALID_SIG',
+            RejectionReason.STATE_MATCH: 'STATE_MATCH',
+            RejectionReason.EXPIRED: 'EXPIRED',
+        }
+        self._kstate = FraudKernelState(
+            status=status_map.get(self._status, 'CREATED'),
+            rejection_reason=reason_map.get(self._rejection_reason, 'NONE'),
+        )
+
+    @property
+    def status(self) -> FraudStatus:
+        """Read-through property."""
+        kmap = {
+            'CREATED': FraudStatus.CREATED,
+            'SUBMITTED': FraudStatus.SUBMITTED,
+            'VERIFIED': FraudStatus.VERIFIED,
+            'REJECTED': FraudStatus.REJECTED,
+        }
+        return kmap.get(self._kstate.status, FraudStatus.CREATED)
+
+    @property
+    def rejection_reason(self) -> RejectionReason:
+        """Read-through property."""
+        kmap = {
+            'NONE': RejectionReason.NONE,
+            'INVALID_SIG': RejectionReason.INVALID_SIG,
+            'STATE_MATCH': RejectionReason.STATE_MATCH,
+            'EXPIRED': RejectionReason.EXPIRED,
+        }
+        return kmap.get(self._kstate.rejection_reason, RejectionReason.NONE)
+
+    def _apply_kernel(self, tag: str, args: Optional[Dict[str, Any]] = None) -> bool:
+        cmd = FraudKernelCommand(tag=tag, args=args or {})
+        result = fraud_step(self._kstate, cmd)
+        if result.ok and result.state is not None:
+            self._kstate = result.state
+            return True
+        logger.warning(f"FraudProof kernel REJECTED {tag}: {result.error}")
+        return False
+
+    def submit(self) -> bool:
+        """Mark proof as submitted."""
+        return self._apply_kernel('submit')
+
+    def confirm_fraud(self) -> bool:
+        """Confirm fraud verified (valid proof)."""
+        return self._apply_kernel('verify_valid')
+
+    def reject_fraud(self, reason: RejectionReason) -> bool:
+        """Reject fraud proof."""
+        rmap = {
+            RejectionReason.INVALID_SIG: 'INVALID_SIG',
+            RejectionReason.STATE_MATCH: 'STATE_MATCH',
+            RejectionReason.EXPIRED: 'EXPIRED',
+            # NONE is not valid for rejection
+        }
+        if reason == RejectionReason.NONE:
+            return False
+        return self._apply_kernel('verify_invalid', {'reason': rmap[reason]})
+    
+    def _check_invariants(self) -> None:
+        ok, failed = fraud_check_invariants(self._kstate)
+        if not ok:
+            raise RuntimeError(f"ESSO invariant failed: {failed}")
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -84,12 +188,34 @@ class FraudProof:
                 if self.challenger_signature
                 else None
             ),
+            "status": self.status.value,
+            "rejection_reason": self.rejection_reason.value,
         }
     
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "FraudProof":
+        return cls(
+            fraud_type=FraudType(data["fraud_type"]),
+            goal_id=data["goal_id"],
+            challenged_commit_hash=bytes.fromhex(data["challenged_commit_hash"]),
+            timestamp_ms=data["timestamp_ms"],
+            challenger_id=data.get("challenger_id"),
+            challenger_signature=(
+                bytes.fromhex(data["challenger_signature"])
+                if data.get("challenger_signature")
+                else None
+            ),
+            _status=FraudStatus(data.get("status", "created")),
+            _rejection_reason=RejectionReason(data.get("rejection_reason", "none")),
+        )
+
     def signing_payload(self) -> bytes:
         """Get payload for signing."""
         data = self.to_dict()
         data.pop("challenger_signature", None)
+        # Exclude mutable kernel state from signature
+        data.pop("status", None)
+        data.pop("rejection_reason", None)
         return json.dumps(data, sort_keys=True).encode()
     
     def verify(self) -> Tuple[bool, str]:

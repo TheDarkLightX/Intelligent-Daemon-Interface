@@ -1,0 +1,17 @@
+schema = "esso-foundry/v1"
+config_hash = "sha256:ee80fd1199f5ec83354d374f92374c9ae16bb5ed957ec2cbb60ae5ec5a90682f"
+
+[paths]
+build = "build"
+ce = "ce"
+models = "models"
+policies = "policies"
+registry = "registry"
+requirements = "requirements"
+
+[defaults]
+release_policy = "policies/release_policy.yaml"
+seed = 0
+semantics_profile = "policies/semantics_profile.json"
+style_profile = "policies/style_profile.json"
+toolchain_lock = ""

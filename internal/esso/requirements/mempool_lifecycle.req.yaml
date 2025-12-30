@@ -1,0 +1,128 @@
+name: mempool_lifecycle
+schema: "foundry-req/v1"
+req_id: "mempool_lifecycle"
+req_version: "0.0.1"
+
+# State Variables
+state:
+  status: [ACTIVE, FULL, PAUSED, DRAINING]
+  count: { type: int, min: 0, max: 1000000 }
+  max_size: { type: int, min: 1, max: 1000000 }
+
+# Actions
+actions:
+  # === ADD ===
+  - name: add_active
+    params: {}
+    pre: ["status = ACTIVE", "count + 1 < max_size"]
+    eff:
+       - "count' = count + 1"
+       - "status' = ACTIVE"
+       - "max_size' = max_size"
+  
+  - name: add_fill
+    params: {}
+    pre: ["status = ACTIVE", "count + 1 = max_size"]
+    eff:
+       - "count' = count + 1"
+       - "status' = FULL"
+       - "max_size' = max_size"
+
+  # === REMOVE ===
+  - name: remove_active
+    params: {}
+    pre: ["status = ACTIVE", "count > 0"]
+    eff:
+       - "count' = count - 1"
+       - "status' = ACTIVE"
+       - "max_size' = max_size"
+
+  - name: remove_full_stay
+    params: {}
+    pre: ["status = FULL", "count - 1 >= max_size"]
+    eff:
+       - "count' = count - 1"
+       - "status' = FULL"
+       - "max_size' = max_size"
+
+  - name: remove_full_open
+    params: {}
+    pre: ["status = FULL", "count - 1 < max_size"]
+    eff:
+       - "count' = count - 1"
+       - "status' = ACTIVE"
+       - "max_size' = max_size"
+  
+  - name: remove_paused
+    params: {}
+    pre: ["status = PAUSED", "count > 0"]
+    eff:
+       - "count' = count - 1"
+       - "status' = PAUSED"
+       - "max_size' = max_size"
+
+  - name: remove_draining
+    params: {}
+    pre: ["status = DRAINING", "count > 0"]
+    eff:
+       - "count' = count - 1"
+       - "status' = DRAINING"
+       - "max_size' = max_size"
+
+  # === CONTROL ===
+  - name: pause_active
+    params: {}
+    pre: ["status = ACTIVE"]
+    eff:
+       - "status' = PAUSED"
+       - "count' = count"
+       - "max_size' = max_size"
+  
+  - name: pause_full
+    params: {}
+    pre: ["status = FULL"]
+    eff:
+       - "status' = PAUSED"
+       - "count' = count"
+       - "max_size' = max_size"
+
+  - name: resume_active
+    params: {}
+    pre: ["status = PAUSED", "count < max_size"]
+    eff:
+       - "status' = ACTIVE"
+       - "count' = count"
+       - "max_size' = max_size"
+
+  - name: resume_full
+    params: {}
+    pre: ["status = PAUSED", "count >= max_size"]
+    eff:
+       - "status' = FULL"
+       - "count' = count"
+       - "max_size' = max_size"
+
+  - name: drain
+    params: {}
+    pre: ["status != DRAINING"]
+    eff:
+       - "status' = DRAINING"
+       - "count' = count"
+       - "max_size' = max_size"
+
+# Invariants
+invariants:
+  - name: count_non_negative
+    expr: "count >= 0"
+  - name: active_count
+    expr: "(status != ACTIVE) or (count < max_size)"
+  - name: full_count
+    expr: "(status != FULL) or (count >= max_size)"
+  - name: bounded_count
+    expr: "count <= 1000000"
+
+observations:
+  - name: is_accepting
+    expr: "status == ACTIVE"
+  - name: is_full
+    expr: "status == FULL"

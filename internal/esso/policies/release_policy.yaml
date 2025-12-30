@@ -1,0 +1,41 @@
+schema: esso-foundry-policy/v1
+defaults:
+  profiles: {build: ci, release: ci}
+  requirements:
+    require_xsolver_agreement: false
+    solvers: [z3]
+    determinism_trials: 2
+    require_claim_kinds: [BMC, K_INDUCTION, COMPLETE, PDR_IC3]
+    freshness_max_age_days: null
+    require_kani: false
+  complexity:
+    enforce: false
+criticality:
+  critical:
+    profiles: {build: ci, release: release}
+    requirements:
+      require_xsolver_agreement: true
+      solvers: [z3, cvc5]
+      determinism_trials: 2
+      require_claim_kinds: [K_INDUCTION, COMPLETE, PDR_IC3]
+      freshness_max_age_days: 7
+      require_kani: false
+    complexity:
+      enforce: true
+      max_step_branch_arms: 64
+      max_updates_per_action: 32
+      max_effects_per_action: 32
+      max_guard_ast_nodes: 200
+      max_guard_depth: 20
+      max_invariant_ast_nodes: 200
+      max_invariant_depth: 20
+      max_hole_ast_nodes: 40
+      max_hole_depth: 8
+      max_hole_branches: 16
+  noncritical:
+    profiles: {build: ci, release: ci}
+    requirements:
+      require_xsolver_agreement: false
+      solvers: [z3]
+      determinism_trials: 2
+      require_claim_kinds: [BMC, K_INDUCTION, COMPLETE, PDR_IC3]

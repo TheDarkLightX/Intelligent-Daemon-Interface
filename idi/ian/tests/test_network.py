@@ -10,6 +10,7 @@ Tests cover:
 
 import base64
 import json
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -91,6 +92,10 @@ class TestNodeIdentity:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "identity.json"
             identity.save(path)
+
+            # Ensure the private key file is not group/world readable (POSIX).
+            if os.name == "posix":
+                assert (path.stat().st_mode & 0o777) == 0o600
             
             loaded = NodeIdentity.load(path)
             

@@ -42,6 +42,9 @@ except ImportError:
         "(NOT SECURE FOR PRODUCTION)"
     )
 
+# CODEX: Wired to verified kernel
+from .kernels import slot_state_fsm_ref as slot_kernel
+
 # =============================================================================
 # Security Constants
 # =============================================================================
@@ -216,7 +219,7 @@ class Slot:
     slot_id: str
     start_time_ms: int
     end_time_ms: int
-    state: SlotState
+    _state: SlotState = SlotState.COLLECTING
     
     # Contributions (keyed by contribution_id)
     contributions: Dict[str, SlotContribution] = field(default_factory=dict)
@@ -250,18 +253,89 @@ class Slot:
             SlotState.CANCELLED: set(),  # Terminal
         }
         return new_state in valid_transitions.get(self.state, set())
-    
+
+    @property
+    def state(self) -> SlotState:
+        """Get current state from verified kernel."""
+        try:
+            return SlotState[self._kstate.state]
+        except (KeyError, AttributeError):
+            return self._state
+
+    def __post_init__(self):
+        # CODEX: Initialize verified kernel state based on shell state
+        self._kstate = slot_kernel.State(
+            contribution_count=len(self.contributions),
+            has_ordered_ids=bool(self.ordered_ids),
+            has_vrf=self.vrf_output is not None,
+            state=self._state.name,
+        )
+        self._check_invariants()
+
+    def _apply_kernel(self, tag: str, **kwargs) -> bool:
+        """Apply a kernel command and sync state."""
+        cmd = slot_kernel.Command(tag=tag, args=kwargs)
+        result = slot_kernel.step(self._kstate, cmd)
+        
+        if not result.ok:
+            logger.error(f"Slot kernel REJECTED command {tag}: {result.error}")
+            return False
+            
+        self._kstate = result.state
+        return True
+
+    def add_contribution(self, contrib_id: str, contrib: SlotContribution) -> bool:
+        """Add contribution with kernel enforcement."""
+        if self._apply_kernel('add_contribution'):
+            self.contributions[contrib_id] = contrib
+            return True
+        return False
+
     def transition_to(self, new_state: SlotState) -> None:
         """
-        Transition to new state.
-        
-        Security: Enforces valid state machine.
+        Transition to new state via verified kernel.
         """
-        if not self.can_transition_to(new_state):
+        success = False
+        
+        if new_state == SlotState.ORDERING:
+            success = self._apply_kernel('start_ordering')
+            
+        elif new_state == SlotState.COMMITTED:
+            if not self.contributions:
+                success = self._apply_kernel('commit_empty_slot')
+            else:
+                success = self._apply_kernel('compute_vrf_and_commit')
+        
+        elif new_state == SlotState.EXECUTED:
+            success = self._apply_kernel('execute_slot')
+            
+        elif new_state == SlotState.CANCELLED:
+            # Probing for valid cancel transition
+            for cmd in ['cancel_collecting', 'cancel_ordering', 'cancel_committed']:
+                if self._apply_kernel(cmd):
+                    success = True
+                    break
+        
+        if not success:
             raise ValueError(
-                f"Invalid slot state transition: {self.state.name} → {new_state.name}"
+                f"Invalid slot state transition (Kernel Rejected): {self.state.name} -> {new_state.name}"
             )
-        self.state = new_state
+        
+        self._check_invariants()
+    
+    def _check_invariants(self) -> None:
+        """
+        Verify domain invariants with hard fails.
+        """
+        ok, error = slot_kernel.check_invariants(self._kstate)
+        if not ok:
+            raise RuntimeError(f"Slot invariant violation (Kernel enforced): {error}")
+        
+        # Cross-check shell counts
+        if len(self.contributions) != self._kstate.contribution_count:
+             raise RuntimeError(
+                 f"Slot count mismatch: shell={len(self.contributions)} kernel={self._kstate.contribution_count}"
+             )
 
 
 @dataclass
@@ -712,7 +786,8 @@ class SlotBatcher:
                 bundle_id=bundle_id,
             )
             
-            slot.contributions[contribution_id] = contribution
+            if not slot.add_contribution(contribution_id, contribution):
+                raise RuntimeError(f"Slot {slot.slot_id} rejected contribution (Kernel denied)")
             self._contribution_to_slot[contribution_id] = slot.slot_id
             
             return contribution_id

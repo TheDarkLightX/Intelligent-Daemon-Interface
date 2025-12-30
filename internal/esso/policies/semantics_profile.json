@@ -1,0 +1,18 @@
+{
+  "div_mod": {
+    "div_by_zero": "Zero",
+    "mod_by_zero": "Zero",
+    "rounding": "Euclidean"
+  },
+  "ints": {
+    "domain": "bounded",
+    "encoding": "SMT_Int_with_range_constraints",
+    "overflow": "Error"
+  },
+  "name": "esso_default_v1",
+  "schema": "esso-semantics-profile/v1",
+  "step_totality": {
+    "precondition_failure": "Error",
+    "unknown_action": "Error"
+  }
+}

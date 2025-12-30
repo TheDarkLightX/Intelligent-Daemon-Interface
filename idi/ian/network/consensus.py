@@ -25,6 +25,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -42,7 +43,33 @@ if TYPE_CHECKING:
     from idi.ian.coordinator import IANCoordinator, ProcessResult
     from idi.ian.models import Contribution, GoalID
 
+# CODEX: Wired to patched verified kernel
+from .kernels import consensus_state_fsm_ref as consensus_kernel
+
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# ESSO Kernel Envelope (consensus_state_fsm_ref)
+# =============================================================================
+#
+# The ESSO proof only applies within these finite domains. The imperative shell
+# must either (a) stay within this envelope, or (b) explicitly define a
+# refinement mapping to a larger/unbounded domain.
+_KERNEL_MAX_PEERS: int = 10
+_KERNEL_MAX_MIN_PEERS: int = 5
+_KERNEL_MAX_QUORUM_COMPONENT: int = 100
+
+
+def _quorum_fraction_num_from_threshold(threshold: float) -> int:
+    """
+    Convert a quorum threshold in (0, 1] into an integer numerator in [1, 100].
+
+    We use ceil() to fail-closed: the kernel will require at least the requested
+    threshold (never less due to truncation).
+    """
+    if not (0.0 < threshold <= 1.0):
+        raise ValueError(f"quorum_threshold must be in (0, 1], got {threshold}")
+    return max(1, min(_KERNEL_MAX_QUORUM_COMPONENT, int(math.ceil(threshold * 100.0))))
 
 
 # =============================================================================
@@ -151,6 +178,26 @@ class ConsensusCoordinator:
         self._coordinator = coordinator
         self._node_id = node_id
         self._config = config or ConsensusConfig()
+
+        if not (1 <= int(self._config.min_peers_for_consensus) <= _KERNEL_MAX_MIN_PEERS):
+            raise ValueError(
+                f"min_peers_for_consensus must be in [1, {_KERNEL_MAX_MIN_PEERS}], "
+                f"got {self._config.min_peers_for_consensus}"
+            )
+        
+        # CODEX: Initialize patched verified kernel state
+        quorum_num = _quorum_fraction_num_from_threshold(self._config.quorum_threshold)
+        self._kstate = consensus_kernel.State(
+            matching_peers=0,
+            min_peers=self._config.min_peers_for_consensus,
+            peer_count=0,
+            quorum_fraction_den=_KERNEL_MAX_QUORUM_COMPONENT,
+            quorum_fraction_num=quorum_num,
+            state="ISOLATED",
+        )
+
+        # The ESSO proof scope is finite; if we ever leave it, we must fail-closed.
+        self._verified_envelope_ok: bool = True
         
         # Goal ID
         self._goal_id = str(coordinator.goal_spec.goal_id)
@@ -163,8 +210,11 @@ class ConsensusCoordinator:
         
         # Peer state tracking
         self._peer_states: Dict[str, PeerStateSnapshot] = {}
-        self._consensus_state = ConsensusState.ISOLATED
         
+        # Pending request correlation (nonce -> future)
+        self._pending_state_requests: dict[tuple[str, str], asyncio.Future[PeerStateSnapshot]] = {}
+        self._pending_sync_requests: dict[tuple[str, str], asyncio.Future[SyncResponse]] = {}
+
         # Processing state
         self._contributions_since_check = 0
         self._last_state_check = 0.0
@@ -179,15 +229,159 @@ class ConsensusCoordinator:
         self._running = False
         self._tasks: List[asyncio.Task] = []
         
-        # Pending responses for sync correlation
-        self._pending_state_requests: Dict[Tuple[str, str], asyncio.Future[PeerStateSnapshot]] = {}
-        self._pending_sync_requests: Dict[Tuple[str, str], asyncio.Future[SyncResponse]] = {}
-
-        # Contribution body store (for gossip + sync). Bounded with LRU eviction.
+        
+        # Contribution body store
         self._max_body_cache: int = 50_000
         self._bodies_by_hash: "OrderedDict[bytes, Dict[str, Any]]" = OrderedDict()
         self._accepted_by_index: "OrderedDict[int, Dict[str, Any]]" = OrderedDict()
         self._max_accepted_cache: int = 100_000
+
+    @property
+    def status(self) -> ConsensusState:
+        """Get current consensus state from verified kernel."""
+        try:
+            return ConsensusState[self._kstate.state]
+        except KeyError:
+            return ConsensusState.ISOLATED
+
+    def _apply_kernel(self, tag: str, **kwargs) -> bool:
+        """Apply a kernel command and sync state."""
+        prev_state = self.status
+        cmd = consensus_kernel.Command(tag=tag, args=kwargs)
+        result = consensus_kernel.step(self._kstate, cmd)
+        
+        if not result.ok:
+            logger.error(f"Kernel REJECTED command {tag}: {result.error}")
+            return False
+            
+        self._kstate = result.state
+
+        new_state = self.status
+        if new_state != prev_state and self._on_state_change:
+            self._on_state_change(new_state)
+        return True
+
+    def _drive_kernel_from_observation(self, *, matching: int, total: int) -> None:
+        """
+        Drive the verified kernel using only observable counts.
+
+        This is the functional-core boundary: given (matching, total) in-domain,
+        we deterministically reconcile kernel counters and then trigger any
+        derived state transitions (SYNCING->SYNCHRONIZED, SYNCHRONIZED->DIVERGED)
+        via kernel commands.
+        """
+        if not (0 <= total <= _KERNEL_MAX_PEERS):
+            self._verified_envelope_ok = False
+            logger.error(
+                f"Consensus kernel envelope exceeded: total peers {total} > {_KERNEL_MAX_PEERS}. "
+                "Failing closed (refusing commit) until peer set shrinks or kernel bounds are widened."
+            )
+            return
+        if not (0 <= matching <= total):
+            self._verified_envelope_ok = False
+            logger.error(
+                f"Invalid consensus observation: matching={matching} must be in [0, total={total}]. "
+                "Failing closed."
+            )
+            return
+
+        self._verified_envelope_ok = True
+
+        self._sync_kernel_counts(actual_matching=matching, actual_total=total)
+
+        has_quorum = (
+            (self._kstate.matching_peers * self._kstate.quorum_fraction_den)
+            >= (self._kstate.peer_count * self._kstate.quorum_fraction_num)
+        )
+
+        # Derived state transitions (based on the *now-synced* kernel state).
+        if self.status == ConsensusState.SYNCING and has_quorum:
+            # Complete syncing only when quorum is satisfied.
+            self._apply_kernel("sync_complete_become_synchronized")
+
+        if self.status == ConsensusState.SYNCHRONIZED and not has_quorum:
+            # Diverge only when quorum is violated.
+            self._apply_kernel("state_diverge")
+
+    def _sync_kernel_counts(self, actual_matching: int, actual_total: int) -> None:
+        """
+        Synchronize kernel counters with actual peer observations.
+        Uses patched kernel commands for granular updates.
+        """
+        if not (0 <= actual_total <= _KERNEL_MAX_PEERS):
+            raise ValueError(f"actual_total must be in [0, {_KERNEL_MAX_PEERS}], got {actual_total}")
+        if not (0 <= actual_matching <= actual_total):
+            raise ValueError(f"actual_matching must be in [0, actual_total], got {actual_matching}/{actual_total}")
+
+        # 1. Sync Increase
+        while self._kstate.peer_count < actual_total:
+            # Try transitions in order of likelihood/validity.
+            # The kernel guards ensure only semantically valid transitions commit.
+            success = (
+                self._apply_kernel("peers_join_become_syncing")
+                or self._apply_kernel("peers_join_still_isolated")
+                or self._apply_kernel("peers_join_steady")
+            )
+            if not success:
+                raise RuntimeError(
+                    f"Consensus sync stalled (join): kstate={self._kstate}, actual_total={actual_total}"
+                )
+        
+        # 1b. Sync Matching Increase
+        while self._kstate.matching_peers < actual_matching:
+            if not self._apply_kernel("peer_matches_increase"):
+                raise RuntimeError(
+                    f"Consensus sync stalled (match): kstate={self._kstate}, actual_matching={actual_matching}"
+                )
+
+        # 2. Sync Decrease (Patched Logic)
+        while self._kstate.peer_count > actual_total:
+            # Decide if a matching peer left or non-matching
+            # We try to maintain the ratio observed if possible, or prioritize removing non-matching
+            if self._kstate.matching_peers > actual_matching:
+                if not self._apply_kernel("peers_leave_matching"):
+                    # Fallback to isolation if guard failed (too few peers)
+                    if not self._apply_kernel("peers_leave_become_isolated"):
+                        break  # Guarded against infinite loop
+            else:
+                if not self._apply_kernel("peers_leave_non_matching"):
+                    if not self._apply_kernel("peers_leave_become_isolated"):
+                        break
+        
+        # 2b. Sync Matching Decrease (Divergence)
+        while self._kstate.matching_peers > actual_matching:
+            # Decrease matching without changing peer_count.
+            # The kernel selects the correct control-flow (keep sync vs lose quorum).
+            if not (
+                self._apply_kernel("peer_diverge_decrease_non_sync")
+                or self._apply_kernel("peer_diverge_decrease_from_sync_keep")
+                or self._apply_kernel("peer_diverge_decrease_from_sync_lose")
+            ):
+                break
+
+    def _update_kernel_state(self) -> None:
+        """Drive kernel state based on current peer states."""
+        active_peers = list(self._peer_states.values())
+
+        # Determine our local "head" (log root).
+        local_root: bytes = b""
+        try:
+            if hasattr(self._coordinator, "get_log_root"):
+                local_root = self._coordinator.get_log_root()
+        except Exception:
+            local_root = b""
+        if not local_root:
+            try:
+                chain = getattr(self._coordinator, "chain", None)
+                head = getattr(chain, "head", None) if chain is not None else None
+                header = getattr(head, "header", None) if head is not None else None
+                local_root = getattr(header, "hash", b"") if header is not None else b""
+            except Exception:
+                local_root = b""
+
+        total_count = len(active_peers)
+        matching_count = sum(1 for p in active_peers if p.log_root == local_root)
+        self._drive_kernel_from_observation(matching=matching_count, total=total_count)
 
     @staticmethod
     def _compute_contribution_hash_bytes(contrib_dict: Dict[str, Any]) -> bytes:
@@ -398,19 +592,23 @@ class ConsensusCoordinator:
         If diverged, attempt to sync from majority.
         """
         if not self._get_peers or not self._send_message:
-            self._set_consensus_state(ConsensusState.ISOLATED)
+            # No network wiring: treat as standalone (no peers).
+            self._peer_states.clear()
+            self._drive_kernel_from_observation(matching=0, total=0)
             return
         
         peers = self._get_peers()
         if len(peers) < self._config.min_peers_for_consensus:
-            self._set_consensus_state(ConsensusState.ISOLATED)
+            # Not enough peers to form consensus (kernel will remain ISOLATED).
+            self._drive_kernel_from_observation(matching=0, total=len(peers))
             return
         
         # Request state from all peers
         responses = await self._request_peer_states(peers)
         
         if len(responses) < self._config.min_peers_for_consensus:
-            self._set_consensus_state(ConsensusState.ISOLATED)
+            # Not enough responsive peers; fail-closed into non-consensus.
+            self._drive_kernel_from_observation(matching=0, total=len(responses))
             return
         
         # Get our current state
@@ -419,10 +617,10 @@ class ConsensusCoordinator:
         # Count how many peers match our state
         matching = sum(1 for r in responses if r.matches(our_state))
         total = len(responses)
-        
-        if matching >= total * self._config.quorum_threshold:
-            # We're in consensus
-            self._set_consensus_state(ConsensusState.SYNCHRONIZED)
+
+        self._drive_kernel_from_observation(matching=matching, total=total)
+
+        if self.status == ConsensusState.SYNCHRONIZED:
             self._contributions_since_check = 0
         else:
             # Find majority state
@@ -430,11 +628,7 @@ class ConsensusCoordinator:
             
             if majority_state and not majority_state.matches(our_state):
                 # We're diverged - need to sync
-                self._set_consensus_state(ConsensusState.DIVERGED)
                 await self._sync_from_peer(majority_state.node_id)
-            else:
-                # No clear majority
-                self._set_consensus_state(ConsensusState.DIVERGED)
         
         self._last_state_check = time.time()
     
@@ -519,16 +713,8 @@ class ConsensusCoordinator:
         
         return None
     
-    def _set_consensus_state(self, state: ConsensusState) -> None:
-        """Update consensus state and notify callbacks."""
-        if state != self._consensus_state:
-            old_state = self._consensus_state
-            self._consensus_state = state
-            
-            logger.info(f"Consensus state: {old_state.name} -> {state.name}")
-            
-            if self._on_state_change:
-                self._on_state_change(state)
+    # NOTE: Consensus invariants are enforced by the ESSO kernel itself.
+    # The shell must only drive state changes through kernel commands.
     
     # -------------------------------------------------------------------------
     # State Synchronization
@@ -562,8 +748,10 @@ class ConsensusCoordinator:
         Time Complexity: O(n) where n = contributions to sync
         """
         logger.info(f"Syncing state from peer {peer_id[:16]}...")
-        
-        self._set_consensus_state(ConsensusState.SYNCING)
+
+        # If we're diverged, transition the kernel into SYNCING.
+        if self.status == ConsensusState.DIVERGED:
+            self._apply_kernel("diverged_start_sync")
         
         try:
             # Step 1: Get peer's state snapshot
@@ -580,7 +768,7 @@ class ConsensusCoordinator:
                 logger.info(
                     f"No sync needed: our log ({our_log_size}) >= peer ({peer_log_size})"
                 )
-                self._set_consensus_state(ConsensusState.SYNCHRONIZED)
+                self._update_kernel_state()
                 return True
             
             contributions_needed = peer_log_size - our_log_size
@@ -608,7 +796,7 @@ class ConsensusCoordinator:
                     logger.error(
                         f"Failed to get sync batch [{current_index}, {batch_end})"
                     )
-                    self._set_consensus_state(ConsensusState.DIVERGED)
+                    self._update_kernel_state()
                     return False
                 
                 # Step 3: Verify and apply each contribution
@@ -623,7 +811,7 @@ class ConsensusCoordinator:
                             logger.error(
                                 f"Invalid contribution during sync at index {current_index}"
                             )
-                            self._set_consensus_state(ConsensusState.DIVERGED)
+                            self._update_kernel_state()
                             return False
                         
                         # Apply to coordinator (bypassing mempool)
@@ -633,7 +821,7 @@ class ConsensusCoordinator:
                             logger.error(
                                 f"Failed to apply synced contribution: {result.reason}"
                             )
-                            self._set_consensus_state(ConsensusState.DIVERGED)
+                            self._update_kernel_state()
                             return False
 
                         if result.log_index is not None:
@@ -647,7 +835,7 @@ class ConsensusCoordinator:
                         
                     except Exception as e:
                         logger.error(f"Error processing synced contribution: {e}")
-                        self._set_consensus_state(ConsensusState.DIVERGED)
+                        self._update_kernel_state()
                         return False
                 
                 logger.debug(
@@ -662,23 +850,23 @@ class ConsensusCoordinator:
                     f"ours={our_log_root.hex()[:16]}, "
                     f"peer={peer_state.log_root.hex()[:16]}"
                 )
-                self._set_consensus_state(ConsensusState.DIVERGED)
+                self._update_kernel_state()
                 return False
             
             logger.info(
                 f"Sync complete: {synced_count} contributions applied, "
                 f"state verified"
             )
-            self._set_consensus_state(ConsensusState.SYNCHRONIZED)
+            self._update_kernel_state()
             return True
             
         except asyncio.TimeoutError:
             logger.error(f"Sync timeout from peer {peer_id[:16]}")
-            self._set_consensus_state(ConsensusState.DIVERGED)
+            self._update_kernel_state()
             return False
         except Exception as e:
             logger.error(f"Sync error: {e}")
-            self._set_consensus_state(ConsensusState.DIVERGED)
+            self._update_kernel_state()
             return False
     
     async def _request_sync_batch(
@@ -857,6 +1045,8 @@ class ConsensusCoordinator:
             timestamp_ms=response.timestamp,
         )
         self._peer_states[response.sender_id] = snapshot
+        # Keep kernel counters in sync with the latest peer observations.
+        self._update_kernel_state()
 
         fut = self._pending_state_requests.get((response.sender_id, response.nonce))
         if fut is not None and not fut.done():
@@ -943,16 +1133,21 @@ class ConsensusCoordinator:
     @property
     def consensus_state(self) -> ConsensusState:
         """Get current consensus state."""
-        return self._consensus_state
+        return self.status
     
     def get_state(self) -> ConsensusState:
         """Get current consensus state (method form for compatibility)."""
-        return self._consensus_state
+        return self.status
     
     @property
     def mempool_size(self) -> int:
         """Get current mempool size."""
         return self._mempool.size
+
+    @property
+    def is_running(self) -> bool:
+        """Whether the coordinator background loops are running (imperative shell state)."""
+        return self._running
     
     @property
     def peer_count(self) -> int:
@@ -961,11 +1156,13 @@ class ConsensusCoordinator:
     
     def is_synchronized(self) -> bool:
         """Check if in consensus with peers."""
-        return self._consensus_state == ConsensusState.SYNCHRONIZED
+        return self.status == ConsensusState.SYNCHRONIZED
     
     def can_commit_to_tau(self) -> bool:
         """Check if safe to commit state to Tau Net."""
-        return self._consensus_state in (
+        if not self._verified_envelope_ok:
+            return False
+        return self.status in (
             ConsensusState.SYNCHRONIZED,
             ConsensusState.ISOLATED,  # Allow commits when alone
         )
@@ -974,7 +1171,7 @@ class ConsensusCoordinator:
         """Get consensus coordinator statistics."""
         return {
             "goal_id": self._goal_id,
-            "consensus_state": self._consensus_state.name,
+            "consensus_state": self.status.name,
             "mempool_size": self._mempool.size,
             "peer_count": len(self._peer_states),
             "contributions_since_check": self._contributions_since_check,

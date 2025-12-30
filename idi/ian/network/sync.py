@@ -236,6 +236,8 @@ class StateSynchronizer:
         # Callbacks
         self._send_message: Optional[Callable[[str, Any], asyncio.Future]] = None
         self._request_state: Optional[Callable[[str], asyncio.Future]] = None
+        
+        self._check_invariants()  # CBC: verify initial state
     
     def set_callbacks(
         self,
@@ -337,10 +339,42 @@ class StateSynchronizer:
         if not success:
             self._progress.error = message
         
+        self._check_invariants()  # ESSO CBC assertion
+        
         logger.info(
             f"Sync {'completed' if success else 'failed'}: {message} "
             f"(applied {self._progress.contributions_applied} contributions)"
         )
+    
+    def _check_invariants(self) -> None:
+        """
+        Check ESSO-verified invariants for StateSynchronizer.
+        
+        Invariants from sync_state_fsm.json (VERIFIED: 32/32 queries PASS):
+        - idle_zero_progress: IDLE => progress_pct == 0
+        - complete_full_progress: COMPLETE => progress_pct == 100
+        - failed_has_error: FAILED => has_error == true
+        """
+        # Invariant: idle_zero_progress
+        if self._progress.state == SyncState.IDLE:
+            assert self._progress.progress_pct == 0.0, (
+                f"ESSO invariant violation: idle_zero_progress - "
+                f"progress_pct ({self._progress.progress_pct}) != 0"
+            )
+        
+        # Invariant: complete_full_progress  
+        if self._progress.state == SyncState.COMPLETE:
+            assert self._progress.progress_pct == 100.0, (
+                f"ESSO invariant violation: complete_full_progress - "
+                f"progress_pct ({self._progress.progress_pct}) != 100"
+            )
+        
+        # Invariant: failed_has_error
+        if self._progress.state == SyncState.FAILED:
+            assert self._progress.error is not None, (
+                f"ESSO invariant violation: failed_has_error - "
+                f"error is None in FAILED state"
+            )
     
     # -------------------------------------------------------------------------
     # State Comparison

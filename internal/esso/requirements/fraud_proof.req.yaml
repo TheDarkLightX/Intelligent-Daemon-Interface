@@ -1,0 +1,53 @@
+schema: foundry-req/v1
+req_id: ian.fraud_proof
+req_version: 1.0.0
+criticality: high
+
+# Fraud Proof Lifecycle FSM
+# Tracks the state of a generated fraud proof.
+
+state:
+  status: [CREATED, SUBMITTED, VERIFIED, REJECTED]
+  rejection_reason: [NONE, INVALID_SIG, STATE_MATCH, EXPIRED]
+
+actions:
+  - name: submit
+    params: {}
+    pre: ["status = CREATED"]
+    eff: ["status' = SUBMITTED"]
+
+  - name: verify_valid
+    # Proof confirmed: fraud actually happened
+    params: {}
+    pre: ["status = SUBMITTED"]
+    eff: ["status' = VERIFIED"]
+
+  - name: verify_invalid
+    # Proof rejected: fraud did not happen (or proof invalid)
+    params:
+      # Must match state enum domain exactly for assignment
+      reason: [NONE, INVALID_SIG, STATE_MATCH, EXPIRED]
+    pre: 
+      - "status = SUBMITTED"
+      - "reason != NONE"
+    eff: 
+      - "status' = REJECTED"
+      - "rejection_reason' = reason"
+
+invariants:
+  - name: rejected_has_reason
+    # status = REJECTED => rejection_reason != NONE
+    expr: "status != REJECTED or rejection_reason != NONE"
+
+  - name: verified_no_reason
+    # status = VERIFIED => rejection_reason = NONE
+    expr: "status != VERIFIED or rejection_reason = NONE"
+
+  - name: pending_no_reason
+    # (status = CREATED or status = SUBMITTED) => rejection_reason = NONE
+    # Equivalent: (status != CREATED and status != SUBMITTED) or rejection_reason = NONE
+    expr: "(status != CREATED and status != SUBMITTED) or rejection_reason = NONE"
+
+observations:
+  - name: public
+    exprs: [status, rejection_reason]

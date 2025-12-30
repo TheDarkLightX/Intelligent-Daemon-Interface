@@ -1,0 +1,131 @@
+name: peer_tier
+schema: "foundry-req/v1"
+req_id: "peer_tier"
+req_version: "0.0.1"
+
+# State Variables
+state:
+  tier: [COLD, PASSIVE, ACTIVE, PROMOTING, DEMOTING]
+  score: { type: int, min: 0, max: 100 }
+  active_threshold: { type: int, min: 50, max: 100 }
+  demote_threshold: { type: int, min: 0, max: 50 }
+  connected: { type: bool }
+
+# Actions
+actions:
+  - name: connect_cold
+    params: {}
+    pre: ["tier = COLD", "connected = false"]
+    eff:
+      - "tier' = PASSIVE"
+      - "connected' = true"
+      - "score' = 50"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: disconnect
+    params: {}
+    pre: ["connected = true"]
+    eff:
+      - "tier' = COLD"
+      - "connected' = false"
+      - "score' = 0"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: score_increase
+    params: {}
+    pre: ["connected = true", "score < 100"]
+    eff:
+      - "score' = score + 1"
+      - "tier' = tier"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: score_decrease
+    params: {}
+    pre: ["connected = true", "score > 0"]
+    eff:
+      - "score' = score - 1"
+      - "tier' = tier"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: start_promote
+    params: {}
+    pre: ["tier = PASSIVE", "score >= active_threshold"]
+    eff:
+      - "tier' = PROMOTING"
+      - "score' = score"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: complete_promote
+    params: {}
+    pre: ["tier = PROMOTING"]
+    eff:
+      - "tier' = ACTIVE"
+      - "score' = score"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: cancel_promote
+    params: {}
+    pre: ["tier = PROMOTING"]
+    eff:
+      - "tier' = PASSIVE"
+      - "score' = score"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: start_demote
+    params: {}
+    pre: ["tier = ACTIVE", "score <= demote_threshold"]
+    eff:
+      - "tier' = DEMOTING"
+      - "score' = score"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: complete_demote
+    params: {}
+    pre: ["tier = DEMOTING"]
+    eff:
+      - "tier' = PASSIVE"
+      - "score' = score"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+  - name: cancel_demote
+    params: {}
+    pre: ["tier = DEMOTING"]
+    eff:
+      - "tier' = ACTIVE"
+      - "score' = score"
+      - "connected' = connected"
+      - "active_threshold' = active_threshold"
+      - "demote_threshold' = demote_threshold"
+
+# Invariants
+invariants:
+  - name: cold_disconnected
+    expr: "(tier != COLD) or (connected = false)"
+  - name: connected_not_cold
+    expr: "(connected = false) or (tier != COLD)"
+  - name: score_bounded
+    expr: "(score >= 0) and (score <= 100)"
+  - name: threshold_order
+    expr: "demote_threshold < active_threshold"
+
+observations:
+  - name: is_active
+    expr: "tier = ACTIVE"
+  - name: is_connected
+    expr: "connected = true"

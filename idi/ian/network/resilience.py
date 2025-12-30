@@ -35,7 +35,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .tls import TLSConfig
+
+# CODEX: Wired to verified kernel
+from .kernels import circuit_breaker_fsm_ref as cb_kernel
 
 logger = logging.getLogger(__name__)
 
@@ -148,22 +154,67 @@ class CircuitBreaker:
     ):
         self._name = name
         self._config = config or CircuitBreakerConfig()
-        self._state = CircuitState.CLOSED
-        self._stats = CircuitBreakerStats()
         self._opened_at: float = 0.0
         self._half_open_calls: int = 0
         self._lock = asyncio.Lock()
+        self._stats = CircuitBreakerStats()
+
+        # CODEX: Initialize verified kernel state
+        self._kstate = cb_kernel.State(
+            consecutive_failures=0,
+            consecutive_successes=0,
+            failure_threshold=self._config.failure_threshold,
+            state="CLOSED",
+            success_threshold=self._config.success_threshold,
+        )
+
+    @property
+    def state(self) -> CircuitState:
+        """Get current circuit state from verified kernel."""
+        try:
+            return CircuitState[self._kstate.state]
+        except KeyError:
+            return CircuitState.CLOSED
+
+    def _apply_kernel(self, tag: str, **kwargs) -> bool:
+        """Apply a kernel command and sync state."""
+        prev_state_str = self._kstate.state
+        cmd = cb_kernel.Command(tag=tag, args=kwargs)
+        result = cb_kernel.step(self._kstate, cmd)
+        
+        if not result.ok:
+            logger.error(f"CircuitBreaker kernel REJECTED command {tag}: {result.error}")
+            return False
+            
+        self._kstate = result.state
+        
+        # Handle side-effects of transitions
+        if self._kstate.state != prev_state_str:
+            if self._kstate.state == 'OPEN':
+                self._opened_at = time.time()
+                logger.warning(f"CircuitBreaker {self._name} OPENED")
+            elif self._kstate.state == 'CLOSED':
+                logger.info(f"CircuitBreaker {self._name} CLOSED")
+            elif self._kstate.state == 'HALF_OPEN':
+                self._half_open_calls = 0
+                logger.info(f"CircuitBreaker {self._name} HALF_OPEN")
+        
+        # Sync consecutive counts for invariant checking
+        self._stats.consecutive_failures = self._kstate.consecutive_failures
+        self._stats.consecutive_successes = self._kstate.consecutive_successes
+        
+        return True
     
     @property
     def name(self) -> str:
         return self._name
-    
-    @property
-    def state(self) -> CircuitState:
-        return self._state
-    
+
     @property
     def stats(self) -> CircuitBreakerStats:
+        """Get circuit breaker statistics."""
+        # Update volatile consecutive counts from kernel
+        self._stats.consecutive_failures = self._kstate.consecutive_failures
+        self._stats.consecutive_successes = self._kstate.consecutive_successes
         return self._stats
     
     def is_open(self) -> bool:
@@ -193,10 +244,10 @@ class CircuitBreaker:
         async with self._lock:
             self._stats.total_calls += 1
             
-            if self._state == CircuitState.OPEN:
+            if self.state == CircuitState.OPEN:
                 # Check if we should transition to half-open
                 if time.time() >= self._opened_at + self._config.timeout:
-                    self._transition_to(CircuitState.HALF_OPEN)
+                    self._apply_kernel('timeout_to_half_open')
                 else:
                     self._stats.total_rejections += 1
                     raise CircuitBreakerError(
@@ -204,7 +255,7 @@ class CircuitBreaker:
                         self._opened_at + self._config.timeout,
                     )
             
-            if self._state == CircuitState.HALF_OPEN:
+            if self.state == CircuitState.HALF_OPEN:
                 # Limit concurrent calls in half-open
                 if self._half_open_calls >= self._config.half_open_max_calls:
                     self._stats.total_rejections += 1
@@ -218,34 +269,37 @@ class CircuitBreaker:
         """Record successful call."""
         async with self._lock:
             self._stats.total_successes += 1
-            self._stats.consecutive_successes += 1
-            self._stats.consecutive_failures = 0
             self._stats.last_success_time = time.time()
             
-            if self._state == CircuitState.HALF_OPEN:
-                self._half_open_calls -= 1
+            # CODEX: Kernel logic
+            if self.state == CircuitState.CLOSED:
+                self._apply_kernel('success_closed')
                 
-                # Check if we should close the circuit
-                if self._stats.consecutive_successes >= self._config.success_threshold:
-                    self._transition_to(CircuitState.CLOSED)
+            elif self.state == CircuitState.HALF_OPEN:
+                self._half_open_calls -= 1
+                # Try to close (guard check handles threshold)
+                if not self._apply_kernel('success_half_open_close'):
+                    self._apply_kernel('success_half_open_no_close')
+            
+            self._check_invariants()
     
     async def _on_failure(self, error: Exception) -> None:
         """Record failed call."""
         async with self._lock:
             self._stats.total_failures += 1
-            self._stats.consecutive_failures += 1
-            self._stats.consecutive_successes = 0
             self._stats.last_failure_time = time.time()
             
-            if self._state == CircuitState.HALF_OPEN:
+            # CODEX: Kernel logic
+            if self.state == CircuitState.HALF_OPEN:
                 self._half_open_calls -= 1
-                # Immediately open on failure in half-open
-                self._transition_to(CircuitState.OPEN)
+                self._apply_kernel('failure_half_open_trip')
             
-            elif self._state == CircuitState.CLOSED:
-                # Check if we should open the circuit
-                if self._stats.consecutive_failures >= self._config.failure_threshold:
-                    self._transition_to(CircuitState.OPEN)
+            elif self.state == CircuitState.CLOSED:
+                # Try to trip (guard handles threshold)
+                if not self._apply_kernel('failure_closed_trip'):
+                    self._apply_kernel('failure_closed_no_trip')
+            
+            self._check_invariants()
     
     def _transition_to(self, new_state: CircuitState) -> None:
         """Transition to new state."""
@@ -261,18 +315,44 @@ class CircuitBreaker:
             )
         elif new_state == CircuitState.HALF_OPEN:
             self._half_open_calls = 0
+            self._stats.consecutive_failures = 0  # Fix: half_open_clean_start invariant
             logger.info(f"Circuit breaker '{self._name}' entering HALF_OPEN")
         elif new_state == CircuitState.CLOSED:
             self._stats.consecutive_failures = 0
             logger.info(f"Circuit breaker '{self._name}' CLOSED (recovered)")
+        
+        self._check_invariants()  # ESSO CBC assertion after every transition
     
     def reset(self) -> None:
         """Manually reset the circuit breaker."""
-        self._state = CircuitState.CLOSED
-        self._stats.consecutive_failures = 0
+        self._apply_kernel('manual_reset')
         self._stats.consecutive_successes = 0
         self._half_open_calls = 0
+        self._check_invariants()  # ESSO CBC assertion
         logger.info(f"Circuit breaker '{self._name}' manually reset")
+    
+    def _check_invariants(self) -> None:
+        """
+        Check ESSO-verified invariants for CircuitBreaker.
+        
+        Invariants from circuit_breaker_fsm.json (VERIFIED: 26/26 queries PASS):
+        - closed_under_threshold: CLOSED => consecutive_failures < failure_threshold
+        - half_open_clean_start: HALF_OPEN => consecutive_failures == 0
+        """
+        # Invariant: closed_under_threshold
+        if self.state == CircuitState.CLOSED:
+            assert self._stats.consecutive_failures < self._config.failure_threshold, (
+                f"ESSO invariant violation: closed_under_threshold - "
+                f"consecutive_failures ({self._stats.consecutive_failures}) >= "
+                f"failure_threshold ({self._config.failure_threshold})"
+            )
+        
+        # Invariant: half_open_clean_start
+        if self.state == CircuitState.HALF_OPEN:
+            assert self._stats.consecutive_failures == 0, (
+                f"ESSO invariant violation: half_open_clean_start - "
+                f"consecutive_failures ({self._stats.consecutive_failures}) != 0"
+            )
     
     def to_dict(self) -> Dict[str, Any]:
         """Export state as dictionary."""

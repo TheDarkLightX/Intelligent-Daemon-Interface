@@ -1,0 +1,80 @@
+actions:
+- effects:
+    transition_valid:
+      bool: true
+  guard:
+    args:
+    - args:
+      - args:
+        - enum: FRESH
+        - var: state
+        op: '='
+      - args:
+        - enum: FULL
+        - param: to_state
+        op: '='
+      op: and
+    - args:
+      - args:
+        - enum: FULL
+        - var: state
+        op: '='
+      - args:
+        - enum: INACTIVE
+        - param: to_state
+        op: '='
+      op: and
+    - args:
+      - args:
+        - enum: INACTIVE
+        - var: state
+        op: '='
+      - args:
+        - enum: PRUNED
+        - param: to_state
+        op: '='
+      op: and
+    op: or
+  id: transition
+  params:
+  - id: to_state
+    type:
+      kind: enum
+      symbols:
+      - FRESH
+      - FULL
+      - INACTIVE
+      - PRUNED
+  updates:
+  - expr:
+      param: to_state
+    var: state
+init:
+- expr:
+    enum: FRESH
+  var: state
+invariants:
+- expr:
+    bool: true
+  id: inv_true
+  kind: safety
+ir_version: esso-ir/v1
+meta:
+  model_id: twig_state_fsm
+  source: idi/ian/twigmmr.py:TwigState
+observables:
+  effects:
+  - transition_valid
+  state_vars:
+  - state
+state_vars:
+- id: state
+  role: control
+  type:
+    kind: enum
+    symbols:
+    - FRESH
+    - FULL
+    - INACTIVE
+    - PRUNED
+types: []

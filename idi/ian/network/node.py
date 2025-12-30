@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib
 import json
 import os
 import secrets
@@ -23,6 +24,7 @@ import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from .protocol import Message
@@ -45,6 +47,50 @@ except ImportError as e:
 # =============================================================================
 # Node Identity
 # =============================================================================
+
+_KEYRING_REF_PREFIX = "keyring://"
+_DEFAULT_KEYRING_SERVICE = "idi.ian"
+
+
+def _atomic_write_text(path: Path, text: str, mode: int = 0o600) -> None:
+    """
+    Atomically write text to a file with restrictive permissions.
+
+    Security goals:
+    - Avoid transient world/group-readable perms (create with mode=0o600).
+    - Avoid partially-written identity files (write temp + fsync + rename).
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    tmp_path = path.with_name(
+        f".{path.name}.tmp.{os.getpid()}.{secrets.token_hex(8)}"
+    )
+
+    fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+            if not text.endswith("\n"):
+                f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(str(tmp_path), str(path))
+
+        # Best-effort fsync on directory for durability (POSIX).
+        try:
+            dir_fd = os.open(str(path.parent), os.O_RDONLY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        except OSError:
+            pass
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
 
 @dataclass
 class NodeCapabilities:
@@ -268,9 +314,7 @@ class NodeIdentity:
         """
         if not self.has_private_key():
             raise ValueError("Cannot save identity without private key")
-        
-        path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         private_bytes = self._private_key.private_bytes(
             encoding=serialization.Encoding.Raw,
             format=serialization.PrivateFormat.Raw,
@@ -283,16 +327,134 @@ class NodeIdentity:
             "private_key": base64.b64encode(private_bytes).decode(),
             "public_key": base64.b64encode(self.public_key).decode(),
         }
-        
-        path.write_text(json.dumps(data, indent=2))
-        os.chmod(path, 0o600)  # Owner read/write only
+
+        _atomic_write_text(path, json.dumps(data, indent=2), mode=0o600)
     
     @classmethod
     def load(cls, path: Path) -> "NodeIdentity":
         """Load identity from file."""
         data = json.loads(path.read_text())
-        private_key = base64.b64decode(data["private_key"])
-        return cls(private_key=private_key)
+        private_key_b64 = data.get("private_key")
+        if not isinstance(private_key_b64, str) or not private_key_b64:
+            raise ValueError("Invalid identity file: missing private_key")
+        private_key = base64.b64decode(private_key_b64, validate=True)
+        if len(private_key) != 32:
+            raise ValueError(f"Invalid identity file: private_key must be 32 bytes, got {len(private_key)}")
+
+        identity = cls(private_key=private_key)
+
+        # Best-effort integrity checks: do not trust stored node_id/public_key unless they match.
+        stored_node_id = data.get("node_id")
+        if isinstance(stored_node_id, str) and stored_node_id:
+            if stored_node_id != identity.node_id:
+                raise ValueError("Identity file integrity error: stored node_id does not match derived node_id")
+
+        stored_public_key_b64 = data.get("public_key")
+        if isinstance(stored_public_key_b64, str) and stored_public_key_b64:
+            stored_public_key = base64.b64decode(stored_public_key_b64, validate=True)
+            if stored_public_key != identity.public_key:
+                raise ValueError(
+                    "Identity file integrity error: stored public_key does not match derived public_key"
+                )
+
+        return identity
+
+    @staticmethod
+    def _parse_keyring_ref(ref: str) -> Tuple[str, str]:
+        if not ref.startswith(_KEYRING_REF_PREFIX):
+            raise ValueError(f"Not a keyring ref: {ref!r}")
+        parsed = urlparse(ref)
+        service = parsed.netloc or _DEFAULT_KEYRING_SERVICE
+        account = (parsed.path or "").lstrip("/")
+        if not account:
+            raise ValueError(
+                f"Invalid keyring ref (missing account): {ref!r}. "
+                f"Expected {_KEYRING_REF_PREFIX}<service>/<account>"
+            )
+        return service, account
+
+    def save_to_keyring(self, *, service: str = _DEFAULT_KEYRING_SERVICE, account: Optional[str] = None) -> None:
+        """
+        Save the private key into the OS keyring (optional dependency).
+
+        Requires `keyring` to be installed and a suitable backend to be available.
+        """
+        if not self.has_private_key():
+            raise ValueError("Cannot save identity without private key")
+        if not account:
+            account = self.node_id
+
+        try:
+            keyring = importlib.import_module("keyring")
+        except ImportError as e:
+            raise ImportError(
+                "Optional dependency missing: 'keyring'. "
+                "Install with: pip install 'idi[security]'"
+            ) from e
+
+        private_bytes = self._private_key.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        secret = base64.b64encode(private_bytes).decode("ascii")
+        keyring.set_password(service, account, secret)
+
+    @classmethod
+    def load_from_keyring(cls, *, service: str = _DEFAULT_KEYRING_SERVICE, account: str) -> "NodeIdentity":
+        """Load the private key from the OS keyring (optional dependency)."""
+        if not account:
+            raise ValueError("account is required")
+
+        try:
+            keyring = importlib.import_module("keyring")
+        except ImportError as e:
+            raise ImportError(
+                "Optional dependency missing: 'keyring'. "
+                "Install with: pip install 'idi[security]'"
+            ) from e
+
+        secret = keyring.get_password(service, account)
+        if secret is None:
+            raise FileNotFoundError(f"No keyring entry for service={service!r} account={account!r}")
+
+        try:
+            private_bytes = base64.b64decode(secret, validate=True)
+        except Exception as e:
+            raise ValueError("Invalid base64 private key in keyring") from e
+        if len(private_bytes) != 32:
+            raise ValueError(f"Invalid private key length in keyring: expected 32 bytes, got {len(private_bytes)}")
+
+        return cls(private_key=private_bytes)
+
+    def save_to_ref(self, ref: str | Path) -> None:
+        """
+        Save identity using either:
+        - file path (default)
+        - keyring ref: keyring://<service>/<account>
+        """
+        if isinstance(ref, Path):
+            self.save(ref)
+            return
+        if ref.startswith(_KEYRING_REF_PREFIX):
+            service, account = self._parse_keyring_ref(ref)
+            self.save_to_keyring(service=service, account=account)
+            return
+        self.save(Path(ref))
+
+    @classmethod
+    def load_from_ref(cls, ref: str | Path) -> "NodeIdentity":
+        """
+        Load identity using either:
+        - file path (default)
+        - keyring ref: keyring://<service>/<account>
+        """
+        if isinstance(ref, Path):
+            return cls.load(ref)
+        if ref.startswith(_KEYRING_REF_PREFIX):
+            service, account = cls._parse_keyring_ref(ref)
+            return cls.load_from_keyring(service=service, account=account)
+        return cls.load(Path(ref))
     
     @classmethod
     def generate(cls) -> "NodeIdentity":

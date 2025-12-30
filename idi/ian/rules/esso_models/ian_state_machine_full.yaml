@@ -1,0 +1,196 @@
+ir_version: "esso-ir/v1"
+meta:
+  model_id: "ian_state_machine_full"
+  created_by: "idi"
+  source: "idi/ian/rules/ian_state_machine.tau"
+  notes: "ESSO-IR model of the demo IAN state machine (full observables)."
+observables:
+  state_vars:
+    - "registered"
+    - "log_committed"
+    - "upgraded"
+    - "log_root"
+    - "active_policy"
+    - "upgrade_count"
+    - "last_commit_hash"
+    - "prev_policy"
+  effects: []
+state_vars:
+  - id: "registered"
+    role: "control"
+    type: { kind: "bool" }
+  - id: "log_committed"
+    role: "control"
+    type: { kind: "bool" }
+  - id: "upgraded"
+    role: "control"
+    type: { kind: "bool" }
+  - id: "log_root"
+    role: "data"
+    type: { kind: "bitvec", width: 32 }
+  - id: "active_policy"
+    role: "data"
+    type: { kind: "bitvec", width: 32 }
+  - id: "upgrade_count"
+    role: "control"
+    type: { kind: "int", min: 0, max: 3 }
+  - id: "last_commit_hash"
+    role: "data"
+    type: { kind: "bitvec", width: 32 }
+  - id: "prev_policy"
+    role: "data"
+    type: { kind: "bitvec", width: 32 }
+invariants:
+  - id: "inv_true"
+    kind: "safety"
+    expr: { bool: true }
+init:
+  - var: "registered"
+    expr: { bool: false }
+  - var: "log_committed"
+    expr: { bool: false }
+  - var: "upgraded"
+    expr: { bool: false }
+  - var: "log_root"
+    expr: { const: 0 }
+  - var: "active_policy"
+    expr: { const: 0 }
+  - var: "upgrade_count"
+    expr: { const: 0 }
+  - var: "last_commit_hash"
+    expr: { const: 0 }
+  - var: "prev_policy"
+    expr: { const: 0 }
+actions:
+  - id: "tick"
+    params:
+      - id: "tx_register"
+        type: { kind: "bool" }
+      - id: "tx_commit"
+        type: { kind: "bool" }
+      - id: "tx_upgrade"
+        type: { kind: "bool" }
+      - id: "valid_signature"
+        type: { kind: "bool" }
+      - id: "valid_proof"
+        type: { kind: "bool" }
+      - id: "cooldown_ok"
+        type: { kind: "bool" }
+      - id: "governance_ok"
+        type: { kind: "bool" }
+      - id: "in_log_root"
+        type: { kind: "bitvec", width: 32 }
+      - id: "in_pack_hash"
+        type: { kind: "bitvec", width: 32 }
+    guard: { bool: true }
+    updates:
+      - var: "registered"
+        expr:
+          op: "or"
+          args:
+            - { var: "registered" }
+            - op: "and"
+              args:
+                - { param: "tx_register" }
+                - op: "not"
+                  args:
+                    - { var: "registered" }
+                - { param: "valid_signature" }
+      - var: "log_committed"
+        expr:
+          op: "and"
+          args:
+            - { param: "tx_commit" }
+            - { var: "registered" }
+            - { param: "valid_proof" }
+      - var: "log_root"
+        expr:
+          op: "ite"
+          cond:
+            op: "and"
+            args:
+              - { param: "tx_commit" }
+              - { var: "registered" }
+              - { param: "valid_proof" }
+          then: { param: "in_log_root" }
+          else: { var: "log_root" }
+      - var: "last_commit_hash"
+        expr:
+          op: "ite"
+          cond:
+            op: "and"
+            args:
+              - { param: "tx_commit" }
+              - { var: "registered" }
+              - { param: "valid_proof" }
+          then: { param: "in_log_root" }
+          else: { var: "last_commit_hash" }
+      - var: "upgraded"
+        expr:
+          op: "and"
+          args:
+            - { param: "tx_upgrade" }
+            - { var: "registered" }
+            - { param: "valid_proof" }
+            - op: "or"
+              args:
+                - { param: "cooldown_ok" }
+                - { param: "governance_ok" }
+      - var: "active_policy"
+        expr:
+          op: "ite"
+          cond:
+            op: "and"
+            args:
+              - { param: "tx_upgrade" }
+              - { var: "registered" }
+              - { param: "valid_proof" }
+              - op: "or"
+                args:
+                  - { param: "cooldown_ok" }
+                  - { param: "governance_ok" }
+          then: { param: "in_pack_hash" }
+          else: { var: "active_policy" }
+      - var: "prev_policy"
+        expr:
+          op: "ite"
+          cond:
+            op: "and"
+            args:
+              - { param: "tx_upgrade" }
+              - { var: "registered" }
+              - { param: "valid_proof" }
+              - op: "or"
+                args:
+                  - { param: "cooldown_ok" }
+                  - { param: "governance_ok" }
+          then: { var: "active_policy" }
+          else: { var: "prev_policy" }
+      - var: "upgrade_count"
+        expr:
+          op: "ite"
+          cond:
+            op: "and"
+            args:
+              - { param: "tx_upgrade" }
+              - { var: "registered" }
+              - { param: "valid_proof" }
+              - op: "or"
+                args:
+                  - { param: "cooldown_ok" }
+                  - { param: "governance_ok" }
+          then:
+            op: "ite"
+            cond:
+              op: "="
+              args:
+                - { var: "upgrade_count" }
+                - { const: 3 }
+            then: { const: 0 }
+            else:
+              op: "+"
+              args:
+                - { var: "upgrade_count" }
+                - { const: 1 }
+          else: { var: "upgrade_count" }
+    effects: {}

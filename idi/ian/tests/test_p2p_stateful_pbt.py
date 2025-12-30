@@ -12,7 +12,7 @@ import pytest
 
 from idi.ian.network.node import NodeCapabilities, NodeIdentity, NodeInfo
 from idi.ian.network.p2p_manager import P2PConfig, P2PManager, PeerSession, PeerState, TokenBucketRateLimiter
-from idi.ian.network.protocol import MessageType
+from idi.ian.network.protocol import HandshakeResponse, MessageType
 from idi.ian.tests.corpus_utils import write_json_corpus_case
 
 try:
@@ -254,29 +254,48 @@ class TestP2PManagerStateful:
                 return
 
             self.session.pending_challenge = b"A" * 32
+            # Provide deterministic X25519 kx keys (required for handshake completion).
+            # These are fixed for reproducibility in the state machine.
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
-            peer_info = NodeInfo(
-                node_id=self.peer.node_id,
-                public_key=self.peer.public_key,
-                addresses=["tcp://127.0.0.1:9001"],
-                capabilities=NodeCapabilities(),
-                timestamp=_REFERENCE_NOW_MS,
-                signature=None,
+            our_kx_priv = X25519PrivateKey.from_private_bytes(b"\x11" * 32)
+            our_kx_pub = our_kx_priv.public_key().public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
             )
-            self.session.info = peer_info
+            self.session.kx_private_key = our_kx_priv.private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            self.session.kx_public_key = our_kx_pub
+
+            # Peer kx key for response
+            peer_kx_priv = X25519PrivateKey.from_private_bytes(b"\x22" * 32)
+            peer_kx_pub = peer_kx_priv.public_key().public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+
+            # Build a real HandshakeResponse message (protocol-level auth).
+            import base64
 
             their_nonce = b"B" * 32
-            msg_to_sign = hashlib.sha256(self.session.pending_challenge + their_nonce + self.peer.node_id.encode()).digest()
-            sig = self.peer.sign(msg_to_sign)
+            hs = HandshakeResponse(
+                sender_id=self.peer.node_id,
+                timestamp=_REFERENCE_NOW_MS,
+                nonce="hs_nonce",
+                challenge_nonce=self.session.pending_challenge.hex(),
+                response_nonce=their_nonce.hex(),
+                kx_public_key=base64.b64encode(peer_kx_pub).decode("utf-8"),
+                public_key=base64.b64encode(self.peer.public_key).decode("utf-8"),
+            )
+            self.peer.sign_message(hs)
+            if make_invalid and hs.signature is not None:
+                hs.signature = hs.signature[:-1] + bytes([(hs.signature[-1] ^ 0xFF)])
 
-            if make_invalid:
-                sig = sig[:-1] + bytes([(sig[-1] ^ 0xFF)])
-
-            response = {
-                "sender_id": self.peer.node_id,
-                "response_nonce": their_nonce.hex(),
-                "signature": sig.hex(),
-            }
+            response = hs.to_dict()
 
             with patch("idi.ian.network.p2p_manager.time.time", lambda: _REFERENCE_NOW_S):
                 ok = asyncio.run(_run_handshake_response_and_drain_tasks(self.mgr, self.session, response))

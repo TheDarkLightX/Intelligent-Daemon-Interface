@@ -31,6 +31,14 @@ if TYPE_CHECKING:
     from idi.ian.models import Contribution
     from .peer_tiers import TieredPeerManager
 
+from .kernels.fast_lane_fsm_ref import (
+    State as FastLaneKernelState,
+    Command as FastLaneKernelCommand,
+    step as fast_lane_step,
+    init_state as fast_lane_init_state,
+    check_invariants as fast_lane_check_invariants,
+)
+
 logger = logging.getLogger(__name__)
 
 

@@ -29,6 +29,9 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 
+# CODEX: Wired to verified kernel
+from .kernels import task_state_fsm_ref as task_kernel
+
 logger = logging.getLogger(__name__)
 
 
@@ -133,14 +136,46 @@ class SupervisedTask:
     name: str
     coro_factory: Callable[[], Awaitable[Any]]
     task: Optional[asyncio.Task] = None
-    state: TaskState = TaskState.PENDING
     restart_on_failure: bool = True
     restart_delay: float = 1.0
     max_restarts: int = 10
-    restart_count: int = 0
     last_error: Optional[str] = None
     started_at: float = 0.0
     stopped_at: float = 0.0
+
+    def __post_init__(self):
+        # CODEX: Initialize verified kernel state
+        self._kstate = task_kernel.State(
+            has_error=False,
+            max_restarts=self.max_restarts,
+            restart_count=0,
+            state="PENDING",
+        )
+
+    @property
+    def state(self) -> TaskState:
+        """Get current task state from verified kernel."""
+        try:
+            return TaskState[self._kstate.state]
+        except KeyError:
+            return TaskState.STOPPED
+
+    @property
+    def restart_count(self) -> int:
+        """Get current restart count from verified kernel."""
+        return self._kstate.restart_count
+
+    def _apply_kernel(self, tag: str, **kwargs) -> bool:
+        """Apply a kernel command and sync state."""
+        cmd = task_kernel.Command(tag=tag, args=kwargs)
+        result = task_kernel.step(self._kstate, cmd)
+        
+        if not result.ok:
+            logger.error(f"Kernel REJECTED task command {tag}: {result.error}")
+            return False
+            
+        self._kstate = result.state
+        return True
 
 
 class TaskSupervisor:
@@ -204,6 +239,10 @@ class TaskSupervisor:
             max_restarts=max_restarts,
         )
         
+        # CBC: validate initial state
+        assert max_restarts >= 0, f"max_restarts must be non-negative, got {max_restarts}"
+        self._check_task_invariants(supervised)
+        
         self._tasks[name] = supervised
         self._start_task(supervised)
     
@@ -211,15 +250,25 @@ class TaskSupervisor:
         """Start or restart a supervised task."""
         async def wrapper():
             try:
-                supervised.state = TaskState.RUNNING
+                # CODEX: Handle transition based on current state
+                success = False
+                if supervised._kstate.state == 'RESTARTING':
+                    success = supervised._apply_kernel('restart_complete')
+                else:
+                    success = supervised._apply_kernel('start_task')
+                
+                if not success:
+                    logger.error(f"Task {supervised.name} failed to start (Kernel rejected)")
+                    return
+                    
                 supervised.started_at = time.time()
                 await supervised.coro_factory()
                 # Normal exit
-                supervised.state = TaskState.STOPPED
+                supervised._apply_kernel('complete_task')
                 supervised.stopped_at = time.time()
                 logger.info(f"Task {supervised.name} exited normally")
             except asyncio.CancelledError:
-                supervised.state = TaskState.STOPPED
+                supervised._apply_kernel('cancel_running')
                 supervised.stopped_at = time.time()
                 raise
             except Exception as e:
@@ -232,10 +281,9 @@ class TaskSupervisor:
                 
                 # Restart if configured
                 if supervised.restart_on_failure and not self._shutdown_event.is_set():
-                    if supervised.restart_count < supervised.max_restarts:
-                        supervised.state = TaskState.RESTARTING
-                        supervised.restart_count += 1
-                        
+                    # CODEX: Delegate restart logic to kernel
+                    if supervised._apply_kernel('crash_and_restart'):
+                        # Kernel approved restart
                         # Calculate backoff delay
                         delay = backoff_with_jitter(
                             supervised.restart_count - 1,
@@ -253,12 +301,14 @@ class TaskSupervisor:
                         if not self._shutdown_event.is_set():
                             self._start_task(supervised)
                     else:
-                        supervised.state = TaskState.FAILED
+                        # Kernel rejected restart (likely max retries)
+                        supervised._apply_kernel('crash_max_restarts')
                         logger.error(
-                            f"Task {supervised.name} exceeded max restarts, giving up"
+                            f"Task {supervised.name} exceeded max restarts (Kernel enforced), giving up"
                         )
                 else:
-                    supervised.state = TaskState.FAILED
+                    supervised._apply_kernel('crash_max_restarts') # Or just fail
+                    logger.error(f"Task {supervised.name} failed and restart not enabled or supervisor shutting down")
         
         supervised.task = asyncio.create_task(wrapper(), name=supervised.name)
         supervised.task.add_done_callback(self._task_done_callback)
@@ -325,6 +375,36 @@ class TaskSupervisor:
             1 for s in self._tasks.values()
             if s.state == TaskState.RUNNING
         )
+    
+    def _check_task_invariants(self, supervised: SupervisedTask) -> None:
+        """
+        Check ESSO-verified invariants for SupervisedTask.
+        
+        Invariants from task_state_fsm.json (VERIFIED: 8/8 queries PASS):
+        - restarts_bounded: restart_count <= max_restarts
+        - failed_max_restarts: FAILED => (restart_count >= max_restarts OR has_error)
+        - pending_no_restarts: PENDING => restart_count == 0
+        """
+        # Invariant: restarts_bounded
+        assert supervised.restart_count <= supervised.max_restarts, (
+            f"ESSO invariant violation: restarts_bounded - "
+            f"restart_count ({supervised.restart_count}) > max_restarts ({supervised.max_restarts})"
+        )
+        
+        # Invariant: failed_max_restarts
+        if supervised.state == TaskState.FAILED:
+            has_error = supervised.last_error is not None
+            assert supervised.restart_count >= supervised.max_restarts or has_error, (
+                f"ESSO invariant violation: failed_max_restarts - "
+                f"task {supervised.name} FAILED without max_restarts or error"
+            )
+        
+        # Invariant: pending_no_restarts
+        if supervised.state == TaskState.PENDING:
+            assert supervised.restart_count == 0, (
+                f"ESSO invariant violation: pending_no_restarts - "
+                f"restart_count ({supervised.restart_count}) != 0 in PENDING"
+            )
 
 
 # =============================================================================

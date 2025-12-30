@@ -1,0 +1,118 @@
+name: evaluation_quorum
+schema: "foundry-req/v1"
+req_id: "evaluation_quorum"
+req_version: "0.0.1"
+
+# State Variables
+state:
+  status: [IDLE, COLLECTING, QUORUM_MET, QUORUM_FAILED, TIMEOUT, CANCELLED]
+  votes_received: { type: int, min: 0, max: 100 }
+  votes_accept: { type: int, min: 0, max: 100 }
+  votes_reject: { type: int, min: 0, max: 100 }
+  min_votes: { type: int, min: 1, max: 20 }
+  quorum_pct: { type: int, min: 50, max: 100 }
+
+# Actions
+actions:
+  - name: start_collection
+    params: {}
+    pre: ["status = IDLE"]
+    eff:
+      - "status' = COLLECTING"
+      - "votes_received' = 0"
+      - "votes_accept' = 0"
+      - "votes_reject' = 0"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: vote_accept
+    params: {}
+    pre: ["status = COLLECTING", "votes_received < 100"]
+    eff:
+      - "votes_received' = votes_received + 1"
+      - "votes_accept' = votes_accept + 1"
+      - "votes_reject' = votes_reject"
+      - "status' = COLLECTING"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: vote_reject
+    params: {}
+    pre: ["status = COLLECTING", "votes_received < 100"]
+    eff:
+      - "votes_received' = votes_received + 1"
+      - "votes_reject' = votes_reject + 1"
+      - "votes_accept' = votes_accept"
+      - "status' = COLLECTING"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: check_quorum_met
+    params: {}
+    pre: ["status = COLLECTING", "votes_received >= min_votes", "votes_accept * 100 >= votes_received * quorum_pct"]
+    eff:
+      - "status' = QUORUM_MET"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: check_quorum_failed
+    params: {}
+    pre: ["status = COLLECTING", "votes_received >= min_votes", "votes_accept * 100 < votes_received * quorum_pct"]
+    eff:
+      - "status' = QUORUM_FAILED"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: timeout
+    params: {}
+    pre: ["status = COLLECTING"]
+    eff:
+      - "status' = TIMEOUT"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: cancel
+    params: {}
+    pre: ["status = COLLECTING"]
+    eff:
+      - "status' = CANCELLED"
+      - "votes_received' = votes_received"
+      - "votes_accept' = votes_accept"
+      - "votes_reject' = votes_reject"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+  - name: reset
+    params: {}
+    pre: ["status != IDLE", "status != COLLECTING"]
+    eff:
+      - "status' = IDLE"
+      - "votes_received' = 0"
+      - "votes_accept' = 0"
+      - "votes_reject' = 0"
+      - "min_votes' = min_votes"
+      - "quorum_pct' = quorum_pct"
+
+# Invariants
+invariants:
+  - name: votes_sum
+    expr: "votes_received = votes_accept + votes_reject"
+  - name: idle_no_votes
+    expr: "(status != IDLE) or (votes_received = 0)"
+  - name: quorum_met_valid
+    expr: "(status != QUORUM_MET) or ((votes_received >= min_votes) and (votes_accept * 100 >= votes_received * quorum_pct))"
+
+observations:
+  - name: is_collecting
+    expr: "status = COLLECTING"
+  - name: is_decided
+    expr: "(status = QUORUM_MET) or (status = QUORUM_FAILED)"

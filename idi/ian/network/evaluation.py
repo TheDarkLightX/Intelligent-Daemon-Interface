@@ -35,6 +35,14 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from idi.ian.models import AgentPack, GoalSpec, Metrics
 
+from .kernels.evaluation_quorum_fsm_ref import (
+    State as QuorumKernelState,
+    Command as QuorumKernelCommand,
+    step as quorum_step,
+    init_state as quorum_init_state,
+    check_invariants as quorum_check_invariants,
+)
+
 logger = logging.getLogger(__name__)
 
 

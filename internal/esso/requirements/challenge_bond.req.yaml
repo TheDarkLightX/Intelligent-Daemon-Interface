@@ -1,0 +1,72 @@
+schema: foundry-req/v1
+req_id: ian.challenge_bond
+req_version: 1.0.0
+criticality: critical
+
+# Challenge Bond Lifecycle FSM
+# Models the lifecycle of a bond posted to challenge a commit.
+# Unlike CommitterBond (long-lived), this is often task-specific.
+
+state:
+  status: [ACTIVE, LOCKED, SLASHED, WITHDRAWN]
+  amount: { type: nat, max: 1000000 }
+  min_challenge_bond: { type: nat, max: 100000 }
+
+actions:
+  - name: lock_for_challenge
+    params: {}
+    pre: 
+      - "status != LOCKED"
+      - "status != WITHDRAWN"
+      - "status != SLASHED"
+      - "amount >= min_challenge_bond"
+    eff:
+      - "status' = LOCKED"
+
+  - name: resolve_valid
+    # Challenge was valid, return bond to user (unlock)
+    params: {}
+    pre: ["status = LOCKED"]
+    eff: ["status' = ACTIVE"]
+
+  - name: resolve_invalid
+    # Challenge was invalid, slash the bond
+    params:
+      slash_amount: { type: nat, max: 1000000 }
+    pre: 
+      - "status = LOCKED"
+      - "slash_amount <= amount"
+    eff:
+      - "status' = SLASHED"
+      - "amount' = amount - slash_amount"
+
+  - name: withdraw_active
+    # Withdraw returned bond
+    params: {}
+    pre: ["status = ACTIVE"]
+    eff:
+      - "status' = WITHDRAWN"
+      - "amount' = 0"
+
+  - name: withdraw_remainder
+    # Withdraw any remainder after slashing
+    params: {}
+    pre: ["status = SLASHED"]
+    eff:
+      - "status' = WITHDRAWN"
+      - "amount' = 0"
+
+invariants:
+  - name: valid_amount
+    expr: "amount >= 0"
+
+  - name: locked_implies_sufficient
+    # If locked, must have had enough bond
+    expr: "status != LOCKED or amount >= min_challenge_bond"
+
+  - name: withdrawn_is_empty
+    expr: "status != WITHDRAWN or amount = 0"
+
+observations:
+  - name: public
+    exprs: [status, amount]

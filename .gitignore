@@ -107,3 +107,20 @@ Internal/**
 !Internal/intelligent_augmentation_network/
 !Internal/SECURITY_HARDENING_CHECKLIST.md
 !Internal/intelligent_augmentation_network/IAN_IMPLEMENTATION_PLAN.md
+external/
+
+# ---------------------------------------------------------------------------
+# ESSO toolchain / workspaces (local-only; do not commit)
+# ---------------------------------------------------------------------------
+external/ESSO/
+internal/esso/build/
+internal/esso/models/
+internal/esso/registry/
+internal/esso/autopilot/
+internal/esso/ce/
+
+# Large ESSO/verification run artifacts (regenerable)
+runs/
+
+# Local agent scratch/workflows
+.agent/

@@ -1,0 +1,89 @@
+schema: foundry-req/v1
+req_id: ian.bond_status
+req_version: 2.0.0
+criticality: critical
+
+# Committer Bond Lifecycle FSM
+# States: ACTIVE (can commit), LOCKED (pending action), SLASHED (below min), WITHDRAWN (terminal)
+
+state:
+  # Enum as list of symbols
+  status: [ACTIVE, LOCKED, SLASHED, WITHDRAWN]
+  amount: { type: nat, max: 1000000 }           # Total deposited bond
+  total_slashed: { type: nat, max: 1000000 }    # Cumulative slashed amount
+  min_bond: { type: nat, max: 100000 }          # Minimum required bond (configurable)
+
+actions:
+  - name: lock_bond
+    params: {}
+    pre: ["status = ACTIVE"]
+    eff: ["status' = LOCKED"]
+
+  - name: unlock_bond
+    params: {}
+    pre: ["status = LOCKED", "amount - total_slashed >= min_bond"]
+    eff: ["status' = ACTIVE"]
+
+  - name: slash_partial
+    # Slash some amount but remain above min_bond -> stay in current state
+    params:
+      slash_amount: { type: nat, max: 1000000 }
+    pre:
+      - "status != WITHDRAWN"
+      - "total_slashed + slash_amount <= amount"
+      - "amount - total_slashed - slash_amount >= min_bond"
+    eff:
+      - "total_slashed' = total_slashed + slash_amount"
+
+  - name: slash_below_min
+    # Slash drops effective bond below min_bond -> transition to SLASHED
+    params:
+      slash_amount: { type: nat, max: 1000000 }
+    pre:
+      - "status = ACTIVE"
+      - "total_slashed + slash_amount <= amount"
+      - "amount - total_slashed - slash_amount < min_bond"
+    eff:
+      - "status' = SLASHED"
+      - "total_slashed' = total_slashed + slash_amount"
+
+  - name: withdraw_locked
+    params: {}
+    pre: ["status = LOCKED"]
+    eff:
+      - "status' = WITHDRAWN"
+      - "total_slashed' = amount"
+
+  - name: withdraw_slashed
+    params: {}
+    pre: ["status = SLASHED"]
+    eff:
+      - "status' = WITHDRAWN"
+      - "total_slashed' = amount"
+
+  - name: topup
+    # Add more bond to restore position
+    params:
+      topup_amount: { type: nat, max: 1000000 }
+    pre:
+      - "status != WITHDRAWN"
+      - "amount + topup_amount <= 1000000"
+    eff:
+      - "amount' = amount + topup_amount"
+
+invariants:
+  - name: slashed_not_exceeds_amount
+    expr: "total_slashed <= amount"
+  
+  - name: active_has_valid_bond
+    # (status = ACTIVE) => (amount - total_slashed >= min_bond)
+    # Equivalent: not(status = ACTIVE) or (amount - total_slashed >= min_bond)
+    expr: "(status != ACTIVE) or (amount - total_slashed >= min_bond)"
+  
+  - name: withdrawn_is_terminal
+    # (status = WITHDRAWN) => (amount - total_slashed = 0)
+    expr: "(status != WITHDRAWN) or (amount - total_slashed = 0)"
+
+observations:
+  - name: public
+    exprs: [status, amount, total_slashed]

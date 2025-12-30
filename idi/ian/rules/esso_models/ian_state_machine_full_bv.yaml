@@ -1,0 +1,238 @@
+actions:
+- effects: {}
+  guard:
+    bool: true
+  id: tick
+  params:
+  - id: tx_register
+    type:
+      kind: bool
+  - id: tx_commit
+    type:
+      kind: bool
+  - id: tx_upgrade
+    type:
+      kind: bool
+  - id: valid_signature
+    type:
+      kind: bool
+  - id: valid_proof
+    type:
+      kind: bool
+  - id: cooldown_ok
+    type:
+      kind: bool
+  - id: governance_ok
+    type:
+      kind: bool
+  - id: in_log_root
+    type:
+      kind: bitvec
+      width: 32
+  - id: in_pack_hash
+    type:
+      kind: bitvec
+      width: 32
+  updates:
+  - expr:
+      args:
+      - args:
+        - args:
+          - var: registered
+          op: not
+        - param: tx_register
+        - param: valid_signature
+        op: and
+      - var: registered
+      op: or
+    var: registered
+  - expr:
+      args:
+      - param: tx_commit
+      - param: valid_proof
+      - var: registered
+      op: and
+    var: log_committed
+  - expr:
+      args:
+      - args:
+        - param: tx_upgrade
+        - var: registered
+        op: and
+      - args:
+        - param: cooldown_ok
+        - param: governance_ok
+        op: or
+      - param: valid_proof
+      op: and
+    var: upgraded
+  - expr:
+      cond:
+        args:
+        - param: tx_commit
+        - param: valid_proof
+        - var: registered
+        op: and
+      else:
+        var: log_root
+      op: ite
+      then:
+        param: in_log_root
+    var: log_root
+  - expr:
+      cond:
+        args:
+        - args:
+          - param: tx_upgrade
+          - var: registered
+          op: and
+        - args:
+          - param: cooldown_ok
+          - param: governance_ok
+          op: or
+        - param: valid_proof
+        op: and
+      else:
+        var: active_policy
+      op: ite
+      then:
+        param: in_pack_hash
+    var: active_policy
+  - expr:
+      cond:
+        args:
+        - args:
+          - param: tx_upgrade
+          - var: registered
+          op: and
+        - args:
+          - param: cooldown_ok
+          - param: governance_ok
+          op: or
+        - param: valid_proof
+        op: and
+      else:
+        var: upgrade_count
+      op: ite
+      then:
+        args:
+        - const: 1
+        - var: upgrade_count
+        op: +
+    var: upgrade_count
+  - expr:
+      cond:
+        args:
+        - param: tx_commit
+        - param: valid_proof
+        - var: registered
+        op: and
+      else:
+        var: last_commit_hash
+      op: ite
+      then:
+        param: in_log_root
+    var: last_commit_hash
+  - expr:
+      cond:
+        args:
+        - args:
+          - param: tx_upgrade
+          - var: registered
+          op: and
+        - args:
+          - param: cooldown_ok
+          - param: governance_ok
+          op: or
+        - param: valid_proof
+        op: and
+      else:
+        var: prev_policy
+      op: ite
+      then:
+        var: active_policy
+    var: prev_policy
+init:
+- expr:
+    bool: false
+  var: registered
+- expr:
+    bool: false
+  var: log_committed
+- expr:
+    bool: false
+  var: upgraded
+- expr:
+    const: 0
+  var: log_root
+- expr:
+    const: 0
+  var: active_policy
+- expr:
+    const: 0
+  var: upgrade_count
+- expr:
+    const: 0
+  var: last_commit_hash
+- expr:
+    const: 0
+  var: prev_policy
+invariants:
+- expr:
+    bool: true
+  id: inv_true
+  kind: safety
+ir_version: esso-ir/v1
+meta:
+  model_id: ian_state_machine_full_bv
+  source: idi/ian/rules/ian_state_machine.tau
+observables:
+  effects: []
+  state_vars:
+  - registered
+  - log_committed
+  - upgraded
+  - log_root
+  - active_policy
+  - upgrade_count
+  - last_commit_hash
+  - prev_policy
+state_vars:
+- id: active_policy
+  role: data
+  type:
+    kind: bitvec
+    width: 32
+- id: last_commit_hash
+  role: data
+  type:
+    kind: bitvec
+    width: 32
+- id: log_committed
+  role: control
+  type:
+    kind: bool
+- id: log_root
+  role: data
+  type:
+    kind: bitvec
+    width: 32
+- id: prev_policy
+  role: data
+  type:
+    kind: bitvec
+    width: 32
+- id: registered
+  role: control
+  type:
+    kind: bool
+- id: upgrade_count
+  role: data
+  type:
+    kind: bitvec
+    width: 2
+- id: upgraded
+  role: control
+  type:
+    kind: bool
+types: []

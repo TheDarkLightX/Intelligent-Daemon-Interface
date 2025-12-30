@@ -19,6 +19,7 @@ import hashlib
 import json
 import logging
 import secrets
+from hmac import compare_digest
 import time
 from collections import OrderedDict
 from collections.abc import Callable
@@ -109,14 +110,33 @@ class TokenBucketRateLimiter:
     - Prevents message flooding DoS
     - Allows burst tolerance for legitimate traffic
     - O(1) per check
+
+    ESSO-Verified Invariants (Inductive(k=1)):
+    - tokens <= burst (tokens_bounded_by_burst)
+    - tokens >= 0 (tokens_non_negative)
+    - 1 <= burst <= max_burst (domain bound)
+
+    IR hash: sha256:4fdfd80b9ef67570c25c38fb5afa4a04c1907bee4ce0f41a6ae584ea34e99a2d
     """
 
+    __slots__ = ('rate', 'burst', 'tokens', 'last_update', '_lock')
+
     def __init__(self, rate: float = 10.0, burst: int = 20):
+        if not (1 <= burst <= 20):
+            raise ValueError(f"burst must be in [1, 20], got {burst}")
         self.rate = rate  # tokens per second
         self.burst = burst
         self.tokens = float(burst)
         self.last_update = time.monotonic()
         self._lock = asyncio.Lock()
+        self._check_invariants()  # Verify initial state
+
+    def _check_invariants(self) -> None:
+        """CBC: Verify ESSO-proven invariants hold."""
+        assert 0 <= self.tokens <= self.burst, \
+            f"invariant violated: tokens={self.tokens}, burst={self.burst}"
+        assert 1 <= self.burst <= 20, \
+            f"domain violation: burst={self.burst}"
 
     async def acquire(self) -> bool:
         """
@@ -134,15 +154,19 @@ class TokenBucketRateLimiter:
             self.tokens = min(float(self.burst), self.tokens + elapsed * self.rate)
 
             if self.tokens < 1.0:
+                self._check_invariants()  # CBC: post-state check
                 return False  # Rate limited
 
             self.tokens -= 1.0
+            self._check_invariants()  # CBC: post-state check
             return True
 
     def reset(self) -> None:
         """Reset limiter to full burst capacity."""
         self.tokens = float(self.burst)
         self.last_update = time.monotonic()
+        self._check_invariants()  # CBC: post-state check
+
 
 
 @dataclass
@@ -156,6 +180,12 @@ class PeerSession:
     - Stores handshake challenge for verification
     - Tracks rate limiting state
     - Validates peer identity cryptographically
+
+    ESSO-Verified Invariants (Inductive(k=1)):
+    - ready_requires_verified: READY state implies verified=True
+    - ready_requires_handshake: READY state implies handshake completed
+
+    IR hash: sha256:ff741b6b32e8033c221784e0908aeb08ec29b0669d943ef3256cf762bc6d99d4
     """
     node_id: str
     address: str
@@ -172,6 +202,7 @@ class PeerSession:
     # Handshake security
     pending_challenge: bytes | None = None  # Our nonce, awaiting signed response
     verified: bool = False  # Whether peer identity is cryptographically verified
+    handshake_completed: bool = False
 
     handshake_started_at: float = 0.0
 
@@ -204,11 +235,55 @@ class PeerSession:
     read_task: asyncio.Task | None = None
     write_task: asyncio.Task | None = None
 
+    def _check_invariants(self) -> None:
+        """CBC: Verify ESSO-proven peer_state_fsm invariants."""
+        # Invariant: READY implies verified
+        if self.state == PeerState.READY:
+            assert self.verified, \
+                f"invariant ready_requires_verified violated: state=READY but verified=False"
+            assert self.handshake_completed, \
+                f"invariant ready_requires_handshake violated: state=READY but handshake_completed=False"
+
+    def transition_to(self, new_state: PeerState) -> None:
+        """
+        Transition to a new state with CBC validation.
+
+        Validates that the transition is legal per ESSO model.
+        Checks invariants BEFORE committing state change (fail-fast).
+        """
+        # Valid transitions per peer_state_fsm model
+        valid_transitions = {
+            PeerState.CONNECTING: {PeerState.CONNECTED, PeerState.DISCONNECTING},
+            PeerState.CONNECTED: {PeerState.HANDSHAKING, PeerState.DISCONNECTING},
+            PeerState.HANDSHAKING: {PeerState.READY, PeerState.DISCONNECTING},
+            PeerState.READY: {PeerState.DISCONNECTING},
+            PeerState.DISCONNECTING: {PeerState.DISCONNECTED},
+            PeerState.DISCONNECTED: {PeerState.CONNECTING},
+        }
+
+        allowed = valid_transitions.get(self.state, set())
+        if new_state not in allowed:
+            raise ValueError(
+                f"Invalid state transition: {self.state.name} -> {new_state.name}. "
+                f"Allowed: {[s.name for s in allowed]}"
+            )
+
+        # CBC: check invariants BEFORE committing (fail-fast)
+        # Temporarily set state to check proposed invariants
+        old_state = self.state
+        self.state = new_state
+        try:
+            self._check_invariants()
+        except AssertionError:
+            self.state = old_state  # Rollback on invariant violation
+            raise
+
     def is_connected(self) -> bool:
         return self.state in (PeerState.CONNECTED, PeerState.HANDSHAKING, PeerState.READY)
 
     def is_ready(self) -> bool:
         return self.state == PeerState.READY
+
 
 
 # =============================================================================
@@ -282,9 +357,11 @@ class P2PManager:
     def _mark_handshake_started(self, session: PeerSession, *, now_s: float) -> None:
         if session.handshake_started_at <= 0.0:
             session.handshake_started_at = now_s
+        session.handshake_completed = False
 
     def _mark_handshake_completed(self, session: PeerSession) -> None:
         session.handshake_started_at = 0.0
+        session.handshake_completed = True
 
     async def _find_handshake_timeouts(self, *, now_s: float) -> list[str]:
         timeout_s = float(self._config.handshake_timeout)
@@ -624,7 +701,8 @@ class P2PManager:
             else:
                 self._ip_connections[session.address] = ip_count - 1
 
-        session.state = PeerState.DISCONNECTING
+        if session.state not in (PeerState.DISCONNECTING, PeerState.DISCONNECTED):
+            session.transition_to(PeerState.DISCONNECTING)
 
         # Cancel tasks
         if session.read_task:
@@ -640,7 +718,8 @@ class P2PManager:
             except Exception:
                 pass
 
-        session.state = PeerState.DISCONNECTED
+        if session.state == PeerState.DISCONNECTING:
+            session.transition_to(PeerState.DISCONNECTED)
         logger.info(f"Disconnected peer {node_id}")
 
     # -------------------------------------------------------------------------
@@ -752,12 +831,16 @@ class P2PManager:
         """Handle received message.
 
         Security:
-        - Checks for replay attacks before processing
-        - Validates message timestamps
+        - Rejects non-handshake messages from unverified sessions (fail-closed)
+        - Verifies Ed25519 signatures for all accepted messages
+        - Checks for replay attacks *after* authentication (prevents cache DoS)
+        - Validates message timestamps (via replay gate)
         """
         try:
-            # Parse JSON
-            msg_dict = json.loads(data.decode('utf-8'))
+            # Parse JSON (wire payload is just JSON; length prefix is handled in _read_loop)
+            msg_dict = json.loads(data.decode("utf-8"))
+            if not isinstance(msg_dict, dict):
+                return
             msg_type_raw = msg_dict.get("type", "")
             try:
                 msg_type = MessageType(msg_type_raw)
@@ -772,25 +855,64 @@ class P2PManager:
                     return
                 msg_type = msg_type_opt
 
-            # Create a temporary Message object for replay checking
-            # (uses sender_id + nonce as message_id)
-            sender_id = msg_dict.get("sender_id", "")
-            nonce = msg_dict.get("nonce", "")
-            timestamp = msg_dict.get("timestamp", 0)
+            is_handshake = msg_type in (MessageType.HANDSHAKE_CHALLENGE, MessageType.HANDSHAKE_RESPONSE)
 
-            if sender_id and nonce:
-                # Create lightweight message for replay check
-                temp_msg = Message(
-                    type=msg_type,
-                    sender_id=sender_id,
-                    timestamp=timestamp,
-                    nonce=nonce,
+            # Gate non-handshake traffic on a verified session.
+            # (We drop rather than disconnect to avoid brittleness; rate limiting applies upstream.)
+            if not is_handshake and not session.is_ready():
+                logger.debug(
+                    f"Dropping non-handshake message from unready session {session.node_id}: {msg_type.value}"
                 )
+                return
 
-                # SECURITY: Check for replay attack
-                if self._is_replay(temp_msg):
-                    logger.warning(f"Dropping replayed message from {sender_id[:16]}...")
+            # Parse into a typed protocol message (used for signing payload + replay check).
+            try:
+                parsed = Message.from_dict(msg_dict)
+            except Exception:
+                return
+
+            # Require a signature for all accepted messages.
+            if parsed.signature is None or not isinstance(parsed.signature, (bytes, bytearray)):
+                if session.is_ready():
+                    logger.warning(f"Unsigned message from ready peer {session.node_id[:16]}...; disconnecting")
+                    asyncio.create_task(self._disconnect_peer(session.node_id))
+                return
+
+            # Authenticate message (Ed25519).
+            if is_handshake:
+                # Handshake messages carry the sender's public key; verify binding + signature.
+                peer_pub = self._decode_b64_field(msg_dict.get("public_key"))
+                if peer_pub is None or len(peer_pub) != 32:
                     return
+                expected_id = self._derive_node_id(peer_pub)
+                if not compare_digest(parsed.sender_id, expected_id):
+                    logger.warning("Handshake sender_id/pubkey mismatch; dropping")
+                    return
+                if not NodeIdentity.verify_with_public_key(peer_pub, parsed.signing_payload(), bytes(parsed.signature)):
+                    logger.warning("Handshake signature verification failed; dropping")
+                    return
+            else:
+                # For established sessions, verify using the cached peer public key.
+                peer_pub = session.peer_public_key
+                if peer_pub is None or len(peer_pub) != 32:
+                    logger.warning(f"Missing peer_public_key for ready peer {session.node_id[:16]}...; disconnecting")
+                    asyncio.create_task(self._disconnect_peer(session.node_id))
+                    return
+                if parsed.sender_id != session.node_id:
+                    logger.warning(
+                        f"Sender spoof attempt: session={session.node_id[:16]}... msg.sender_id={parsed.sender_id[:16]}..."
+                    )
+                    asyncio.create_task(self._disconnect_peer(session.node_id))
+                    return
+                if not NodeIdentity.verify_with_public_key(peer_pub, parsed.signing_payload(), bytes(parsed.signature)):
+                    logger.warning(f"Invalid signature from {session.node_id[:16]}...; disconnecting")
+                    asyncio.create_task(self._disconnect_peer(session.node_id))
+                    return
+
+            # Replay protection (authenticated sender_id + nonce).
+            if self._is_replay(parsed):
+                logger.warning(f"Dropping replayed message from {parsed.sender_id[:16]}...")
+                return
 
             # Route to handler
             handler = self._handlers.get(msg_type)
@@ -923,9 +1045,8 @@ class P2PManager:
         - Peer must sign nonce to prove identity
         - Prevents session hijacking
         """
-        session.state = PeerState.HANDSHAKING
-
         self._mark_handshake_started(session, now_s=self._now_s())
+        session.transition_to(PeerState.HANDSHAKING)
 
         # Generate challenge nonce
         challenge_nonce = secrets.token_bytes(32)
@@ -958,7 +1079,9 @@ class P2PManager:
         Verify handshake response proves peer controls claimed identity.
 
         Security:
-        - Verifies peer signed our challenge nonce
+        - Verifies peer's Ed25519 signature over the HandshakeResponse signing payload
+        - Verifies sender_id is bound to the provided public key (node_id = sha256(pubkey)[:40])
+        - Verifies challenge_nonce matches our pending challenge (prevents replay)
         - Prevents node ID spoofing/hijacking
 
         Returns:
@@ -968,69 +1091,37 @@ class P2PManager:
             logger.warning(f"No pending challenge for {session.node_id}")
             return False
 
-        claimed_id = response.get("sender_id", "")
-        response_nonce = response.get("response_nonce", "")
-        signature_hex = response.get("signature", "")
-
-        if not claimed_id or not signature_hex:
-            logger.warning(f"Missing fields in handshake response from {session.address}")
-            return False
-
         try:
-            # The peer should sign: H(our_nonce || their_nonce || their_id)
-            our_nonce = session.pending_challenge
-            their_nonce = bytes.fromhex(response_nonce) if response_nonce else b""
-
-            msg_to_verify = hashlib.sha256(
-                our_nonce + their_nonce + claimed_id.encode()
-            ).digest()
-
-            signature = bytes.fromhex(signature_hex)
-
-            # Verify ED25519 signature against the peer's public key
-            #
-            # Security: This prevents node ID spoofing attacks where an attacker
-            # claims to be another node without possessing its private key
-            #
-            # Note: node_id = SHA256(public_key)[:40], so we need the actual
-            # public key from the peer's NodeInfo, not the node_id itself
-            if len(signature) != 64:
-                logger.warning(f"Invalid signature length ({len(signature)}) from {claimed_id[:16]}...")
+            # Expect a full HandshakeResponse message dict (wire shape).
+            if response.get("type") not in (MessageType.HANDSHAKE_RESPONSE.value, "HANDSHAKE_RESPONSE"):
+                logger.warning("Invalid handshake response type")
                 return False
 
-            # Get the peer's public key from their NodeInfo
-            if session.info is None or session.info.public_key is None:
-                logger.warning(f"No public key available for {claimed_id[:16]}... - cannot verify")
+            msg = HandshakeResponse._from_dict_impl(response)
+
+            # Verify challenge nonce matches our pending challenge (constant-time).
+            expected_challenge_hex = session.pending_challenge.hex()
+            if not compare_digest(msg.challenge_nonce, expected_challenge_hex):
+                logger.warning("Handshake challenge nonce mismatch")
                 return False
 
-            peer_pubkey = session.info.public_key
-            if len(peer_pubkey) != 32:
-                logger.warning(f"Invalid public key length ({len(peer_pubkey)}) from {claimed_id[:16]}...")
+            # Decode and bind public key to claimed node_id.
+            peer_pubkey = self._decode_b64_field(response.get("public_key"))
+            if peer_pubkey is None or len(peer_pubkey) != 32:
                 return False
-
-            # Verify the node_id matches the public key (prevents key substitution)
             expected_node_id = hashlib.sha256(peer_pubkey).hexdigest()[:40]
-            if claimed_id != expected_node_id:
-                logger.warning(
-                    f"Node ID mismatch: claimed {claimed_id[:16]}... but pubkey gives {expected_node_id[:16]}..."
-                )
+            if not compare_digest(msg.sender_id, expected_node_id):
+                logger.warning("Handshake sender_id/pubkey mismatch")
                 return False
 
-            # Perform actual cryptographic verification
-            verified = NodeIdentity.verify_with_public_key(
-                peer_pubkey,
-                msg_to_verify,
-                signature
-            )
-
-            if not verified:
-                logger.warning(f"Signature verification FAILED for {claimed_id[:16]}...")
+            # Verify Ed25519 signature over signing payload.
+            if msg.signature is None or len(msg.signature) != 64:
+                return False
+            if not NodeIdentity.verify_with_public_key(peer_pubkey, msg.signing_payload(), msg.signature):
+                logger.warning("Handshake response signature invalid")
                 return False
 
-            session.verified = True
-            logger.debug(f"Signature verified for {claimed_id[:16]}...")
             return True
-
         except Exception as e:
             logger.warning(f"Handshake verification error: {e}")
             return False
@@ -1046,25 +1137,41 @@ class P2PManager:
         Returns:
             True if handshake succeeded, False if peer should be disconnected
         """
-        claimed_id = response.get("sender_id", "")
+        claimed_id = str(response.get("sender_id", ""))
         current_session_id = session.node_id
+
+        if session.state == PeerState.CONNECTED:
+            self._mark_handshake_started(session, now_s=self._now_s())
+            session.transition_to(PeerState.HANDSHAKING)
+
+        if session.state != PeerState.HANDSHAKING:
+            logger.warning(
+                f"Handshake response in invalid state {session.state.name} from {claimed_id[:16]}... - disconnecting"
+            )
+            session.verified = False
+            session.handshake_completed = False
+            session.transition_to(PeerState.DISCONNECTING)
+            asyncio.create_task(self._disconnect_peer(current_session_id))
+            return False
 
         # Require challenge-response verification for all connections
         if session.pending_challenge:
-            # Verify the response - peer must prove they control the claimed identity
-            response_dict = {
-                "sender_id": response.get("sender_id", ""),
-                "response_nonce": response.get("response_nonce", ""),
-                "signature": response.get("signature", "") or '',
-            }
+            if session.kx_private_key is None or session.kx_public_key is None:
+                logger.warning(f"Handshake missing local kx keys for {session.node_id[:16]}... - disconnecting")
+                session.verified = False
+                session.handshake_completed = False
+                session.transition_to(PeerState.DISCONNECTING)
+                asyncio.create_task(self._disconnect_peer(current_session_id))
+                return False
 
-            if not self._verify_handshake_response(session, response_dict):
+            if not self._verify_handshake_response(session, response):
                 # SECURITY: Reject unverified peers to prevent identity spoofing
                 logger.warning(
                     f"Rejecting unverified peer {claimed_id[:16]}... - signature verification failed"
                 )
                 session.verified = False
-                session.state = PeerState.DISCONNECTING
+                session.handshake_completed = False
+                session.transition_to(PeerState.DISCONNECTING)
                 # Schedule disconnect
                 asyncio.create_task(self._disconnect_peer(current_session_id))
                 return False
@@ -1072,16 +1179,59 @@ class P2PManager:
             session.verified = True
         else:
             # No challenge was sent - this shouldn't happen in normal flow
-            # For legacy compatibility, mark as unverified but allow
-            logger.warning(f"No challenge sent for {claimed_id[:16]}... - marking unverified")
+            # Fail-closed: do not allow READY without cryptographic verification.
+            logger.warning(f"No challenge sent for {claimed_id[:16]}... - disconnecting")
             session.verified = False
+            session.handshake_completed = False
+            session.transition_to(PeerState.DISCONNECTING)
+            asyncio.create_task(self._disconnect_peer(current_session_id))
+            return False
+
+        # Parse response for key material.
+        try:
+            msg = HandshakeResponse._from_dict_impl(response)
+        except Exception:
+            session.verified = False
+            session.handshake_completed = False
+            session.transition_to(PeerState.DISCONNECTING)
+            asyncio.create_task(self._disconnect_peer(current_session_id))
+            return False
+
+        peer_pubkey = self._decode_b64_field(response.get("public_key"))
+        peer_kx_pub = self._decode_b64_field(response.get("kx_public_key"))
+        if peer_pubkey is None or len(peer_pubkey) != 32 or peer_kx_pub is None or len(peer_kx_pub) != 32:
+            session.verified = False
+            session.handshake_completed = False
+            session.transition_to(PeerState.DISCONNECTING)
+            asyncio.create_task(self._disconnect_peer(current_session_id))
+            return False
+
+        # Derive session key (X25519 + HKDF), binding to the verified node IDs and kx pubs.
+        try:
+            kx_private = X25519PrivateKey.from_private_bytes(session.kx_private_key)
+            shared_secret = kx_private.exchange(X25519PublicKey.from_public_bytes(peer_kx_pub))
+            session.peer_public_key = peer_pubkey
+            session.peer_kx_public_key = peer_kx_pub
+            session.session_key = self._derive_session_key(
+                shared_secret=shared_secret,
+                challenge_nonce=session.pending_challenge,
+                node_id_a=self._identity.node_id,
+                node_id_b=msg.sender_id,
+                kx_pub_a=cast(bytes, session.kx_public_key),
+                kx_pub_b=peer_kx_pub,
+            )
+        except Exception:
+            session.verified = False
+            session.handshake_completed = False
+            session.transition_to(PeerState.DISCONNECTING)
+            asyncio.create_task(self._disconnect_peer(current_session_id))
+            return False
 
         # Update session with verified peer info
         old_id = session.node_id
         session.node_id = claimed_id
-        session.state = PeerState.READY
-
         self._mark_handshake_completed(session)
+        session.transition_to(PeerState.READY)
 
         # Clear challenge
         session.pending_challenge = None
@@ -1226,10 +1376,10 @@ class P2PManager:
 
             old_id = session.node_id
             session.node_id = challenge.sender_id
-            session.state = PeerState.HANDSHAKING
             session.verified = True
 
             self._mark_handshake_started(session, now_s=self._now_s())
+            session.transition_to(PeerState.HANDSHAKING)
 
             if old_id != session.node_id:
                 async with self._lock:
@@ -1271,62 +1421,8 @@ class P2PManager:
             session = self._peers.get(from_id)
             if session is None:
                 return
-            response = HandshakeResponse._from_dict_impl(msg)
-
-            if session.pending_challenge is None:
-                return
-            expected_challenge_hex = session.pending_challenge.hex()
-            if response.challenge_nonce != expected_challenge_hex:
-                return
-
-            peer_pubkey = self._decode_b64_field(response.public_key)
-            if peer_pubkey is None or len(peer_pubkey) != 32:
-                return
-            if self._derive_node_id(peer_pubkey) != response.sender_id:
-                return
-            if response.signature is None:
-                return
-            if not NodeIdentity.verify_with_public_key(peer_pubkey, response.signing_payload(), response.signature):
-                return
-
-            peer_kx_pub = self._decode_b64_field(response.kx_public_key)
-            if peer_kx_pub is None or len(peer_kx_pub) != 32:
-                return
-
-            if session.kx_private_key is None or session.kx_public_key is None:
-                return
-            try:
-                kx_private = X25519PrivateKey.from_private_bytes(session.kx_private_key)
-                shared_secret = kx_private.exchange(X25519PublicKey.from_public_bytes(peer_kx_pub))
-            except Exception:
-                return
-
-            session.peer_public_key = peer_pubkey
-            session.peer_kx_public_key = peer_kx_pub
-            session.session_key = self._derive_session_key(
-                shared_secret=shared_secret,
-                challenge_nonce=session.pending_challenge,
-                node_id_a=self._identity.node_id,
-                node_id_b=response.sender_id,
-                kx_pub_a=session.kx_public_key,
-                kx_pub_b=peer_kx_pub,
-            )
-
-            claimed_id = response.sender_id
-            old_id = session.node_id
-            session.node_id = claimed_id
-            session.state = PeerState.READY
-            session.pending_challenge = None
-            session.verified = True
-
-            self._mark_handshake_completed(session)
-
-            if old_id != claimed_id:
-                async with self._lock:
-                    self._peers.pop(old_id, None)
-                    self._peers[claimed_id] = session
-                    addr_key = f"{session.address}:{session.port}"
-                    self._address_map[addr_key] = claimed_id
+            # Use the hardened, single-source handshake response implementation.
+            await self._handle_handshake_response(session, msg)
 
         async def handle_ping(msg: dict, from_id: str) -> Pong | None:
             pong = Pong(sender_id=self._identity.node_id)

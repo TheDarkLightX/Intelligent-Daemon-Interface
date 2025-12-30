@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import secrets
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -76,7 +77,7 @@ class Message:
     type: MessageType
     sender_id: str
     timestamp: int = field(default_factory=lambda: int(time.time() * 1000))
-    nonce: str = field(default_factory=lambda: base64.b64encode(hashlib.sha256(str(time.time_ns()).encode()).digest()[:8]).decode())
+    nonce: str = field(default_factory=lambda: secrets.token_urlsafe(16))
     signature: bytes | None = None
 
     def to_dict(self) -> dict[str, Any]:

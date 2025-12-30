@@ -1,0 +1,13 @@
+{
+  "max_ast_nodes": 40,
+  "max_branches": 8,
+  "max_nesting": 2,
+  "name": "default_pretty_v1",
+  "penalties": {
+    "ast_node": 1,
+    "branch": 10,
+    "duplicate_subexpr": 8,
+    "nesting": 25
+  },
+  "schema": "esso-style-profile/v1"
+}

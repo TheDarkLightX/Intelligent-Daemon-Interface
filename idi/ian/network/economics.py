@@ -31,6 +31,21 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from .fraud import FraudProof, FraudType
 
+from .kernels.bond_status_fsm_ref import (
+    State as BondKernelState,
+    Command as BondKernelCommand,
+    StepResult as BondKernelStepResult,
+    check_invariants as bond_check_invariants,
+    step as bond_step,
+)
+from .kernels.challenge_bond_fsm_ref import (
+    State as ChallengeKernelState,
+    Command as ChallengeKernelCommand,
+    StepResult as ChallengeKernelStepResult,
+    check_invariants as challenge_check_invariants,
+    step as challenge_step,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,16 +57,20 @@ logger = logging.getLogger(__name__)
 class EconomicConfig:
     """
     Economic parameters for IAN on Tau Net.
-    
-    All amounts are in Tau's base unit (e.g., 1 TAU = 1_000_000 units).
+
+    IMPORTANT (verification envelope):
+    The production implementation is wired to ESSO-verified kernels whose state
+    variables are *bounded* (see `internal/esso/requirements/*.req.yaml`).
+    These defaults are chosen to stay within the kernel domains so the formal
+    claims apply without silent truncation.
     """
     
     # Committer bonds
-    min_committer_bond: int = 1_000_000_000  # 1000 TAU
-    max_committer_bond: int = 100_000_000_000  # 100,000 TAU
+    min_committer_bond: int = 1_000  # Kernel domain: min_bond <= 100_000
+    max_committer_bond: int = 1_000_000  # Kernel domain: amount <= 1_000_000
     
     # Challenger bonds
-    challenge_bond: int = 100_000_000  # 100 TAU
+    challenge_bond: int = 1_000  # Kernel domain: min_challenge_bond <= 100_000
     
     # Slashing
     slash_percentage: float = 0.50  # 50% of bond
@@ -91,27 +110,75 @@ class CommitterBond:
     
     Bonds are required to submit IAN_LOG_COMMIT and IAN_UPGRADE
     transactions to Tau Net.
+    
+    Wired to ESSO-verified kernel: bond_status_fsm_ref.
+    The kernel is the single source of truth for status and total_slashed.
     """
     committer_id: str  # Node ID / public key
     goal_id: str
     amount: int
-    status: BondStatus = BondStatus.ACTIVE
+    _status: BondStatus = BondStatus.ACTIVE  # Internal, synced from kernel
     created_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
     locked_until_ms: Optional[int] = None
     
     # Tau Net reference
     bond_tx_hash: Optional[bytes] = None
     
-    # History
+    # Config (set by EconomicManager)
+    min_bond: int = 0  # For active_has_valid_bond invariant
+    
+    # History (total_slashed is now derived from kernel)
     slash_count: int = 0
-    total_slashed: int = 0
     commits_count: int = 0
+    
+    # Kernel state (source of truth)
+    _kstate: BondKernelState = field(default=None, repr=False)  # type: ignore
+    
+    def __post_init__(self) -> None:
+        """Initialize kernel state."""
+        if not (0 <= int(self.amount) <= 1_000_000):
+            raise ValueError(f"Bond amount out of kernel domain [0, 1_000_000]: {self.amount}")
+        if not (0 <= int(self.min_bond) <= 100_000):
+            raise ValueError(f"min_bond out of kernel domain [0, 100_000]: {self.min_bond}")
+
+        # Map shell status to kernel status
+        status_map = {
+            BondStatus.ACTIVE: 'ACTIVE',
+            BondStatus.LOCKED: 'LOCKED',
+            BondStatus.SLASHED: 'SLASHED',
+            BondStatus.WITHDRAWN: 'WITHDRAWN',
+        }
+        self._kstate = BondKernelState(
+            amount=int(self.amount),
+            min_bond=int(self.min_bond),
+            status=status_map.get(self._status, 'ACTIVE'),
+            total_slashed=0,
+        )
+        # Keep shell and kernel amounts consistent.
+        self.amount = self._kstate.amount
+    
+    @property
+    def status(self) -> BondStatus:
+        """Read-through property: derive status from kernel."""
+        kernel_status_map = {
+            'ACTIVE': BondStatus.ACTIVE,
+            'LOCKED': BondStatus.LOCKED,
+            'SLASHED': BondStatus.SLASHED,
+            'WITHDRAWN': BondStatus.WITHDRAWN,
+        }
+        return kernel_status_map.get(self._kstate.status, BondStatus.ACTIVE)
+    
+    @property
+    def total_slashed(self) -> int:
+        """Read-through property: derive total_slashed from kernel."""
+        return self._kstate.total_slashed
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "committer_id": self.committer_id,
             "goal_id": self.goal_id,
             "amount": self.amount,
+            "min_bond": self.min_bond,
             "status": self.status.value,
             "created_at_ms": self.created_at_ms,
             "locked_until_ms": self.locked_until_ms,
@@ -123,18 +190,35 @@ class CommitterBond:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CommitterBond":
-        return cls(
+        bond = cls(
             committer_id=data["committer_id"],
             goal_id=data["goal_id"],
             amount=data["amount"],
-            status=BondStatus(data["status"]),
+            _status=BondStatus(data["status"]),
             created_at_ms=data["created_at_ms"],
             locked_until_ms=data.get("locked_until_ms"),
             bond_tx_hash=bytes.fromhex(data["bond_tx_hash"]) if data.get("bond_tx_hash") else None,
             slash_count=data.get("slash_count", 0),
-            total_slashed=data.get("total_slashed", 0),
             commits_count=data.get("commits_count", 0),
+            min_bond=int(data.get("min_bond", 0)),
         )
+        # Reconstruct kernel state from persisted fields (source of truth).
+        status_map = {
+            BondStatus.ACTIVE: 'ACTIVE',
+            BondStatus.LOCKED: 'LOCKED',
+            BondStatus.SLASHED: 'SLASHED',
+            BondStatus.WITHDRAWN: 'WITHDRAWN',
+        }
+        total_slashed = int(data.get("total_slashed", 0))
+        bond._kstate = BondKernelState(
+            amount=int(bond.amount),
+            min_bond=int(bond.min_bond),
+            status=status_map.get(bond._status, 'ACTIVE'),
+            total_slashed=total_slashed,
+        )
+        bond.amount = bond._kstate.amount
+        bond._check_invariants()
+        return bond
     
     def can_commit(self) -> bool:
         """Check if this bond allows committing."""
@@ -144,16 +228,117 @@ class CommitterBond:
         """Get effective bond amount after slashing."""
         return self.amount - self.total_slashed
     
-    def lock(self, duration_ms: int) -> None:
-        """Lock bond during challenge period."""
-        self.status = BondStatus.LOCKED
-        self.locked_until_ms = int(time.time() * 1000) + duration_ms
+    def _apply_kernel(self, tag: str, args: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Apply a kernel command. Returns True if accepted, False if rejected.
+        
+        Fail-closed: if kernel rejects, shell state is unchanged.
+        """
+        cmd = BondKernelCommand(tag=tag, args=args or {})
+        result = bond_step(self._kstate, cmd)
+        if result.ok and result.state is not None:
+            self._kstate = result.state
+            logger.debug(f"Bond kernel accepted {tag}: {result.effects}")
+            return True
+        else:
+            logger.warning(f"Bond kernel REJECTED {tag}: {result.error}")
+            return False
+
+    def set_min_bond(self, min_bond: int) -> None:
+        """
+        Update the configured `min_bond` (kernel data var).
+
+        This is a configuration/environment update, not an action transition,
+        so we reconstruct kernel state and re-check invariants.
+        """
+        if not (0 <= int(min_bond) <= 100_000):
+            raise ValueError(f"min_bond out of kernel domain [0, 100_000]: {min_bond}")
+        self.min_bond = int(min_bond)
+        self._kstate = BondKernelState(
+            amount=self._kstate.amount,
+            min_bond=self.min_bond,
+            status=self._kstate.status,
+            total_slashed=self._kstate.total_slashed,
+        )
+        self._check_invariants()
     
-    def unlock(self) -> None:
-        """Unlock bond after challenge period."""
-        if self.status == BondStatus.LOCKED:
-            self.status = BondStatus.ACTIVE
+    def lock(self, duration_ms: int) -> bool:
+        """Lock bond during challenge period. Returns True if accepted."""
+        if self._apply_kernel('lock_bond'):
+            self.locked_until_ms = int(time.time() * 1000) + duration_ms
+            return True
+        return False
+    
+    def unlock(self) -> bool:
+        """Unlock bond after challenge period. Returns True if accepted."""
+        if self._apply_kernel('unlock_bond'):
             self.locked_until_ms = None
+            return True
+        return False
+    
+    def slash(self, slash_amount: int) -> bool:
+        """
+        Slash the bond by the given amount. Returns True if accepted.
+        
+        The kernel determines whether this causes a state transition to SLASHED
+        based on whether effective_bond drops below min_bond.
+        """
+        if slash_amount <= 0:
+            return False
+        # Kernel domain for slash_amount is [0, 1_000_000].
+        kernel_slash = min(int(slash_amount), 1_000_000)
+        
+        # Try slash_partial first (stays in current state)
+        if self._apply_kernel('slash_partial', {'slash_amount': kernel_slash}):
+            self.slash_count += 1
+            return True
+        
+        # If partial failed, try slash_below_min (transitions to SLASHED)
+        if self._apply_kernel('slash_below_min', {'slash_amount': kernel_slash}):
+            self.slash_count += 1
+            return True
+        
+        return False
+    
+    def withdraw(self) -> bool:
+        """Withdraw the bond (terminal state). Returns True if accepted."""
+        if self.status == BondStatus.LOCKED:
+            return self._apply_kernel('withdraw_locked')
+        elif self.status == BondStatus.SLASHED:
+            return self._apply_kernel('withdraw_slashed')
+        return False
+    
+    def topup(self, topup_amount: int) -> bool:
+        """
+        Add funds to the bond. Returns True if accepted.
+        
+        Available via Foundry-generated kernel.
+        """
+        if topup_amount <= 0:
+            return False
+        if topup_amount > 1_000_000:
+            return False
+        if self._apply_kernel('topup', {'topup_amount': int(topup_amount)}):
+            # Update shell amount to match kernel
+            self.amount = self._kstate.amount
+            return True
+        return False
+    
+    def _check_invariants(self) -> None:
+        """
+        Check ESSO-verified invariants via kernel.
+        
+        Invariants from bond_status_fsm.json:
+        - slashed_not_exceeds_amount: total_slashed <= amount
+        - active_has_valid_bond: ACTIVE => effective_bond >= min_bond
+        - withdrawn_is_terminal: WITHDRAWN => effective_bond == 0
+        """
+        ok, failed = bond_check_invariants(self._kstate)
+        if not ok:
+            raise RuntimeError(
+                f"ESSO kernel invariant violation: {failed} - "
+                f"state={self._kstate}"
+            )
 
 
 @dataclass
@@ -163,29 +348,122 @@ class ChallengeBond:
     
     Required to submit fraud proof challenges.
     Returned if challenge is valid, slashed if invalid.
+    
+    Wired to ESSO-verified kernel: challenge_bond_fsm_ref.
     """
     challenger_id: str
     goal_id: str
     challenged_commit_hash: bytes
     amount: int
-    status: BondStatus = BondStatus.ACTIVE
+    _status: BondStatus = BondStatus.ACTIVE  # Internal, derived from kernel
     created_at_ms: int = field(default_factory=lambda: int(time.time() * 1000))
+    
+    # Config
+    min_challenge_bond: int = 0  # Must be <= 100_000 (kernel domain)
     
     # Resolution
     challenge_valid: Optional[bool] = None
     resolution_tx_hash: Optional[bytes] = None
     
+    # Kernel state
+    _kstate: ChallengeKernelState = field(default=None, repr=False)  # type: ignore
+
+    def __post_init__(self) -> None:
+        """Initialize kernel state."""
+        if not (0 <= int(self.amount) <= 1_000_000):
+            raise ValueError(f"ChallengeBond amount out of kernel domain [0, 1_000_000]: {self.amount}")
+        if not (0 <= int(self.min_challenge_bond) <= 100_000):
+            raise ValueError(
+                f"min_challenge_bond out of kernel domain [0, 100_000]: {self.min_challenge_bond}"
+            )
+        status_map = {
+            BondStatus.ACTIVE: 'ACTIVE',
+            BondStatus.LOCKED: 'LOCKED',
+            BondStatus.SLASHED: 'SLASHED',
+            BondStatus.WITHDRAWN: 'WITHDRAWN',
+        }
+        self._kstate = ChallengeKernelState(
+            amount=int(self.amount),
+            min_challenge_bond=int(self.min_challenge_bond),
+            status=status_map.get(self._status, 'ACTIVE'),
+        )
+        self.amount = self._kstate.amount
+
+    @property
+    def status(self) -> BondStatus:
+        """Read-through property: derive status from kernel."""
+        kernel_status_map = {
+            'ACTIVE': BondStatus.ACTIVE,
+            'LOCKED': BondStatus.LOCKED,
+            'SLASHED': BondStatus.SLASHED,
+            'WITHDRAWN': BondStatus.WITHDRAWN,
+        }
+        return kernel_status_map.get(self._kstate.status, BondStatus.ACTIVE)
+
+    def _apply_kernel(self, tag: str, args: Optional[Dict[str, Any]] = None) -> bool:
+        cmd = ChallengeKernelCommand(tag=tag, args=args or {})
+        result = challenge_step(self._kstate, cmd)
+        if result.ok and result.state is not None:
+            self._kstate = result.state
+            # Sync amount from kernel
+            self.amount = self._kstate.amount
+            logger.debug(f"ChallengeBond kernel accepted {tag}")
+            return True
+        logger.warning(f"ChallengeBond kernel REJECTED {tag}: {result.error}")
+        return False
+
+    def lock(self) -> bool:
+        """Lock bond for challenge."""
+        return self._apply_kernel('lock_for_challenge')
+
+    def resolve(self, valid: bool) -> bool:
+        """Resolve challenge. Valid -> Unlock, Invalid -> Slash."""
+        self.challenge_valid = valid
+        if valid:
+            return self._apply_kernel('resolve_valid')
+        else:
+            return self._apply_kernel('resolve_invalid', {'slash_amount': self.amount})
+
+    def withdraw(self) -> bool:
+        """Withdraw bond if possible."""
+        if self.status == BondStatus.ACTIVE:
+            return self._apply_kernel('withdraw_active')
+        elif self.status == BondStatus.SLASHED:
+            return self._apply_kernel('withdraw_remainder')
+        return False
+
+    def _check_invariants(self) -> None:
+        """Check ESSO kernel invariants."""
+        ok, failed = challenge_check_invariants(self._kstate)
+        if not ok:
+            raise RuntimeError(f"ESSO invariant failed: {failed}")
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "challenger_id": self.challenger_id,
             "goal_id": self.goal_id,
             "challenged_commit_hash": self.challenged_commit_hash.hex(),
             "amount": self.amount,
+            "min_challenge_bond": self.min_challenge_bond,
             "status": self.status.value,
             "created_at_ms": self.created_at_ms,
             "challenge_valid": self.challenge_valid,
             "resolution_tx_hash": self.resolution_tx_hash.hex() if self.resolution_tx_hash else None,
         }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ChallengeBond":
+        return cls(
+            challenger_id=data["challenger_id"],
+            goal_id=data["goal_id"],
+            challenged_commit_hash=bytes.fromhex(data["challenged_commit_hash"]),
+            amount=data["amount"],
+            min_challenge_bond=int(data.get("min_challenge_bond", 0)),
+            _status=BondStatus(data["status"]),
+            created_at_ms=data["created_at_ms"],
+            challenge_valid=data.get("challenge_valid"),
+            resolution_tx_hash=bytes.fromhex(data["resolution_tx_hash"]) if data.get("resolution_tx_hash") else None,
+        )
 
 
 # =============================================================================
@@ -247,6 +525,28 @@ class EconomicManager:
     ):
         self._node_id = node_id
         self._config = config or EconomicConfig()
+
+        # Enforce the ESSO kernel domains up-front (fail-fast / fail-closed).
+        if not (0 <= int(self._config.min_committer_bond) <= 100_000):
+            raise ValueError(
+                f"min_committer_bond must be in [0, 100_000] for the verified kernel, "
+                f"got {self._config.min_committer_bond}"
+            )
+        if not (0 <= int(self._config.max_committer_bond) <= 1_000_000):
+            raise ValueError(
+                f"max_committer_bond must be in [0, 1_000_000] for the verified kernel, "
+                f"got {self._config.max_committer_bond}"
+            )
+        if self._config.min_committer_bond > self._config.max_committer_bond:
+            raise ValueError(
+                f"min_committer_bond ({self._config.min_committer_bond}) must be <= "
+                f"max_committer_bond ({self._config.max_committer_bond})"
+            )
+        if not (0 <= int(self._config.challenge_bond) <= 100_000):
+            raise ValueError(
+                f"challenge_bond must be in [0, 100_000] for the verified kernel, "
+                f"got {self._config.challenge_bond}"
+            )
         
         # Bond tracking
         self._committer_bonds: Dict[str, CommitterBond] = {}  # committer_id -> bond
@@ -304,7 +604,9 @@ class EconomicManager:
         
         if key in self._committer_bonds:
             # Increase existing bond
-            self._committer_bonds[key].amount += amount
+            bond = self._committer_bonds[key]
+            if not bond.topup(amount):
+                return False, "bond topup rejected by kernel (would exceed bounds)"
         else:
             # New bond
             self._committer_bonds[key] = CommitterBond(
@@ -312,7 +614,11 @@ class EconomicManager:
                 goal_id=goal_id,
                 amount=amount,
                 bond_tx_hash=bond_tx_hash,
+                min_bond=self._config.min_committer_bond,  # Propagate config
             )
+        
+        # After creation/update, always check invariants
+        self._committer_bonds[key]._check_invariants()
         
         logger.info(f"Bond registered: {committer_id[:16]}... for {goal_id}, amount={amount}")
         return True, "bond registered"
@@ -372,6 +678,7 @@ class EconomicManager:
             goal_id=goal_id,
             challenged_commit_hash=challenged_commit_hash,
             amount=self._config.challenge_bond,
+            min_challenge_bond=self._config.challenge_bond,
         )
         
         return True, "challenge bond registered"
@@ -441,11 +748,12 @@ class EconomicManager:
         treasury_amount = slash_amount - challenger_reward - burn_amount
         
         # Update bond
-        bond.total_slashed += slash_amount
-        bond.slash_count += 1
+        # Update bond via kernel
+        if not bond.slash(slash_amount):
+            logger.error(f"Slashing rejected by kernel for {committer_id}")
+            return None
         
-        if bond.effective_bond() < self._config.min_committer_bond:
-            bond.status = BondStatus.SLASHED
+        bond._check_invariants()  # CBC: verify after slash
         
         # Create event
         event = SlashEvent(
@@ -579,9 +887,13 @@ class EconomicManager:
             remaining = (bond.locked_until_ms - now_ms) // 1000
             return False, f"lock period not elapsed: {remaining}s remaining"
         
-        # Finalize
-        bond.status = BondStatus.WITHDRAWN
+        # Finalize - kernel requires total_slashed = amount for WITHDRAWN
         withdrawal_amount = bond.effective_bond()
+        # Finalize - kernel requires total_slashed = amount for WITHDRAWN
+        withdrawal_amount = bond.effective_bond()
+        if not bond.withdraw():
+            return False, "withdrawal rejected by kernel"
+        bond._check_invariants()  # CBC: verify withdrawn_is_terminal
         
         logger.info(
             f"Bond withdrawn: {committer_id[:16]}... for {goal_id}, "
@@ -649,16 +961,12 @@ class EconomicManager:
         manager = cls(node_id=node_id, config=config)
         
         for k, v in data.get("committer_bonds", {}).items():
-            manager._committer_bonds[k] = CommitterBond.from_dict(v)
+            bond = CommitterBond.from_dict(v)
+            if manager._config:
+                bond.set_min_bond(manager._config.min_committer_bond)
+            manager._committer_bonds[k] = bond
         
         for k, v in data.get("challenger_bonds", {}).items():
-            manager._challenger_bonds[bytes.fromhex(k)] = ChallengeBond(
-                challenger_id=v["challenger_id"],
-                goal_id=v["goal_id"],
-                challenged_commit_hash=bytes.fromhex(v["challenged_commit_hash"]),
-                amount=v["amount"],
-                status=BondStatus(v["status"]),
-                created_at_ms=v["created_at_ms"],
-            )
+            manager._challenger_bonds[bytes.fromhex(k)] = ChallengeBond.from_dict(v)
         
         return manager

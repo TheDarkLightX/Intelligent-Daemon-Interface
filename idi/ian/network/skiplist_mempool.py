@@ -31,6 +31,13 @@ if TYPE_CHECKING:
     from idi.ian.models import Contribution
 
 from .ordering import OrderingKey, MempoolEntry
+from .kernels.mempool_lifecycle_fsm_ref import (
+    State as MempoolState,
+    Command as MempoolCommand,
+    step as mempool_step,
+    check_invariants as mempool_check,
+    STATUS_SYMBOLS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +244,72 @@ class IndexedSkipListMempool:
         
         # Background cleanup state
         self._cleanup_in_progress = False
+
+        # Kernel State
+        self._kstate = MempoolState(
+            count=0,
+            max_size=max_size,
+            status='ACTIVE'
+        )
+        # Verify initial state
+        ok, err = mempool_check(self._kstate)
+        if not ok:
+            raise ValueError(f"Invalid mempool kernel init: {err}")
+
+    def _apply_kernel(self, tag: str, args: Dict[str, Any] = None) -> bool:
+        """Apply kernel command."""
+        cmd = MempoolCommand(tag=tag, args=args or {})
+        res = mempool_step(self._kstate, cmd)
+        if res.ok and res.state:
+            self._kstate = res.state
+            return True
+        logger.error(f"Mempool kernel REJECTED {tag}: {res.error}")
+        return False
+
+    def _apply_kernel_remove(self) -> bool:
+        """Helper to apply remove based on current state."""
+        s = self._kstate
+        tag = ""
+        if s.status == 'ACTIVE':
+            tag = 'remove_active'
+        elif s.status == 'FULL':
+            # logic: if count-1 >= max, stay full, else open
+            if s.count - 1 >= s.max_size:
+                tag = 'remove_full_stay'
+            else:
+                tag = 'remove_full_open'
+        elif s.status == 'PAUSED':
+            tag = 'remove_paused'
+        elif s.status == 'DRAINING':
+            tag = 'remove_draining'
+        else:
+            logger.error(f"Unknown status for remove: {s.status}")
+            return False
+            
+        return self._apply_kernel(tag)
+
+    @property
+    def status(self) -> str:
+        return self._kstate.status
+    
+    @property
+    def is_accepting(self) -> bool:
+        return self._kstate.status == 'ACTIVE'
+
+    def pause(self) -> bool:
+        """Pause mempool (reject new adds)."""
+        tag = 'pause_active' if self._kstate.status == 'ACTIVE' else 'pause_full'
+        return self._apply_kernel(tag)
+
+    def resume(self) -> bool:
+        """Resume accepting transactions."""
+        # Resume to ACTIVE or FULL based on count
+        tag = 'resume_full' if self._kstate.count >= self._kstate.max_size else 'resume_active'
+        return self._apply_kernel(tag)
+
+    def drain(self) -> bool:
+        """Start draining mempool."""
+        return self._apply_kernel('drain')
     
     def _random_level(self) -> int:
         """Generate random level using SplitMix64 + CTZ for geometric(0.5)."""
@@ -282,6 +355,10 @@ class IndexedSkipListMempool:
         - Order is maintained by (timestamp_ms, seq, pack_hash)
         """
         async with self._lock:
+            # Check lifecycle status - Reject if not ACTIVE or FULL
+            if self._kstate.status not in ('ACTIVE', 'FULL'):
+                return False, f"mempool status {self._kstate.status}"
+
             # Check goal filter
             if self._goal_id and str(contribution.goal_id) != self._goal_id:
                 return False, "wrong goal_id"
@@ -300,6 +377,21 @@ class IndexedSkipListMempool:
             # Check capacity
             if self._live_count >= self._max_size:
                 self._evict_oldest_internal()
+
+            # Kernel State Transition (ADD)
+            # Must be done after eviction if full to unlock 'add_active' or transition 'add_fill'
+            # Check if accepting
+            # Kernel State Transition (ADD)
+            # Must be done after eviction if full to unlock 'add_active' or transition 'add_fill'
+            
+            # Determine add tag
+            # If count+1 == max -> fill. Else active.
+            # Note: _live_count is updated manually later, but kernel uses its own count.
+            # K-State count should match live_count (sync checked below).
+            k_tag = 'add_fill' if self._kstate.count + 1 == self._kstate.max_size else 'add_active'
+            
+            if not self._apply_kernel(k_tag):
+                return False, f"kernel rejected: {self._kstate.status}"
             
             # Create ordering key with monotonic sequence
             base_key = OrderingKey.from_contribution(contribution)
@@ -386,6 +478,10 @@ class IndexedSkipListMempool:
                 self._processed.add(node.contrib_hash)
                 self._live_count -= 1
                 
+                # Update Kernel
+                if not self._apply_kernel_remove():
+                    logger.error("Mempool kernel sync error on pop")
+                
                 # Create MempoolEntry for compatibility
                 entry = MempoolEntry(
                     key=node.key,
@@ -463,6 +559,10 @@ class IndexedSkipListMempool:
         self._processed.add(node.contrib_hash)
         self._live_count -= 1
         
+        # Update Kernel
+        if not self._apply_kernel_remove():
+            logger.error("Mempool kernel sync error on evict")
+        
         logger.debug(f"SkipListMempool: evicted oldest, size={self._live_count}")
     
     def _maybe_trigger_cleanup(self) -> None:
@@ -520,6 +620,11 @@ class IndexedSkipListMempool:
                 self._by_hash.pop(node.contrib_hash, None)
                 self._processed.add(node.contrib_hash)
                 self._live_count -= 1
+                
+                # Update Kernel
+                if not self._apply_kernel_remove():
+                    logger.error("Mempool kernel sync error on cleanup")
+                    
                 removed += 1
                 
                 node = next_node
@@ -546,6 +651,43 @@ class IndexedSkipListMempool:
             
             return result
     
+    async def remove_processed(self, contrib_hashes: List[bytes]) -> int:
+        """
+        Remove contributions that have been processed externally.
+        
+        Used when syncing state from peers.
+        Refined with Kernel lifecycle management.
+        """
+        async with self._lock:
+            removed = 0
+            for h in contrib_hashes:
+                node = self._by_hash.get(h)
+                if node:
+                    # Remove from hash
+                    del self._by_hash[h]
+                    
+                    # Remove from age list
+                    self._age_remove(node)
+                    
+                    # Mark as tombstone (lazy removal from skiplist)
+                    node.deleted = True
+                    self._tombstone_count += 1
+                    
+                    # Mark processed
+                    self._processed.add(h)
+                    self._live_count -= 1
+                    
+                    # Update Kernel
+                    if not self._apply_kernel_remove():
+                        logger.error("Mempool kernel sync error on remove_processed")
+                    
+                    removed += 1
+            
+            # If many items removed, trigger cleanup
+            self._maybe_trigger_cleanup()
+            
+            return removed
+
     def __len__(self) -> int:
         return self._live_count
     

@@ -45,8 +45,14 @@ info = identity.create_node_info(
 )
 
 # Persist identity
-identity.save("node_identity.json")
-loaded = NodeIdentity.load("node_identity.json")
+from pathlib import Path
+
+identity.save(Path("node_identity.json"))
+loaded = NodeIdentity.load(Path("node_identity.json"))
+
+# Optional: store private key in OS keyring (requires: pip install 'idi[security]')
+# identity.save_to_ref("keyring://idi.ian/node_identity")
+# loaded = NodeIdentity.load_from_ref("keyring://idi.ian/node_identity")
 ```
 
 **Security Note:** The `cryptography` library is required for Ed25519 signatures. If it is not installed, IAN will fail fast during import to avoid any insecure fallback behavior.
