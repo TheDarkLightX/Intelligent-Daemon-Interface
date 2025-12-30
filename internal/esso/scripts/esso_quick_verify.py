@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 
 # Add ESSO to path
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "external" / "ESSO"))
 
 import yaml
@@ -45,8 +45,8 @@ def verify_model(req_path: Path, timeout_ms: int, solvers: list[str]) -> dict:
             model,
             timeout_ms=timeout_ms,
             solvers=solvers,
-            determinism_trials=1,
             produce_proofs=False,
+            solver_seed=0,
         )
         
         passed = 0
@@ -97,13 +97,25 @@ def main() -> int:
     model_filter = None
     
     args = sys.argv[1:]
-    for i, arg in enumerate(args):
-        if arg == "--timeout-ms" and i + 1 < len(args):
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--timeout-ms":
+            if i + 1 >= len(args):
+                print("Missing value for --timeout-ms")
+                return 1
             timeout_ms = int(args[i + 1])
-        elif arg == "--full":
+            i += 2
+            continue
+        if arg == "--full":
             solvers = ["z3", "cvc5"]
-        elif not arg.startswith("--"):
-            model_filter = arg
+            i += 1
+            continue
+        if arg.startswith("--"):
+            i += 1
+            continue
+        model_filter = arg
+        i += 1
     
     req_dir = REPO_ROOT / "internal" / "esso" / "requirements"
     req_files = sorted(req_dir.glob("*.req.yaml"))

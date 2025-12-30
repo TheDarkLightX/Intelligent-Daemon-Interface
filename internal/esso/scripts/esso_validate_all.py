@@ -68,7 +68,8 @@ def validate_all(req_dir: Path, fix: bool = False) -> tuple[int, int]:
 def main() -> int:
     fix = "--fix" in sys.argv
     
-    req_dir = REPO_ROOT / "internal" / "tools" / "evolver" / "foundry" / "requirements"
+    # Repo-local REQ specs live under internal/esso/requirements.
+    req_dir = REPO_ROOT / "internal" / "esso" / "requirements"
     
     passed, failed = validate_all(req_dir, fix=fix)
     
