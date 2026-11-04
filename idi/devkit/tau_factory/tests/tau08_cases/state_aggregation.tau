@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# state_aggregation_unanimous - Generated Tau Agent
+# Auto-generated from AgentSchema
+# state_aggregation_unanimous Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/fsm1_state.in"). 
+i1:sbf := in file("inputs/fsm2_state.in"). 
+
+o0:sbf := out file("outputs/aggregate_state.out"). 
+
+# state_aggregation pattern: aggregate_state <- fsm1_state, fsm2_state
+always (
+((o0[t] = i0[t] & i1[t]))
+).

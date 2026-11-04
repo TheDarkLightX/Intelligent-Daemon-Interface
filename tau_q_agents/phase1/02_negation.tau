@@ -1,10 +1,8 @@
 # Negation - invert input
 # Expected: input 0,1,0 -> output 1,0,1
 
-sbf i1 = console
-sbf o1 = console
-r o1[t] = i1[t]'
-0
-1
-0
-q
+i1:sbf := in console. 
+o1:sbf := out console. 
+always (
+o1[t] = i1[t]'
+).

@@ -1,0 +1,5896 @@
+{
+  "schema": "idi/zal-gate-kernels/1",
+  "source_commit": "4160086fb9d19f3ebe25047e69b1caa467aa74fd",
+  "scope": "Returned u64-word equivalence under the registered ZAL ISA model; no browser, complete ABI or speed claim.",
+  "rows": [
+    {
+      "gate": 0,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "b0ab8a5d96a47ecbc5a19cc4434f681bc8364ecf4a85a6801d6c1038cb0a7142",
+          "profile": "zal/word-kernel/1",
+          "revision": "0474a7390dfd484f5dace50e1c4ced9dbe9dae15eeee76218557b2d71a7b6f3b",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 113,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 398,
+              "id": "palette",
+              "line": 6,
+              "start": 114
+            },
+            {
+              "column": 1,
+              "end": 410,
+              "id": "max-body",
+              "line": 7,
+              "start": 399
+            },
+            {
+              "column": 1,
+              "end": 427,
+              "id": "objective",
+              "line": 8,
+              "start": 411
+            },
+            {
+              "column": 1,
+              "end": 493,
+              "id": "limits",
+              "line": 9,
+              "start": 428
+            },
+            {
+              "column": 8,
+              "end": 100,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "2c45d6e4d30a7c77ce2c34e26607bf858628d42884a54dd2d97c6b778c0db911",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "const",
+            "0"
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 30927,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "counterexample"
+            },
+            {
+              "sequence": 2,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 3,
+              "status": "counterexample"
+            },
+            {
+              "sequence": 4,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 5,
+          "cost": {
+            "bytes": 4,
+            "instructions": 1
+          },
+          "dead_pruned": 3,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.6794515900000988,
+          "global_optimality": false,
+          "incumbent": 2,
+          "lost_pruned": 0,
+          "objective_pruned": 2,
+          "order_pruned": 0,
+          "proposed": 11,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 3,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 4,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "b0ab8a5d96a47ecbc5a19cc4434f681bc8364ecf4a85a6801d6c1038cb0a7142",
+        "revision": "0474a7390dfd484f5dace50e1c4ced9dbe9dae15eeee76218557b2d71a7b6f3b",
+        "source_sha256": "2c45d6e4d30a7c77ce2c34e26607bf858628d42884a54dd2d97c6b778c0db911",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "b0ab8a5d96a47ecbc5a19cc4434f681bc8364ecf4a85a6801d6c1038cb0a7142",
+        "revision": "0474a7390dfd484f5dace50e1c4ced9dbe9dae15eeee76218557b2d71a7b6f3b",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "0caab77d26da3539e24caf9e88c59c63ddf3423fe0a713b5dd42b656d0343b0d",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 4,
+              "instructions": 1
+            },
+            "decoded": [
+              "xor rax, rax",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "b0ab8a5d96a47ecbc5a19cc4434f681bc8364ecf4a85a6801d6c1038cb0a7142",
+        "revision": "0474a7390dfd484f5dace50e1c4ced9dbe9dae15eeee76218557b2d71a7b6f3b",
+        "source_sha256": "2c45d6e4d30a7c77ce2c34e26607bf858628d42884a54dd2d97c6b778c0db911",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 1,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "4319cdba7dac37298a9ac6a6d7652597365e2e5198ced47514a75983714fbb7a",
+          "profile": "zal/word-kernel/1",
+          "revision": "c79ad61550d6bdd087c18b54d757028802b59d3ccae2e96acf51a83d77606bd5",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 121,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 406,
+              "id": "palette",
+              "line": 6,
+              "start": 122
+            },
+            {
+              "column": 1,
+              "end": 418,
+              "id": "max-body",
+              "line": 7,
+              "start": 407
+            },
+            {
+              "column": 1,
+              "end": 435,
+              "id": "objective",
+              "line": 8,
+              "start": 419
+            },
+            {
+              "column": 1,
+              "end": 501,
+              "id": "limits",
+              "line": 9,
+              "start": 436
+            },
+            {
+              "column": 13,
+              "end": 105,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 15,
+              "end": 107,
+              "id": "expression/2",
+              "line": 5,
+              "start": 106
+            },
+            {
+              "column": 8,
+              "end": 108,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "0260164a71aabc1c85f911ab962d8c6a5153f4666e87a35a0213305b7551455a",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "and",
+            [
+              "input",
+              "x"
+            ],
+            [
+              "input",
+              "y"
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 30758,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 82,
+          "cost": {
+            "bytes": 7,
+            "instructions": 2
+          },
+          "dead_pruned": 71,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.715770385999349,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 2,
+          "order_pruned": 26,
+          "proposed": 86,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "4319cdba7dac37298a9ac6a6d7652597365e2e5198ced47514a75983714fbb7a",
+        "revision": "c79ad61550d6bdd087c18b54d757028802b59d3ccae2e96acf51a83d77606bd5",
+        "source_sha256": "0260164a71aabc1c85f911ab962d8c6a5153f4666e87a35a0213305b7551455a",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "4319cdba7dac37298a9ac6a6d7652597365e2e5198ced47514a75983714fbb7a",
+        "revision": "c79ad61550d6bdd087c18b54d757028802b59d3ccae2e96acf51a83d77606bd5",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "dae3121819f12f7a4e9ae293b1733b1347a3f68971dea1cffd284dcd0433c758",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 7,
+              "instructions": 2
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "and rax, rsi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "4319cdba7dac37298a9ac6a6d7652597365e2e5198ced47514a75983714fbb7a",
+        "revision": "c79ad61550d6bdd087c18b54d757028802b59d3ccae2e96acf51a83d77606bd5",
+        "source_sha256": "0260164a71aabc1c85f911ab962d8c6a5153f4666e87a35a0213305b7551455a",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 2,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "0ac4bdfe0d422b4c3b5b3d086add578fd353c35d527c4e3ba45a7a88ffaaa100",
+          "profile": "zal/word-kernel/1",
+          "revision": "294415691815312d150e0681dab44475d1197551fadaded8677eef44d4a609a4",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 127,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 412,
+              "id": "palette",
+              "line": 6,
+              "start": 128
+            },
+            {
+              "column": 1,
+              "end": 424,
+              "id": "max-body",
+              "line": 7,
+              "start": 413
+            },
+            {
+              "column": 1,
+              "end": 441,
+              "id": "objective",
+              "line": 8,
+              "start": 425
+            },
+            {
+              "column": 1,
+              "end": 507,
+              "id": "limits",
+              "line": 9,
+              "start": 442
+            },
+            {
+              "column": 13,
+              "end": 105,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 20,
+              "end": 112,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 111
+            },
+            {
+              "column": 15,
+              "end": 113,
+              "id": "expression/2",
+              "line": 5,
+              "start": 106
+            },
+            {
+              "column": 8,
+              "end": 114,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "5bbaa5c8254e99e505e4c39ff606143670738f5da6dd98977bf5a7c9ca5d2157",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "and",
+            [
+              "input",
+              "x"
+            ],
+            [
+              "not",
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 28561,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 3,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 591,
+          "cost": {
+            "bytes": 10,
+            "instructions": 3
+          },
+          "dead_pruned": 1100,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.6058746380003868,
+          "global_optimality": false,
+          "incumbent": 2,
+          "lost_pruned": 0,
+          "objective_pruned": 73,
+          "order_pruned": 613,
+          "proposed": 667,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 3,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "0ac4bdfe0d422b4c3b5b3d086add578fd353c35d527c4e3ba45a7a88ffaaa100",
+        "revision": "294415691815312d150e0681dab44475d1197551fadaded8677eef44d4a609a4",
+        "source_sha256": "5bbaa5c8254e99e505e4c39ff606143670738f5da6dd98977bf5a7c9ca5d2157",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "0ac4bdfe0d422b4c3b5b3d086add578fd353c35d527c4e3ba45a7a88ffaaa100",
+        "revision": "294415691815312d150e0681dab44475d1197551fadaded8677eef44d4a609a4",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "f9157fef5e8117fd86ff1d37eeac6287d10c6c945b1ea75986597d3de286d525",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 10,
+              "instructions": 3
+            },
+            "decoded": [
+              "mov rax, rsi",
+              "or rax, rdi",
+              "xor rax, rsi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "0ac4bdfe0d422b4c3b5b3d086add578fd353c35d527c4e3ba45a7a88ffaaa100",
+        "revision": "294415691815312d150e0681dab44475d1197551fadaded8677eef44d4a609a4",
+        "source_sha256": "5bbaa5c8254e99e505e4c39ff606143670738f5da6dd98977bf5a7c9ca5d2157",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 3,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "a773b7b69d0aeb387de47f104ba9937b1b6aaf7430c33b7c6ee311d8565d3c20",
+          "profile": "zal/word-kernel/1",
+          "revision": "c6041aeefcccaa2f0e330337f2da351c5b7d8bb87528f2b2d925f985aae85ecc",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 142,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 427,
+              "id": "palette",
+              "line": 6,
+              "start": 143
+            },
+            {
+              "column": 1,
+              "end": 439,
+              "id": "max-body",
+              "line": 7,
+              "start": 428
+            },
+            {
+              "column": 1,
+              "end": 456,
+              "id": "objective",
+              "line": 8,
+              "start": 440
+            },
+            {
+              "column": 1,
+              "end": 522,
+              "id": "limits",
+              "line": 9,
+              "start": 457
+            },
+            {
+              "column": 17,
+              "end": 109,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 24,
+              "end": 116,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 115
+            },
+            {
+              "column": 19,
+              "end": 117,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 110
+            },
+            {
+              "column": 12,
+              "end": 118,
+              "id": "expression/1",
+              "line": 5,
+              "start": 103
+            },
+            {
+              "column": 33,
+              "end": 125,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 124
+            },
+            {
+              "column": 35,
+              "end": 127,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 28,
+              "end": 128,
+              "id": "expression/2",
+              "line": 5,
+              "start": 119
+            },
+            {
+              "column": 8,
+              "end": 129,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "e3a295c80032bfcd7a188d02ee5a7d07393ee12e06fa6c485506adc9b6a3e636",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 30927,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 9,
+          "cost": {
+            "bytes": 4,
+            "instructions": 1
+          },
+          "dead_pruned": 3,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.6607955670006049,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 0,
+          "order_pruned": 0,
+          "proposed": 11,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "a773b7b69d0aeb387de47f104ba9937b1b6aaf7430c33b7c6ee311d8565d3c20",
+        "revision": "c6041aeefcccaa2f0e330337f2da351c5b7d8bb87528f2b2d925f985aae85ecc",
+        "source_sha256": "e3a295c80032bfcd7a188d02ee5a7d07393ee12e06fa6c485506adc9b6a3e636",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "a773b7b69d0aeb387de47f104ba9937b1b6aaf7430c33b7c6ee311d8565d3c20",
+        "revision": "c6041aeefcccaa2f0e330337f2da351c5b7d8bb87528f2b2d925f985aae85ecc",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 4,
+              "instructions": 1
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "a773b7b69d0aeb387de47f104ba9937b1b6aaf7430c33b7c6ee311d8565d3c20",
+        "revision": "c6041aeefcccaa2f0e330337f2da351c5b7d8bb87528f2b2d925f985aae85ecc",
+        "source_sha256": "e3a295c80032bfcd7a188d02ee5a7d07393ee12e06fa6c485506adc9b6a3e636",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 4,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "96d2dd826105a4b167f96899a3ef33b47103f11871b99c9f9cf5c090c9352cc4",
+          "profile": "zal/word-kernel/1",
+          "revision": "4ba0b02de8e267b496e91cfba402d4aa40ff1d2e2a12114d225a42d9e7fb42cd",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 127,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 412,
+              "id": "palette",
+              "line": 6,
+              "start": 128
+            },
+            {
+              "column": 1,
+              "end": 424,
+              "id": "max-body",
+              "line": 7,
+              "start": 413
+            },
+            {
+              "column": 1,
+              "end": 441,
+              "id": "objective",
+              "line": 8,
+              "start": 425
+            },
+            {
+              "column": 1,
+              "end": 507,
+              "id": "limits",
+              "line": 9,
+              "start": 442
+            },
+            {
+              "column": 18,
+              "end": 110,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 109
+            },
+            {
+              "column": 13,
+              "end": 111,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 21,
+              "end": 113,
+              "id": "expression/2",
+              "line": 5,
+              "start": 112
+            },
+            {
+              "column": 8,
+              "end": 114,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "2a76cef26981da827f262db014b84d4e2d59ec797bc32409472cb692fc23a559",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "and",
+            [
+              "not",
+              [
+                "input",
+                "x"
+              ]
+            ],
+            [
+              "input",
+              "y"
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 28561,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 640,
+          "cost": {
+            "bytes": 10,
+            "instructions": 3
+          },
+          "dead_pruned": 1100,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.4981554639998649,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 25,
+          "order_pruned": 613,
+          "proposed": 667,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "96d2dd826105a4b167f96899a3ef33b47103f11871b99c9f9cf5c090c9352cc4",
+        "revision": "4ba0b02de8e267b496e91cfba402d4aa40ff1d2e2a12114d225a42d9e7fb42cd",
+        "source_sha256": "2a76cef26981da827f262db014b84d4e2d59ec797bc32409472cb692fc23a559",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "96d2dd826105a4b167f96899a3ef33b47103f11871b99c9f9cf5c090c9352cc4",
+        "revision": "4ba0b02de8e267b496e91cfba402d4aa40ff1d2e2a12114d225a42d9e7fb42cd",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "1e1f72ae9333144da740b74fefd583f982ea94108e8317ff9286941fcd417601",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 10,
+              "instructions": 3
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "and rax, rsi",
+              "xor rax, rsi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "96d2dd826105a4b167f96899a3ef33b47103f11871b99c9f9cf5c090c9352cc4",
+        "revision": "4ba0b02de8e267b496e91cfba402d4aa40ff1d2e2a12114d225a42d9e7fb42cd",
+        "source_sha256": "2a76cef26981da827f262db014b84d4e2d59ec797bc32409472cb692fc23a559",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 5,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "44687fa63f900f79b41030c5084a545b9b9c163588c039a62dc91e4166e56940",
+          "profile": "zal/word-kernel/1",
+          "revision": "9253586a48c89dc1f5abbc3abf96520cb78df0d7a4033e92cdc3385fdd1dbab3",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 142,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 427,
+              "id": "palette",
+              "line": 6,
+              "start": 143
+            },
+            {
+              "column": 1,
+              "end": 439,
+              "id": "max-body",
+              "line": 7,
+              "start": 428
+            },
+            {
+              "column": 1,
+              "end": 456,
+              "id": "objective",
+              "line": 8,
+              "start": 440
+            },
+            {
+              "column": 1,
+              "end": 522,
+              "id": "limits",
+              "line": 9,
+              "start": 457
+            },
+            {
+              "column": 22,
+              "end": 114,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 113
+            },
+            {
+              "column": 17,
+              "end": 115,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 25,
+              "end": 117,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 116
+            },
+            {
+              "column": 12,
+              "end": 118,
+              "id": "expression/1",
+              "line": 5,
+              "start": 103
+            },
+            {
+              "column": 33,
+              "end": 125,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 124
+            },
+            {
+              "column": 35,
+              "end": 127,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 28,
+              "end": 128,
+              "id": "expression/2",
+              "line": 5,
+              "start": 119
+            },
+            {
+              "column": 8,
+              "end": 129,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "f6d7ff3363b373aaf5de3bdfa4dd5110e5161dd2d514929a98030af90cda999c",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "and",
+              [
+                "not",
+                [
+                  "input",
+                  "x"
+                ]
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 30927,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 9,
+          "cost": {
+            "bytes": 4,
+            "instructions": 1
+          },
+          "dead_pruned": 3,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.8368821720005144,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 0,
+          "order_pruned": 0,
+          "proposed": 11,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "44687fa63f900f79b41030c5084a545b9b9c163588c039a62dc91e4166e56940",
+        "revision": "9253586a48c89dc1f5abbc3abf96520cb78df0d7a4033e92cdc3385fdd1dbab3",
+        "source_sha256": "f6d7ff3363b373aaf5de3bdfa4dd5110e5161dd2d514929a98030af90cda999c",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "44687fa63f900f79b41030c5084a545b9b9c163588c039a62dc91e4166e56940",
+        "revision": "9253586a48c89dc1f5abbc3abf96520cb78df0d7a4033e92cdc3385fdd1dbab3",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "297ef56d5224205f2134280209526809023f7b23c5b97c6f0f85e9b2ac171036",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 4,
+              "instructions": 1
+            },
+            "decoded": [
+              "mov rax, rsi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "44687fa63f900f79b41030c5084a545b9b9c163588c039a62dc91e4166e56940",
+        "revision": "9253586a48c89dc1f5abbc3abf96520cb78df0d7a4033e92cdc3385fdd1dbab3",
+        "source_sha256": "f6d7ff3363b373aaf5de3bdfa4dd5110e5161dd2d514929a98030af90cda999c",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 6,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "86b418d823499b63722e6464eb8f4623b5f2f804a40f43b9091bbc046d699339",
+          "profile": "zal/word-kernel/1",
+          "revision": "f8ff75d5ba6d30d30854d1da533669bd697ddd2fcec152e9ed448aa59ad5548d",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 148,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 433,
+              "id": "palette",
+              "line": 6,
+              "start": 149
+            },
+            {
+              "column": 1,
+              "end": 445,
+              "id": "max-body",
+              "line": 7,
+              "start": 434
+            },
+            {
+              "column": 1,
+              "end": 462,
+              "id": "objective",
+              "line": 8,
+              "start": 446
+            },
+            {
+              "column": 1,
+              "end": 528,
+              "id": "limits",
+              "line": 9,
+              "start": 463
+            },
+            {
+              "column": 22,
+              "end": 114,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 113
+            },
+            {
+              "column": 17,
+              "end": 115,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 25,
+              "end": 117,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 116
+            },
+            {
+              "column": 12,
+              "end": 118,
+              "id": "expression/1",
+              "line": 5,
+              "start": 103
+            },
+            {
+              "column": 33,
+              "end": 125,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 124
+            },
+            {
+              "column": 40,
+              "end": 132,
+              "id": "expression/2/2/1",
+              "line": 5,
+              "start": 131
+            },
+            {
+              "column": 35,
+              "end": 133,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 28,
+              "end": 134,
+              "id": "expression/2",
+              "line": 5,
+              "start": 119
+            },
+            {
+              "column": 8,
+              "end": 135,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "1083d34b3b043930ffe71710507d5c795aa4161ff4f6e162385bcf9b7cdfa33e",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "and",
+              [
+                "not",
+                [
+                  "input",
+                  "x"
+                ]
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 30758,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 83,
+          "cost": {
+            "bytes": 7,
+            "instructions": 2
+          },
+          "dead_pruned": 71,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.822786945000189,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 1,
+          "order_pruned": 26,
+          "proposed": 86,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "86b418d823499b63722e6464eb8f4623b5f2f804a40f43b9091bbc046d699339",
+        "revision": "f8ff75d5ba6d30d30854d1da533669bd697ddd2fcec152e9ed448aa59ad5548d",
+        "source_sha256": "1083d34b3b043930ffe71710507d5c795aa4161ff4f6e162385bcf9b7cdfa33e",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "86b418d823499b63722e6464eb8f4623b5f2f804a40f43b9091bbc046d699339",
+        "revision": "f8ff75d5ba6d30d30854d1da533669bd697ddd2fcec152e9ed448aa59ad5548d",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "a334d90b3b91ea7c97e7bc2a64f223db9d29ba45b1c93f11e167e61c9c884054",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 7,
+              "instructions": 2
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "xor rax, rsi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "86b418d823499b63722e6464eb8f4623b5f2f804a40f43b9091bbc046d699339",
+        "revision": "f8ff75d5ba6d30d30854d1da533669bd697ddd2fcec152e9ed448aa59ad5548d",
+        "source_sha256": "1083d34b3b043930ffe71710507d5c795aa4161ff4f6e162385bcf9b7cdfa33e",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 7,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "8339cb53bb14387024bf4a35bec3d17fed381050122411333fbd1b08a63a2233",
+          "profile": "zal/word-kernel/1",
+          "revision": "09bd2a2d12c8380909764ad42682195134b6f50ccdb1f64a7fbaa4ca3fe093ba",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 163,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 448,
+              "id": "palette",
+              "line": 6,
+              "start": 164
+            },
+            {
+              "column": 1,
+              "end": 460,
+              "id": "max-body",
+              "line": 7,
+              "start": 449
+            },
+            {
+              "column": 1,
+              "end": 477,
+              "id": "objective",
+              "line": 8,
+              "start": 461
+            },
+            {
+              "column": 1,
+              "end": 543,
+              "id": "limits",
+              "line": 9,
+              "start": 478
+            },
+            {
+              "column": 26,
+              "end": 118,
+              "id": "expression/1/1/1/1",
+              "line": 5,
+              "start": 117
+            },
+            {
+              "column": 21,
+              "end": 119,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 112
+            },
+            {
+              "column": 29,
+              "end": 121,
+              "id": "expression/1/1/2",
+              "line": 5,
+              "start": 120
+            },
+            {
+              "column": 16,
+              "end": 122,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 107
+            },
+            {
+              "column": 37,
+              "end": 129,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 128
+            },
+            {
+              "column": 44,
+              "end": 136,
+              "id": "expression/1/2/2/1",
+              "line": 5,
+              "start": 135
+            },
+            {
+              "column": 39,
+              "end": 137,
+              "id": "expression/1/2/2",
+              "line": 5,
+              "start": 130
+            },
+            {
+              "column": 32,
+              "end": 138,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 123
+            },
+            {
+              "column": 12,
+              "end": 139,
+              "id": "expression/1",
+              "line": 5,
+              "start": 103
+            },
+            {
+              "column": 54,
+              "end": 146,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 145
+            },
+            {
+              "column": 56,
+              "end": 148,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 147
+            },
+            {
+              "column": 49,
+              "end": 149,
+              "id": "expression/2",
+              "line": 5,
+              "start": 140
+            },
+            {
+              "column": 8,
+              "end": 150,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "705ed9336e475e2f21da71567b25a16e8661d260c31cd94aaf1bcbaf4e855cd5",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "or",
+              [
+                "and",
+                [
+                  "not",
+                  [
+                    "input",
+                    "x"
+                  ]
+                ],
+                [
+                  "input",
+                  "y"
+                ]
+              ],
+              [
+                "and",
+                [
+                  "input",
+                  "x"
+                ],
+                [
+                  "not",
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 30758,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 3,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 75,
+          "cost": {
+            "bytes": 7,
+            "instructions": 2
+          },
+          "dead_pruned": 71,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.7082105770005,
+          "global_optimality": false,
+          "incumbent": 2,
+          "lost_pruned": 0,
+          "objective_pruned": 8,
+          "order_pruned": 26,
+          "proposed": 86,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 3,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "8339cb53bb14387024bf4a35bec3d17fed381050122411333fbd1b08a63a2233",
+        "revision": "09bd2a2d12c8380909764ad42682195134b6f50ccdb1f64a7fbaa4ca3fe093ba",
+        "source_sha256": "705ed9336e475e2f21da71567b25a16e8661d260c31cd94aaf1bcbaf4e855cd5",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "8339cb53bb14387024bf4a35bec3d17fed381050122411333fbd1b08a63a2233",
+        "revision": "09bd2a2d12c8380909764ad42682195134b6f50ccdb1f64a7fbaa4ca3fe093ba",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "b0e913b4fae9dcb46f4527a1eb684a541a6bdbdb0a5b3b185251114e3e5b35c7",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 7,
+              "instructions": 2
+            },
+            "decoded": [
+              "mov rax, rsi",
+              "or rax, rdi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "8339cb53bb14387024bf4a35bec3d17fed381050122411333fbd1b08a63a2233",
+        "revision": "09bd2a2d12c8380909764ad42682195134b6f50ccdb1f64a7fbaa4ca3fe093ba",
+        "source_sha256": "705ed9336e475e2f21da71567b25a16e8661d260c31cd94aaf1bcbaf4e855cd5",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 8,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "e14a96600ae6c64b0d8a9524b50a39b3a4789dc1277df0bc289b15a82f6cb613",
+          "profile": "zal/word-kernel/1",
+          "revision": "6282a18eecb3de1fa3faa0096f9078db1d61923b8fb6d52b57824b73ca26944f",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 133,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 418,
+              "id": "palette",
+              "line": 6,
+              "start": 134
+            },
+            {
+              "column": 1,
+              "end": 430,
+              "id": "max-body",
+              "line": 7,
+              "start": 419
+            },
+            {
+              "column": 1,
+              "end": 447,
+              "id": "objective",
+              "line": 8,
+              "start": 431
+            },
+            {
+              "column": 1,
+              "end": 513,
+              "id": "limits",
+              "line": 9,
+              "start": 448
+            },
+            {
+              "column": 18,
+              "end": 110,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 109
+            },
+            {
+              "column": 13,
+              "end": 111,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 26,
+              "end": 118,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 117
+            },
+            {
+              "column": 21,
+              "end": 119,
+              "id": "expression/2",
+              "line": 5,
+              "start": 112
+            },
+            {
+              "column": 8,
+              "end": 120,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "8184176f54d3aa97edb0b2642cecde9ff93848b7253e9fad4f53e1669629a409",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "and",
+            [
+              "not",
+              [
+                "input",
+                "x"
+              ]
+            ],
+            [
+              "not",
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 3,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 5137,
+          "cost": {
+            "bytes": 20,
+            "instructions": 4
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.6371582649999254,
+          "global_optimality": false,
+          "incumbent": 2,
+          "lost_pruned": 0,
+          "objective_pruned": 87,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 3,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "e14a96600ae6c64b0d8a9524b50a39b3a4789dc1277df0bc289b15a82f6cb613",
+        "revision": "6282a18eecb3de1fa3faa0096f9078db1d61923b8fb6d52b57824b73ca26944f",
+        "source_sha256": "8184176f54d3aa97edb0b2642cecde9ff93848b7253e9fad4f53e1669629a409",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "e14a96600ae6c64b0d8a9524b50a39b3a4789dc1277df0bc289b15a82f6cb613",
+        "revision": "6282a18eecb3de1fa3faa0096f9078db1d61923b8fb6d52b57824b73ca26944f",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "109fa095c3db450d52e10e535210155be638af818b24138077ac3c59fb7bb91b",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 20,
+              "instructions": 4
+            },
+            "decoded": [
+              "mov rax, rsi",
+              "or rax, rdi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "e14a96600ae6c64b0d8a9524b50a39b3a4789dc1277df0bc289b15a82f6cb613",
+        "revision": "6282a18eecb3de1fa3faa0096f9078db1d61923b8fb6d52b57824b73ca26944f",
+        "source_sha256": "8184176f54d3aa97edb0b2642cecde9ff93848b7253e9fad4f53e1669629a409",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 9,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "fd6085926a8e5238558803243e62adad7dffd303df8a72c2d2d54699a5c679c5",
+          "profile": "zal/word-kernel/1",
+          "revision": "1bcdc0a16f46734ad8f6170d54600277698d42cf618a8ac1498b67b162e22687",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 40,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 71,
+              "id": "target",
+              "line": 3,
+              "start": 41
+            },
+            {
+              "column": 1,
+              "end": 91,
+              "id": "inputs",
+              "line": 4,
+              "start": 72
+            },
+            {
+              "column": 1,
+              "end": 148,
+              "id": "result",
+              "line": 5,
+              "start": 92
+            },
+            {
+              "column": 1,
+              "end": 433,
+              "id": "palette",
+              "line": 6,
+              "start": 149
+            },
+            {
+              "column": 1,
+              "end": 445,
+              "id": "max-body",
+              "line": 7,
+              "start": 434
+            },
+            {
+              "column": 1,
+              "end": 462,
+              "id": "objective",
+              "line": 8,
+              "start": 446
+            },
+            {
+              "column": 1,
+              "end": 528,
+              "id": "limits",
+              "line": 9,
+              "start": 463
+            },
+            {
+              "column": 22,
+              "end": 114,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 113
+            },
+            {
+              "column": 17,
+              "end": 115,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 30,
+              "end": 122,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 121
+            },
+            {
+              "column": 25,
+              "end": 123,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 116
+            },
+            {
+              "column": 12,
+              "end": 124,
+              "id": "expression/1",
+              "line": 5,
+              "start": 103
+            },
+            {
+              "column": 39,
+              "end": 131,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 130
+            },
+            {
+              "column": 41,
+              "end": 133,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 132
+            },
+            {
+              "column": 34,
+              "end": 134,
+              "id": "expression/2",
+              "line": 5,
+              "start": 125
+            },
+            {
+              "column": 8,
+              "end": 135,
+              "id": "expression",
+              "line": 5,
+              "start": 99
+            }
+          ],
+          "source_sha256": "641dab310462a4e1896b16ae7a35eefd66c4dc1518f91c4186d00c4ef60bab59",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "and",
+              [
+                "not",
+                [
+                  "input",
+                  "x"
+                ]
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 3,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 5146,
+          "cost": {
+            "bytes": 20,
+            "instructions": 4
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.5504333680000855,
+          "global_optimality": false,
+          "incumbent": 2,
+          "lost_pruned": 0,
+          "objective_pruned": 78,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 3,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "fd6085926a8e5238558803243e62adad7dffd303df8a72c2d2d54699a5c679c5",
+        "revision": "1bcdc0a16f46734ad8f6170d54600277698d42cf618a8ac1498b67b162e22687",
+        "source_sha256": "641dab310462a4e1896b16ae7a35eefd66c4dc1518f91c4186d00c4ef60bab59",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "fd6085926a8e5238558803243e62adad7dffd303df8a72c2d2d54699a5c679c5",
+        "revision": "1bcdc0a16f46734ad8f6170d54600277698d42cf618a8ac1498b67b162e22687",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "b2128625200cde4335ea169ed6ab6f7682a0c09c85bf6e7ae722ddfe848e4668",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 20,
+              "instructions": 4
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "xor rax, rsi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "fd6085926a8e5238558803243e62adad7dffd303df8a72c2d2d54699a5c679c5",
+        "revision": "1bcdc0a16f46734ad8f6170d54600277698d42cf618a8ac1498b67b162e22687",
+        "source_sha256": "641dab310462a4e1896b16ae7a35eefd66c4dc1518f91c4186d00c4ef60bab59",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 10,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "ad2936be34c9077f7ee4b1a09e4ccaab5e032034690dce453dc594ad58509833",
+          "profile": "zal/word-kernel/1",
+          "revision": "a6bbf61cd0d1d97d6228601b496f078e12be3180daec8bf33324e3f4c53ab0ec",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 41,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 72,
+              "id": "target",
+              "line": 3,
+              "start": 42
+            },
+            {
+              "column": 1,
+              "end": 92,
+              "id": "inputs",
+              "line": 4,
+              "start": 73
+            },
+            {
+              "column": 1,
+              "end": 155,
+              "id": "result",
+              "line": 5,
+              "start": 93
+            },
+            {
+              "column": 1,
+              "end": 440,
+              "id": "palette",
+              "line": 6,
+              "start": 156
+            },
+            {
+              "column": 1,
+              "end": 452,
+              "id": "max-body",
+              "line": 7,
+              "start": 441
+            },
+            {
+              "column": 1,
+              "end": 469,
+              "id": "objective",
+              "line": 8,
+              "start": 453
+            },
+            {
+              "column": 1,
+              "end": 535,
+              "id": "limits",
+              "line": 9,
+              "start": 470
+            },
+            {
+              "column": 22,
+              "end": 115,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 114
+            },
+            {
+              "column": 17,
+              "end": 116,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 109
+            },
+            {
+              "column": 30,
+              "end": 123,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 122
+            },
+            {
+              "column": 25,
+              "end": 124,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 117
+            },
+            {
+              "column": 12,
+              "end": 125,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 39,
+              "end": 132,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 131
+            },
+            {
+              "column": 46,
+              "end": 139,
+              "id": "expression/2/2/1",
+              "line": 5,
+              "start": 138
+            },
+            {
+              "column": 41,
+              "end": 140,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 133
+            },
+            {
+              "column": 34,
+              "end": 141,
+              "id": "expression/2",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 8,
+              "end": 142,
+              "id": "expression",
+              "line": 5,
+              "start": 100
+            }
+          ],
+          "source_sha256": "e63b4ab1a575fe9ca786b59e178c8e20c274da639608bf40ce2cd2ecbd7be38e",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "and",
+              [
+                "not",
+                [
+                  "input",
+                  "x"
+                ]
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 4968,
+          "cost": {
+            "bytes": 17,
+            "instructions": 3
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.45598224199966353,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 257,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "ad2936be34c9077f7ee4b1a09e4ccaab5e032034690dce453dc594ad58509833",
+        "revision": "a6bbf61cd0d1d97d6228601b496f078e12be3180daec8bf33324e3f4c53ab0ec",
+        "source_sha256": "e63b4ab1a575fe9ca786b59e178c8e20c274da639608bf40ce2cd2ecbd7be38e",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "ad2936be34c9077f7ee4b1a09e4ccaab5e032034690dce453dc594ad58509833",
+        "revision": "a6bbf61cd0d1d97d6228601b496f078e12be3180daec8bf33324e3f4c53ab0ec",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "b9774d6a66328a6e124efb32f3ba7a9bf957a0fa9b01c3ea7d3845d2c237500f",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 17,
+              "instructions": 3
+            },
+            "decoded": [
+              "mov rax, rsi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "ad2936be34c9077f7ee4b1a09e4ccaab5e032034690dce453dc594ad58509833",
+        "revision": "a6bbf61cd0d1d97d6228601b496f078e12be3180daec8bf33324e3f4c53ab0ec",
+        "source_sha256": "e63b4ab1a575fe9ca786b59e178c8e20c274da639608bf40ce2cd2ecbd7be38e",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 11,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "31149823da1b951a78bbc3cf804d25fcf039fe2e13b8e6cdd118ee31a06b7c2d",
+          "profile": "zal/word-kernel/1",
+          "revision": "2da6e6828dd279d7d9e2a97999eb4d6ad47d6a26bd23469f3a3c81a19695fc41",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 41,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 72,
+              "id": "target",
+              "line": 3,
+              "start": 42
+            },
+            {
+              "column": 1,
+              "end": 92,
+              "id": "inputs",
+              "line": 4,
+              "start": 73
+            },
+            {
+              "column": 1,
+              "end": 170,
+              "id": "result",
+              "line": 5,
+              "start": 93
+            },
+            {
+              "column": 1,
+              "end": 455,
+              "id": "palette",
+              "line": 6,
+              "start": 171
+            },
+            {
+              "column": 1,
+              "end": 467,
+              "id": "max-body",
+              "line": 7,
+              "start": 456
+            },
+            {
+              "column": 1,
+              "end": 484,
+              "id": "objective",
+              "line": 8,
+              "start": 468
+            },
+            {
+              "column": 1,
+              "end": 550,
+              "id": "limits",
+              "line": 9,
+              "start": 485
+            },
+            {
+              "column": 26,
+              "end": 119,
+              "id": "expression/1/1/1/1",
+              "line": 5,
+              "start": 118
+            },
+            {
+              "column": 21,
+              "end": 120,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 113
+            },
+            {
+              "column": 34,
+              "end": 127,
+              "id": "expression/1/1/2/1",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 29,
+              "end": 128,
+              "id": "expression/1/1/2",
+              "line": 5,
+              "start": 121
+            },
+            {
+              "column": 16,
+              "end": 129,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 43,
+              "end": 136,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 135
+            },
+            {
+              "column": 50,
+              "end": 143,
+              "id": "expression/1/2/2/1",
+              "line": 5,
+              "start": 142
+            },
+            {
+              "column": 45,
+              "end": 144,
+              "id": "expression/1/2/2",
+              "line": 5,
+              "start": 137
+            },
+            {
+              "column": 38,
+              "end": 145,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 130
+            },
+            {
+              "column": 12,
+              "end": 146,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 60,
+              "end": 153,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 152
+            },
+            {
+              "column": 62,
+              "end": 155,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 154
+            },
+            {
+              "column": 55,
+              "end": 156,
+              "id": "expression/2",
+              "line": 5,
+              "start": 147
+            },
+            {
+              "column": 8,
+              "end": 157,
+              "id": "expression",
+              "line": 5,
+              "start": 100
+            }
+          ],
+          "source_sha256": "b60688fe677357995d36e70f60b70f32007f0e57b94cb0bc4fd8b11e10362d17",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "or",
+              [
+                "and",
+                [
+                  "not",
+                  [
+                    "input",
+                    "x"
+                  ]
+                ],
+                [
+                  "not",
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ],
+              [
+                "and",
+                [
+                  "input",
+                  "x"
+                ],
+                [
+                  "not",
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 5139,
+          "cost": {
+            "bytes": 20,
+            "instructions": 4
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.8505907110002227,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 86,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "31149823da1b951a78bbc3cf804d25fcf039fe2e13b8e6cdd118ee31a06b7c2d",
+        "revision": "2da6e6828dd279d7d9e2a97999eb4d6ad47d6a26bd23469f3a3c81a19695fc41",
+        "source_sha256": "b60688fe677357995d36e70f60b70f32007f0e57b94cb0bc4fd8b11e10362d17",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "31149823da1b951a78bbc3cf804d25fcf039fe2e13b8e6cdd118ee31a06b7c2d",
+        "revision": "2da6e6828dd279d7d9e2a97999eb4d6ad47d6a26bd23469f3a3c81a19695fc41",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "b9443601462cb043d8de9b57876fae7c122074b071a9e97e95947b19e056e6b1",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 20,
+              "instructions": 4
+            },
+            "decoded": [
+              "mov rax, rsi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "or rax, rdi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "31149823da1b951a78bbc3cf804d25fcf039fe2e13b8e6cdd118ee31a06b7c2d",
+        "revision": "2da6e6828dd279d7d9e2a97999eb4d6ad47d6a26bd23469f3a3c81a19695fc41",
+        "source_sha256": "b60688fe677357995d36e70f60b70f32007f0e57b94cb0bc4fd8b11e10362d17",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 12,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "0d9b75f46411977599d62525d0d8081769badea25cdc1416adc9d14189d9b56e",
+          "profile": "zal/word-kernel/1",
+          "revision": "a3757cac4106354c345f7d80da955286b5b9c0fbce8b7287e06dcfdd86c2301b",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 41,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 72,
+              "id": "target",
+              "line": 3,
+              "start": 42
+            },
+            {
+              "column": 1,
+              "end": 92,
+              "id": "inputs",
+              "line": 4,
+              "start": 73
+            },
+            {
+              "column": 1,
+              "end": 155,
+              "id": "result",
+              "line": 5,
+              "start": 93
+            },
+            {
+              "column": 1,
+              "end": 440,
+              "id": "palette",
+              "line": 6,
+              "start": 156
+            },
+            {
+              "column": 1,
+              "end": 452,
+              "id": "max-body",
+              "line": 7,
+              "start": 441
+            },
+            {
+              "column": 1,
+              "end": 469,
+              "id": "objective",
+              "line": 8,
+              "start": 453
+            },
+            {
+              "column": 1,
+              "end": 535,
+              "id": "limits",
+              "line": 9,
+              "start": 470
+            },
+            {
+              "column": 22,
+              "end": 115,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 114
+            },
+            {
+              "column": 17,
+              "end": 116,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 109
+            },
+            {
+              "column": 30,
+              "end": 123,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 122
+            },
+            {
+              "column": 25,
+              "end": 124,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 117
+            },
+            {
+              "column": 12,
+              "end": 125,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 44,
+              "end": 137,
+              "id": "expression/2/1/1",
+              "line": 5,
+              "start": 136
+            },
+            {
+              "column": 39,
+              "end": 138,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 131
+            },
+            {
+              "column": 47,
+              "end": 140,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 139
+            },
+            {
+              "column": 34,
+              "end": 141,
+              "id": "expression/2",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 8,
+              "end": 142,
+              "id": "expression",
+              "line": 5,
+              "start": 100
+            }
+          ],
+          "source_sha256": "3f81816b21289060598a1829bad1ee754d223467d3dc7d546d17b779f688cfce",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "and",
+              [
+                "not",
+                [
+                  "input",
+                  "x"
+                ]
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "not",
+                [
+                  "input",
+                  "x"
+                ]
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 4968,
+          "cost": {
+            "bytes": 17,
+            "instructions": 3
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.6220261549997304,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 257,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "0d9b75f46411977599d62525d0d8081769badea25cdc1416adc9d14189d9b56e",
+        "revision": "a3757cac4106354c345f7d80da955286b5b9c0fbce8b7287e06dcfdd86c2301b",
+        "source_sha256": "3f81816b21289060598a1829bad1ee754d223467d3dc7d546d17b779f688cfce",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "0d9b75f46411977599d62525d0d8081769badea25cdc1416adc9d14189d9b56e",
+        "revision": "a3757cac4106354c345f7d80da955286b5b9c0fbce8b7287e06dcfdd86c2301b",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "f681bad3d7e9772dcd6a80f2a7782a67ea4a09163dfe3da0446783d0c295057e",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 17,
+              "instructions": 3
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "0d9b75f46411977599d62525d0d8081769badea25cdc1416adc9d14189d9b56e",
+        "revision": "a3757cac4106354c345f7d80da955286b5b9c0fbce8b7287e06dcfdd86c2301b",
+        "source_sha256": "3f81816b21289060598a1829bad1ee754d223467d3dc7d546d17b779f688cfce",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 13,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "19cc0246a9a578c54c47923277ba92ce94bd712bb43542c0a0e946c6adbd90a7",
+          "profile": "zal/word-kernel/1",
+          "revision": "84441120152efd67f28f93c371cbe1f31090653719b5d3a05aa8afe7715cf257",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 41,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 72,
+              "id": "target",
+              "line": 3,
+              "start": 42
+            },
+            {
+              "column": 1,
+              "end": 92,
+              "id": "inputs",
+              "line": 4,
+              "start": 73
+            },
+            {
+              "column": 1,
+              "end": 170,
+              "id": "result",
+              "line": 5,
+              "start": 93
+            },
+            {
+              "column": 1,
+              "end": 455,
+              "id": "palette",
+              "line": 6,
+              "start": 171
+            },
+            {
+              "column": 1,
+              "end": 467,
+              "id": "max-body",
+              "line": 7,
+              "start": 456
+            },
+            {
+              "column": 1,
+              "end": 484,
+              "id": "objective",
+              "line": 8,
+              "start": 468
+            },
+            {
+              "column": 1,
+              "end": 550,
+              "id": "limits",
+              "line": 9,
+              "start": 485
+            },
+            {
+              "column": 26,
+              "end": 119,
+              "id": "expression/1/1/1/1",
+              "line": 5,
+              "start": 118
+            },
+            {
+              "column": 21,
+              "end": 120,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 113
+            },
+            {
+              "column": 34,
+              "end": 127,
+              "id": "expression/1/1/2/1",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 29,
+              "end": 128,
+              "id": "expression/1/1/2",
+              "line": 5,
+              "start": 121
+            },
+            {
+              "column": 16,
+              "end": 129,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 48,
+              "end": 141,
+              "id": "expression/1/2/1/1",
+              "line": 5,
+              "start": 140
+            },
+            {
+              "column": 43,
+              "end": 142,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 135
+            },
+            {
+              "column": 51,
+              "end": 144,
+              "id": "expression/1/2/2",
+              "line": 5,
+              "start": 143
+            },
+            {
+              "column": 38,
+              "end": 145,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 130
+            },
+            {
+              "column": 12,
+              "end": 146,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 60,
+              "end": 153,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 152
+            },
+            {
+              "column": 62,
+              "end": 155,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 154
+            },
+            {
+              "column": 55,
+              "end": 156,
+              "id": "expression/2",
+              "line": 5,
+              "start": 147
+            },
+            {
+              "column": 8,
+              "end": 157,
+              "id": "expression",
+              "line": 5,
+              "start": 100
+            }
+          ],
+          "source_sha256": "7e3cd6f07a1dce5f99e5baedad0280ddd94a99f34d90755bb21bdd8ba46f8529",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "or",
+              [
+                "and",
+                [
+                  "not",
+                  [
+                    "input",
+                    "x"
+                  ]
+                ],
+                [
+                  "not",
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ],
+              [
+                "and",
+                [
+                  "not",
+                  [
+                    "input",
+                    "x"
+                  ]
+                ],
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 5144,
+          "cost": {
+            "bytes": 20,
+            "instructions": 4
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.7743267609994291,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 81,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "19cc0246a9a578c54c47923277ba92ce94bd712bb43542c0a0e946c6adbd90a7",
+        "revision": "84441120152efd67f28f93c371cbe1f31090653719b5d3a05aa8afe7715cf257",
+        "source_sha256": "7e3cd6f07a1dce5f99e5baedad0280ddd94a99f34d90755bb21bdd8ba46f8529",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "19cc0246a9a578c54c47923277ba92ce94bd712bb43542c0a0e946c6adbd90a7",
+        "revision": "84441120152efd67f28f93c371cbe1f31090653719b5d3a05aa8afe7715cf257",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "1f364361e192c20866ff61cb51dac1f0cb7efc6d24c493946bb37a156c3b354d",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 20,
+              "instructions": 4
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "or rax, rsi",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "19cc0246a9a578c54c47923277ba92ce94bd712bb43542c0a0e946c6adbd90a7",
+        "revision": "84441120152efd67f28f93c371cbe1f31090653719b5d3a05aa8afe7715cf257",
+        "source_sha256": "7e3cd6f07a1dce5f99e5baedad0280ddd94a99f34d90755bb21bdd8ba46f8529",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 14,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "19e977f69628815ac00aa2ec2b4eeebecfa704040a113173fe6ce0ec6060881f",
+          "profile": "zal/word-kernel/1",
+          "revision": "542e7c15fd033357f37a7ed5001cfee10b2d2b777dc6fca6a3a47d480b7df0c2",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 41,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 72,
+              "id": "target",
+              "line": 3,
+              "start": 42
+            },
+            {
+              "column": 1,
+              "end": 92,
+              "id": "inputs",
+              "line": 4,
+              "start": 73
+            },
+            {
+              "column": 1,
+              "end": 176,
+              "id": "result",
+              "line": 5,
+              "start": 93
+            },
+            {
+              "column": 1,
+              "end": 461,
+              "id": "palette",
+              "line": 6,
+              "start": 177
+            },
+            {
+              "column": 1,
+              "end": 473,
+              "id": "max-body",
+              "line": 7,
+              "start": 462
+            },
+            {
+              "column": 1,
+              "end": 490,
+              "id": "objective",
+              "line": 8,
+              "start": 474
+            },
+            {
+              "column": 1,
+              "end": 556,
+              "id": "limits",
+              "line": 9,
+              "start": 491
+            },
+            {
+              "column": 26,
+              "end": 119,
+              "id": "expression/1/1/1/1",
+              "line": 5,
+              "start": 118
+            },
+            {
+              "column": 21,
+              "end": 120,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 113
+            },
+            {
+              "column": 34,
+              "end": 127,
+              "id": "expression/1/1/2/1",
+              "line": 5,
+              "start": 126
+            },
+            {
+              "column": 29,
+              "end": 128,
+              "id": "expression/1/1/2",
+              "line": 5,
+              "start": 121
+            },
+            {
+              "column": 16,
+              "end": 129,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 48,
+              "end": 141,
+              "id": "expression/1/2/1/1",
+              "line": 5,
+              "start": 140
+            },
+            {
+              "column": 43,
+              "end": 142,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 135
+            },
+            {
+              "column": 51,
+              "end": 144,
+              "id": "expression/1/2/2",
+              "line": 5,
+              "start": 143
+            },
+            {
+              "column": 38,
+              "end": 145,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 130
+            },
+            {
+              "column": 12,
+              "end": 146,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 60,
+              "end": 153,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 152
+            },
+            {
+              "column": 67,
+              "end": 160,
+              "id": "expression/2/2/1",
+              "line": 5,
+              "start": 159
+            },
+            {
+              "column": 62,
+              "end": 161,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 154
+            },
+            {
+              "column": 55,
+              "end": 162,
+              "id": "expression/2",
+              "line": 5,
+              "start": 147
+            },
+            {
+              "column": 8,
+              "end": 163,
+              "id": "expression",
+              "line": 5,
+              "start": 100
+            }
+          ],
+          "source_sha256": "fac70b0123be64debb5d32e3f9c798d69633b556a67f4f302402c8db8217ab43",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "or",
+              [
+                "and",
+                [
+                  "not",
+                  [
+                    "input",
+                    "x"
+                  ]
+                ],
+                [
+                  "not",
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ],
+              [
+                "and",
+                [
+                  "not",
+                  [
+                    "input",
+                    "x"
+                  ]
+                ],
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "not",
+                [
+                  "input",
+                  "y"
+                ]
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 2,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 5148,
+          "cost": {
+            "bytes": 20,
+            "instructions": 4
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 1.0970955269995102,
+          "global_optimality": false,
+          "incumbent": 1,
+          "lost_pruned": 0,
+          "objective_pruned": 77,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 1,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 2,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "19e977f69628815ac00aa2ec2b4eeebecfa704040a113173fe6ce0ec6060881f",
+        "revision": "542e7c15fd033357f37a7ed5001cfee10b2d2b777dc6fca6a3a47d480b7df0c2",
+        "source_sha256": "fac70b0123be64debb5d32e3f9c798d69633b556a67f4f302402c8db8217ab43",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "19e977f69628815ac00aa2ec2b4eeebecfa704040a113173fe6ce0ec6060881f",
+        "revision": "542e7c15fd033357f37a7ed5001cfee10b2d2b777dc6fca6a3a47d480b7df0c2",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "20dae4c3df7e1257e607f42645fbc5d93d681511fcc26f841cdeabc59955f428",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 20,
+              "instructions": 4
+            },
+            "decoded": [
+              "mov rax, rdi",
+              "and rax, rsi",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "19e977f69628815ac00aa2ec2b4eeebecfa704040a113173fe6ce0ec6060881f",
+        "revision": "542e7c15fd033357f37a7ed5001cfee10b2d2b777dc6fca6a3a47d480b7df0c2",
+        "source_sha256": "fac70b0123be64debb5d32e3f9c798d69633b556a67f4f302402c8db8217ab43",
+        "status": "replayed"
+      }
+    },
+    {
+      "gate": 15,
+      "read": {
+        "authority": "none",
+        "binding": {
+          "bridge_sha256": "4c4b4f48ee243df8dac4f48f23103eedf0d815561e5e599152c2dc4b5ba11b35",
+          "loop_limits": {
+            "deadline_ms": 3000,
+            "max_candidates": 20000,
+            "max_checks": 32,
+            "timeout_ms": 500
+          },
+          "machine_sources": {
+            "__init__.py": "4c482c7fb0828e2b363313b9e0976c2855bad30d1a3d52f1051f7c05567f614a",
+            "bench.py": "09f8009523b94e35d2cc9ebb3c55d5070028e5204527445ee4ce544091b4a5f7",
+            "contracts.py": "93a36df628a904a206472a33783823cbef7ba7fb677c3ba4efbc0dbe8c1c0caa",
+            "diagnose.py": "77eb948fe3d21c2356a2382c9d0d8ef75023009563493cf59e73b13172f17500",
+            "footprint.py": "44e30093f3ffc32d840dc11697e9b6df57aecd8606c39fc45b3e0fab7f7de511",
+            "library.py": "8cdd53602c5cb7e786c6cc2551bd3612f879af353f25578e34a6eeca4a1427cf",
+            "model.py": "390a2ce5a7c0748a5dfdb6994361287ff23f4432b9fcda52dc004258eca5a52e",
+            "native.py": "4d86df9c038ba8eaef72dbe9cf93786bf062b6a79fbe1caa36d62e2eaf7010db",
+            "profile2.py": "6ffaa7c26f51243fec246e9573c69bc428564bab608fae41b87174ae1cd752fb",
+            "profile3.py": "0388d5965a616515951c7a6cac822507ac5bc883019b91d9188622507c05a001",
+            "realize.py": "014e3b4bb139d90f5e190e385e6954367dba26a2241c633c0abbff86f54e0da3",
+            "realize_rules.py": "47fa91dbcab244c401133c3b830afe2092c8d30de449f4c62d7427ac489a72e7",
+            "run.py": "9145a3ed28b0e1b6d952bea9a008cafac235428fd48b100b184573ceeb57b64d",
+            "second_solver.py": "f21fdbe147c549cca4e34796e55427afbe0329e7cc42d244300c51a9b025f219",
+            "session.py": "589c6e4cd54999cefdc6ce4d7a433f92fd5f847f697d0abb0b6105aba0fcca54",
+            "slicing.py": "b042db443837ae816df92ff6113f3aa2814b0995dc8361b6cea9929b4a212e41",
+            "specialize.py": "487dcbb5af86e9d1404fd1865aa12989b30bd0783bf38506090a9c0637560b24",
+            "targets.py": "0b418319b8fd25a15453d725a16f863e751d9c10b1e499fb4fee28314276f4ef",
+            "verify.py": "0cc8973d6d3e5f2249fe1290cd6b3131ea2d976ad2211f3518050af615a6472d",
+            "verify2.py": "ec2034765aef24555e30b633eddbbb53621865ecd38374e76c105f61b9e270f0",
+            "verify3.py": "2f07279ce1215347b8aa7b7e5057b419e8957c6bed592f8815af1deb90382f19"
+          },
+          "observation_contract": "Returned u64 word under the declared ISA/register model only; no cost, timing, complete ABI, whole-machine or temporal equivalence",
+          "problem_sha256": "7a6b156497da943554495101a19588eb764cc0bea9a83c593c9d6274e689c469",
+          "profile": "zal/word-kernel/1",
+          "revision": "20da9c964f9ae321ca892c839249e3c0d1aa2fe9972f56962c69b40cdffcd8ed",
+          "schema": "zal/word-kernel-binding/1",
+          "source_map": [
+            {
+              "column": 1,
+              "end": 26,
+              "id": "profile",
+              "line": 1,
+              "start": 0
+            },
+            {
+              "column": 1,
+              "end": 41,
+              "id": "kernel",
+              "line": 2,
+              "start": 27
+            },
+            {
+              "column": 1,
+              "end": 72,
+              "id": "target",
+              "line": 3,
+              "start": 42
+            },
+            {
+              "column": 1,
+              "end": 92,
+              "id": "inputs",
+              "line": 4,
+              "start": 73
+            },
+            {
+              "column": 1,
+              "end": 191,
+              "id": "result",
+              "line": 5,
+              "start": 93
+            },
+            {
+              "column": 1,
+              "end": 476,
+              "id": "palette",
+              "line": 6,
+              "start": 192
+            },
+            {
+              "column": 1,
+              "end": 488,
+              "id": "max-body",
+              "line": 7,
+              "start": 477
+            },
+            {
+              "column": 1,
+              "end": 505,
+              "id": "objective",
+              "line": 8,
+              "start": 489
+            },
+            {
+              "column": 1,
+              "end": 571,
+              "id": "limits",
+              "line": 9,
+              "start": 506
+            },
+            {
+              "column": 30,
+              "end": 123,
+              "id": "expression/1/1/1/1/1",
+              "line": 5,
+              "start": 122
+            },
+            {
+              "column": 25,
+              "end": 124,
+              "id": "expression/1/1/1/1",
+              "line": 5,
+              "start": 117
+            },
+            {
+              "column": 38,
+              "end": 131,
+              "id": "expression/1/1/1/2/1",
+              "line": 5,
+              "start": 130
+            },
+            {
+              "column": 33,
+              "end": 132,
+              "id": "expression/1/1/1/2",
+              "line": 5,
+              "start": 125
+            },
+            {
+              "column": 20,
+              "end": 133,
+              "id": "expression/1/1/1",
+              "line": 5,
+              "start": 112
+            },
+            {
+              "column": 52,
+              "end": 145,
+              "id": "expression/1/1/2/1/1",
+              "line": 5,
+              "start": 144
+            },
+            {
+              "column": 47,
+              "end": 146,
+              "id": "expression/1/1/2/1",
+              "line": 5,
+              "start": 139
+            },
+            {
+              "column": 55,
+              "end": 148,
+              "id": "expression/1/1/2/2",
+              "line": 5,
+              "start": 147
+            },
+            {
+              "column": 42,
+              "end": 149,
+              "id": "expression/1/1/2",
+              "line": 5,
+              "start": 134
+            },
+            {
+              "column": 16,
+              "end": 150,
+              "id": "expression/1/1",
+              "line": 5,
+              "start": 108
+            },
+            {
+              "column": 64,
+              "end": 157,
+              "id": "expression/1/2/1",
+              "line": 5,
+              "start": 156
+            },
+            {
+              "column": 71,
+              "end": 164,
+              "id": "expression/1/2/2/1",
+              "line": 5,
+              "start": 163
+            },
+            {
+              "column": 66,
+              "end": 165,
+              "id": "expression/1/2/2",
+              "line": 5,
+              "start": 158
+            },
+            {
+              "column": 59,
+              "end": 166,
+              "id": "expression/1/2",
+              "line": 5,
+              "start": 151
+            },
+            {
+              "column": 12,
+              "end": 167,
+              "id": "expression/1",
+              "line": 5,
+              "start": 104
+            },
+            {
+              "column": 81,
+              "end": 174,
+              "id": "expression/2/1",
+              "line": 5,
+              "start": 173
+            },
+            {
+              "column": 83,
+              "end": 176,
+              "id": "expression/2/2",
+              "line": 5,
+              "start": 175
+            },
+            {
+              "column": 76,
+              "end": 177,
+              "id": "expression/2",
+              "line": 5,
+              "start": 168
+            },
+            {
+              "column": 8,
+              "end": 178,
+              "id": "expression",
+              "line": 5,
+              "start": 100
+            }
+          ],
+          "source_sha256": "71e5b83b11d08a25ec1135c471508d77283d967b80470147b55ce36101e6d6d6",
+          "syntax": "symbolic"
+        },
+        "problem": {
+          "expression": [
+            "or",
+            [
+              "or",
+              [
+                "or",
+                [
+                  "and",
+                  [
+                    "not",
+                    [
+                      "input",
+                      "x"
+                    ]
+                  ],
+                  [
+                    "not",
+                    [
+                      "input",
+                      "y"
+                    ]
+                  ]
+                ],
+                [
+                  "and",
+                  [
+                    "not",
+                    [
+                      "input",
+                      "x"
+                    ]
+                  ],
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ],
+              [
+                "and",
+                [
+                  "input",
+                  "x"
+                ],
+                [
+                  "not",
+                  [
+                    "input",
+                    "y"
+                  ]
+                ]
+              ]
+            ],
+            [
+              "and",
+              [
+                "input",
+                "x"
+              ],
+              [
+                "input",
+                "y"
+              ]
+            ]
+          ],
+          "grammar": [
+            [
+              "mov",
+              "rax",
+              "rdi"
+            ],
+            [
+              "mov",
+              "rax",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rax"
+            ],
+            [
+              "imm",
+              "rdx",
+              "18446744073709551615"
+            ],
+            [
+              "xor",
+              "rax",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rsi"
+            ],
+            [
+              "or",
+              "rax",
+              "rdi"
+            ],
+            [
+              "xor",
+              "rax",
+              "rsi"
+            ],
+            [
+              "mov",
+              "rcx",
+              "rsi"
+            ],
+            [
+              "xor",
+              "rcx",
+              "rdx"
+            ],
+            [
+              "and",
+              "rax",
+              "rcx"
+            ],
+            [
+              "or",
+              "rax",
+              "rcx"
+            ]
+          ],
+          "inputs": [
+            "x",
+            "y"
+          ],
+          "max_instructions": 4,
+          "objective": "bytes",
+          "schema": "zeno-fcis/machine-problem/1",
+          "target": "x86_64-sysv-register/1"
+        },
+        "schema": "zal/word-kernel-lowering/1",
+        "scope": "Exact declared modular word profile only; lowering is not checking or compilation",
+        "status": "lowered"
+      },
+      "search": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "bound_skipped": 0,
+          "checker_verdicts": [
+            {
+              "sequence": 1,
+              "status": "counterexample"
+            },
+            {
+              "sequence": 2,
+              "status": "equivalent"
+            },
+            {
+              "sequence": 3,
+              "status": "counterexample"
+            },
+            {
+              "sequence": 4,
+              "status": "counterexample"
+            }
+          ],
+          "concrete_refutations": 4964,
+          "cost": {
+            "bytes": 17,
+            "instructions": 3
+          },
+          "dead_pruned": 15387,
+          "duplicate_pruned": 0,
+          "elapsed_seconds": 0.8915764459998172,
+          "global_optimality": false,
+          "incumbent": 2,
+          "lost_pruned": 0,
+          "objective_pruned": 259,
+          "order_pruned": 10327,
+          "proposed": 5227,
+          "pruning": "exact-footprint/2",
+          "retained_counterexamples": 3,
+          "runtime_speedup": "unmeasured",
+          "solver_checks": 4,
+          "status": "checked-candidate",
+          "stop_reason": "grammar-exhausted"
+        },
+        "problem_sha256": "7a6b156497da943554495101a19588eb764cc0bea9a83c593c9d6274e689c469",
+        "revision": "20da9c964f9ae321ca892c839249e3c0d1aa2fe9972f56962c69b40cdffcd8ed",
+        "source_sha256": "71e5b83b11d08a25ec1135c471508d77283d967b80470147b55ce36101e6d6d6",
+        "status": "checked-candidate"
+      },
+      "emit": {
+        "authority": "none",
+        "problem_sha256": "7a6b156497da943554495101a19588eb764cc0bea9a83c593c9d6274e689c469",
+        "revision": "20da9c964f9ae321ca892c839249e3c0d1aa2fe9972f56962c69b40cdffcd8ed",
+        "status": "emitted"
+      },
+      "replay": {
+        "authority": "none",
+        "machine": {
+          "authority": "none",
+          "code_sha256": "71ad4552945b2577dc1b04fb437fccff4dfb93027a6602dfdd4e26b8f82ec7ae",
+          "status": "replayed",
+          "target": "x86_64-sysv-register/1",
+          "verification": {
+            "cost": {
+              "bytes": 17,
+              "instructions": 3
+            },
+            "decoded": [
+              "xor rax, rax",
+              "imm rdx, 18446744073709551615",
+              "xor rax, rdx",
+              "ret"
+            ],
+            "scope": {
+              "initial_registers": "all 64-bit assignments to rax,rcx,rdx,r8,r9,r10,r11",
+              "inputs": "all 2^128 unsigned x,y pairs",
+              "nonclaims": "Not full ISA, native conformance, timing or global optimality.",
+              "target": "x86_64-sysv-register/1",
+              "word_bits": 64
+            },
+            "status": "equivalent",
+            "z3_version": "5.3.3"
+          }
+        },
+        "problem_sha256": "7a6b156497da943554495101a19588eb764cc0bea9a83c593c9d6274e689c469",
+        "revision": "20da9c964f9ae321ca892c839249e3c0d1aa2fe9972f56962c69b40cdffcd8ed",
+        "source_sha256": "71e5b83b11d08a25ec1135c471508d77283d967b80470147b55ce36101e6d6d6",
+        "status": "replayed"
+      }
+    }
+  ]
+}

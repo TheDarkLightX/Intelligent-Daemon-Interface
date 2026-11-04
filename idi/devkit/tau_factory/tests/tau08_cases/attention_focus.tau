@@ -1,0 +1,16 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# attention_focus - Generated Tau Agent
+# Auto-generated from AgentSchema
+# attention_focus Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+i1:sbf := in file("inputs/b.in"). 
+i2:sbf := in file("inputs/c.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# attention_focus pattern: result <- a, b, c
+always (
+((o0[t] = (i2[t]' & i0[t]) | (i2[t] & i1[t])))
+).

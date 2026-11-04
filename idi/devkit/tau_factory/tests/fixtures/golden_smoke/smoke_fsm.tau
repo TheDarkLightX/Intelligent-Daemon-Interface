@@ -3,16 +3,12 @@
 # smoke_fsm Agent (Auto-generated)
 # Strategy: custom
 
-i0:sbf = in file("inputs/buy.in")
-i1:sbf = in file("inputs/sell.in")
+i0:sbf := in file("inputs/buy.in"). 
+i1:sbf := in file("inputs/sell.in"). 
 
-o0:sbf = out file("outputs/position.out")
+o0:sbf := out file("outputs/position.out"). 
 
 # fsm pattern: position <- buy, sell
-r (o0[t] = i0[t] | (o0[t-1] & i1[t]')) && (o0[0] = 0)
-
-
-
-
-
-q
+always (
+(o0[t] = i0[t] | (o0[t-1] & i1[t]')) && (o0[0] = 0)
+).

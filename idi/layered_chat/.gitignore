@@ -1,0 +1,8 @@
+data/*.jsonl
+data/**/*.npz
+data/**/knowledge.json
+evidence/**/*.so
+evidence/**/*.o
+__pycache__/
+
+web/knowledge.json

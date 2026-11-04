@@ -1,0 +1,159 @@
+{
+  "config": {
+    "epochs": 80,
+    "votes": 64,
+    "depth": 3,
+    "seed": 1,
+    "batch": 256,
+    "rate": 0.04,
+    "eval_every": 5,
+    "wiring": "guided",
+    "pilot": false,
+    "encoder": "frequency",
+    "features": 1536,
+    "classes": 62,
+    "input_bits": 1536,
+    "source_sha256": {
+      "train.py": "cb4b5805de42bee67db855527f1f40e9490a61c1c4274b3795f0aaa9dcec942c",
+      "network.py": "001fa0376cd84d6684708f6f0ec6a8f2e7a57c807d1495cf2d70ede233a9731f",
+      "corpus.py": "009aa56d2098e84b115233b17b405a981ef821190651320b3cfa214ffbfc43a1"
+    }
+  },
+  "seconds": 1516.89,
+  "examples_seen": 4982400,
+  "selected_epoch": 40,
+  "best_validation_accuracy": 0.8118279569892473,
+  "model_sha256": "36e574b041ad038dddf6d181ddbb4d8cea7313122447d3ce20e7e85a0f323a58",
+  "model_bytes": 153622,
+  "training_rows": 62280,
+  "split_rows": {
+    "train": 62280,
+    "validation": 744,
+    "test": 744,
+    "challenge": 62
+  },
+  "data_sha256": "55685d5c76e4f6306dfa68028db6890f33a5011ef26003e3331c6312be64432a",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 1.333414764012292,
+      "validation_accuracy": 0.7755376344086021,
+      "seconds": 16.161,
+      "examples_seen": 62280
+    },
+    {
+      "epoch": 5,
+      "loss": 0.42009878996173466,
+      "validation_accuracy": 0.8010752688172043,
+      "seconds": 90.236,
+      "examples_seen": 311400
+    },
+    {
+      "epoch": 10,
+      "loss": 0.41122512476866874,
+      "validation_accuracy": 0.7983870967741935,
+      "seconds": 182.623,
+      "examples_seen": 622800
+    },
+    {
+      "epoch": 15,
+      "loss": 0.40860365243699204,
+      "validation_accuracy": 0.7943548387096774,
+      "seconds": 277.146,
+      "examples_seen": 934200
+    },
+    {
+      "epoch": 20,
+      "loss": 0.40743429248885765,
+      "validation_accuracy": 0.8051075268817204,
+      "seconds": 370.2,
+      "examples_seen": 1245600
+    },
+    {
+      "epoch": 25,
+      "loss": 0.406342159354235,
+      "validation_accuracy": 0.8051075268817204,
+      "seconds": 458.658,
+      "examples_seen": 1557000
+    },
+    {
+      "epoch": 30,
+      "loss": 0.4057304929906004,
+      "validation_accuracy": 0.8091397849462365,
+      "seconds": 549.714,
+      "examples_seen": 1868400
+    },
+    {
+      "epoch": 35,
+      "loss": 0.4042171825103907,
+      "validation_accuracy": 0.803763440860215,
+      "seconds": 642.131,
+      "examples_seen": 2179800
+    },
+    {
+      "epoch": 40,
+      "loss": 0.40333986933137944,
+      "validation_accuracy": 0.8118279569892473,
+      "seconds": 737.435,
+      "examples_seen": 2491200
+    },
+    {
+      "epoch": 45,
+      "loss": 0.4028918030519247,
+      "validation_accuracy": 0.8104838709677419,
+      "seconds": 829.086,
+      "examples_seen": 2802600
+    },
+    {
+      "epoch": 50,
+      "loss": 0.4025898510627281,
+      "validation_accuracy": 0.8118279569892473,
+      "seconds": 921.007,
+      "examples_seen": 3114000
+    },
+    {
+      "epoch": 55,
+      "loss": 0.40242863347611524,
+      "validation_accuracy": 0.8077956989247311,
+      "seconds": 1022.19,
+      "examples_seen": 3425400
+    },
+    {
+      "epoch": 60,
+      "loss": 0.40229267562974624,
+      "validation_accuracy": 0.8104838709677419,
+      "seconds": 1120.421,
+      "examples_seen": 3736800
+    },
+    {
+      "epoch": 65,
+      "loss": 0.4022041634213258,
+      "validation_accuracy": 0.8064516129032258,
+      "seconds": 1221.123,
+      "examples_seen": 4048200
+    },
+    {
+      "epoch": 70,
+      "loss": 0.4021101130264726,
+      "validation_accuracy": 0.8104838709677419,
+      "seconds": 1321.789,
+      "examples_seen": 4359600
+    },
+    {
+      "epoch": 75,
+      "loss": 0.40200236857358507,
+      "validation_accuracy": 0.8077956989247311,
+      "seconds": 1423.173,
+      "examples_seen": 4671000
+    },
+    {
+      "epoch": 80,
+      "loss": 0.4019341747272298,
+      "validation_accuracy": 0.8104838709677419,
+      "seconds": 1516.886,
+      "examples_seen": 4982400
+    }
+  ]
+}

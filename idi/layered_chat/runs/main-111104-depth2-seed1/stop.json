@@ -1,0 +1,7 @@
+{
+  "status": "interrupted-after-five-logged-epochs",
+  "requested_epochs": 15,
+  "completed_logged_epochs": 5,
+  "exposures_lower_bound": 311400,
+  "reason": "Final depth comparison stopped at the five-epoch checkpoint to reserve time within the four-hour budget for held-out evaluation, qualification, publication and deployment checks. Best validation accuracy 0.803763440860215; no full 15-epoch claim."
+}

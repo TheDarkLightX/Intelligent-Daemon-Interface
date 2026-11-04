@@ -1,0 +1,81 @@
+{
+  "tables": 3072,
+  "examples_seen": 1446600,
+  "train_pairs": 84382,
+  "validation_pairs": 9804,
+  "test_pairs": 10794,
+  "seconds": 98.571,
+  "best_validation_balanced_accuracy": 0.9993454718552898,
+  "history": [
+    {
+      "epoch": 1,
+      "validation_balanced_accuracy": 0.9975008925383791,
+      "seconds": 1.76
+    },
+    {
+      "epoch": 5,
+      "validation_balanced_accuracy": 0.9989289539450197,
+      "seconds": 7.43
+    },
+    {
+      "epoch": 10,
+      "validation_balanced_accuracy": 0.9989884565036297,
+      "seconds": 14.77
+    },
+    {
+      "epoch": 15,
+      "validation_balanced_accuracy": 0.9991074616208497,
+      "seconds": 22.03
+    },
+    {
+      "epoch": 20,
+      "validation_balanced_accuracy": 0.9991074616208497,
+      "seconds": 30.12
+    },
+    {
+      "epoch": 25,
+      "validation_balanced_accuracy": 0.9991669641794597,
+      "seconds": 39.22
+    },
+    {
+      "epoch": 30,
+      "validation_balanced_accuracy": 0.9992859692966798,
+      "seconds": 48.68
+    },
+    {
+      "epoch": 35,
+      "validation_balanced_accuracy": 0.9992859692966798,
+      "seconds": 57.52
+    },
+    {
+      "epoch": 40,
+      "validation_balanced_accuracy": 0.9993454718552898,
+      "seconds": 65.39
+    },
+    {
+      "epoch": 45,
+      "validation_balanced_accuracy": 0.9993454718552898,
+      "seconds": 74.63
+    },
+    {
+      "epoch": 50,
+      "validation_balanced_accuracy": 0.9993454718552898,
+      "seconds": 82.35
+    },
+    {
+      "epoch": 55,
+      "validation_balanced_accuracy": 0.9993454718552898,
+      "seconds": 90.62
+    },
+    {
+      "epoch": 60,
+      "validation_balanced_accuracy": 0.9993454718552898,
+      "seconds": 98.57
+    }
+  ],
+  "source_sha256": {
+    "train_relevance.py": "8c93000b6a6aec8133b38f693b7d52ad97510a9afa1fe8e2b1acbaa95825c33d",
+    "openassistant.py": "8978fbbdd8630202b558ed6a64d2b2cac103ee1deeaf823c46894cd53e90017d",
+    "network.py": "001fa0376cd84d6684708f6f0ec6a8f2e7a57c807d1495cf2d70ede233a9731f"
+  }
+}

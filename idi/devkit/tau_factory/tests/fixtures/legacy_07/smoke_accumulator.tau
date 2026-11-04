@@ -1,0 +1,16 @@
+# smoke_accumulator - Generated Tau Agent
+# Auto-generated from AgentSchema
+# smoke_accumulator Agent (Auto-generated)
+# Strategy: custom
+
+i0:bv[8] = in file("inputs/tick.in")
+
+o0:bv[8] = out file("outputs/sum.out")
+
+# accumulator pattern: sum <- tick
+r (o0[t] = o0[t-1] + i0[t]) && (o0[0] = {0}:bv[8])
+
+
+
+
+q

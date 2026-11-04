@@ -1,0 +1,18 @@
+{"epoch": 1, "loss": 1.3864176845121783, "validation_accuracy": 0.793010752688172, "seconds": 6.829, "examples_seen": 62280}
+{"epoch": 5, "loss": 0.4511311761254903, "validation_accuracy": 0.7903225806451613, "seconds": 38.307, "examples_seen": 311400}
+{"epoch": 10, "loss": 0.4436255724520429, "validation_accuracy": 0.793010752688172, "seconds": 79.288, "examples_seen": 622800}
+{"epoch": 15, "loss": 0.4404194085086548, "validation_accuracy": 0.7943548387096774, "seconds": 122.675, "examples_seen": 934200}
+{"epoch": 20, "loss": 0.4383074267827783, "validation_accuracy": 0.7876344086021505, "seconds": 160.861, "examples_seen": 1245600}
+{"epoch": 25, "loss": 0.43697326700888006, "validation_accuracy": 0.793010752688172, "seconds": 196.936, "examples_seen": 1557000}
+{"epoch": 30, "loss": 0.4358985056766885, "validation_accuracy": 0.7876344086021505, "seconds": 236.27, "examples_seen": 1868400}
+{"epoch": 35, "loss": 0.4356198475386902, "validation_accuracy": 0.793010752688172, "seconds": 276.806, "examples_seen": 2179800}
+{"epoch": 40, "loss": 0.4352393264141156, "validation_accuracy": 0.7204301075268817, "seconds": 317.092, "examples_seen": 2491200}
+{"epoch": 45, "loss": 0.4350459081282888, "validation_accuracy": 0.7876344086021505, "seconds": 355.587, "examples_seen": 2802600}
+{"epoch": 50, "loss": 0.43468973660361865, "validation_accuracy": 0.7876344086021505, "seconds": 396.33, "examples_seen": 3114000}
+{"epoch": 55, "loss": 0.4345410830291633, "validation_accuracy": 0.7916666666666666, "seconds": 437.413, "examples_seen": 3425400}
+{"epoch": 60, "loss": 0.43449863090910207, "validation_accuracy": 0.7903225806451613, "seconds": 478.596, "examples_seen": 3736800}
+{"epoch": 65, "loss": 0.4342543841556777, "validation_accuracy": 0.7876344086021505, "seconds": 518.528, "examples_seen": 4048200}
+{"epoch": 70, "loss": 0.43399107238001444, "validation_accuracy": 0.782258064516129, "seconds": 565.488, "examples_seen": 4359600}
+{"epoch": 75, "loss": 0.4336550396837787, "validation_accuracy": 0.782258064516129, "seconds": 609.6, "examples_seen": 4671000}
+{"epoch": 80, "loss": 0.43363065856653066, "validation_accuracy": 0.7849462365591398, "seconds": 654.168, "examples_seen": 4982400}
+{"config": {"epochs": 80, "votes": 32, "depth": 3, "seed": 0, "batch": 256, "rate": 0.04, "eval_every": 5, "wiring": "guided", "pilot": false, "classes": 62, "input_bits": 1536}, "seconds": 654.17, "examples_seen": 4982400, "selected_epoch": 15, "best_validation_accuracy": 0.7943548387096774, "model_sha256": "77b0cc016108331988d9444013ea4713943b58fa3ac0e822946484ca21513fc5", "model_bytes": 82397, "training_rows": 62280, "split_rows": {"train": 62280, "validation": 744, "test": 744, "challenge": 62}, "data_sha256": "55685d5c76e4f6306dfa68028db6890f33a5011ef26003e3331c6312be64432a", "python": "3.12.14", "numpy": "2.3.5"}

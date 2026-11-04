@@ -1,0 +1,4335 @@
+{
+  "schema": "idi/tau-gate-qualification/1",
+  "tau_source_commit": "95a7d261ca3db5ff6f7c198a0b4d81c880816058",
+  "official_ci_artifact": 13293842679,
+  "artifact_zip_sha256": "c58361a499c7d7f0de73d87cfd3bb6e0fce925f0286ff439794a0bc9f6fb5582",
+  "seconds": 8.651,
+  "gate_applications": 64,
+  "fold_laws": 576,
+  "fresh_semantic_mutants": 16,
+  "steps": [
+    {
+      "a": 0,
+      "b": 0,
+      "outputs": {
+        "o0": "0",
+        "o1": "0",
+        "o10": "1",
+        "o11": "1",
+        "o12": "1",
+        "o13": "1",
+        "o14": "1",
+        "o15": "1",
+        "o2": "0",
+        "o3": "0",
+        "o4": "0",
+        "o5": "0",
+        "o6": "0",
+        "o7": "0",
+        "o8": "1",
+        "o9": "1"
+      },
+      "seconds": 0.02161650699963502
+    },
+    {
+      "a": 0,
+      "b": 1,
+      "outputs": {
+        "o0": "0",
+        "o1": "0",
+        "o10": "0",
+        "o11": "0",
+        "o12": "1",
+        "o13": "1",
+        "o14": "1",
+        "o15": "1",
+        "o2": "0",
+        "o3": "0",
+        "o4": "1",
+        "o5": "1",
+        "o6": "1",
+        "o7": "1",
+        "o8": "0",
+        "o9": "0"
+      },
+      "seconds": 0.008462644999781332
+    },
+    {
+      "a": 1,
+      "b": 0,
+      "outputs": {
+        "o0": "0",
+        "o1": "0",
+        "o10": "1",
+        "o11": "1",
+        "o12": "0",
+        "o13": "0",
+        "o14": "1",
+        "o15": "1",
+        "o2": "1",
+        "o3": "1",
+        "o4": "0",
+        "o5": "0",
+        "o6": "1",
+        "o7": "1",
+        "o8": "0",
+        "o9": "0"
+      },
+      "seconds": 0.008541664999938803
+    },
+    {
+      "a": 1,
+      "b": 1,
+      "outputs": {
+        "o0": "0",
+        "o1": "1",
+        "o10": "0",
+        "o11": "1",
+        "o12": "0",
+        "o13": "1",
+        "o14": "0",
+        "o15": "1",
+        "o2": "0",
+        "o3": "1",
+        "o4": "0",
+        "o5": "1",
+        "o6": "0",
+        "o7": "1",
+        "o8": "0",
+        "o9": "1"
+      },
+      "seconds": 0.008427791000030993
+    }
+  ],
+  "table": [
+    [
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      1,
+      1,
+      0
+    ],
+    [
+      0,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      1,
+      0
+    ],
+    [
+      1,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      0,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      0
+    ],
+    [
+      1,
+      1,
+      1,
+      1
+    ]
+  ],
+  "laws": [
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 1,
+      "formula": "((((x:sbf) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 2,
+      "formula": "((((x:sbf) & (x:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 3,
+      "formula": "((((x:sbf) & (x:sbf)') | ((x:sbf) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 4,
+      "formula": "((((x:sbf)' & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 5,
+      "formula": "((((x:sbf)' & (x:sbf)) | ((x:sbf) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 6,
+      "formula": "((((x:sbf)' & (x:sbf)) | ((x:sbf) & (x:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 7,
+      "formula": "((((x:sbf)' & (x:sbf)) | ((x:sbf) & (x:sbf)') | ((x:sbf) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 8,
+      "formula": "((((x:sbf)' & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 9,
+      "formula": "((((x:sbf)' & (x:sbf)') | ((x:sbf) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 10,
+      "formula": "((((x:sbf)' & (x:sbf)') | ((x:sbf) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 11,
+      "formula": "((((x:sbf)' & (x:sbf)') | ((x:sbf) & (x:sbf)') | ((x:sbf) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 12,
+      "formula": "((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 13,
+      "formula": "((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)) | ((x:sbf) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 14,
+      "formula": "((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)) | ((x:sbf) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 0,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 1,
+      "formula": "((((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 2,
+      "formula": "((((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 3,
+      "formula": "((((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 4,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 5,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 6,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 7,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 8,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 9,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 10,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 11,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 12,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 13,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 14,
+      "formula": "((((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((x:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((x:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 1,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 1,
+      "formula": "((((x:sbf) & (y:sbf)))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 2,
+      "formula": "((((x:sbf) & (y:sbf)'))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 3,
+      "formula": "((((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 4,
+      "formula": "((((x:sbf)' & (y:sbf)))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 5,
+      "formula": "((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 6,
+      "formula": "((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 7,
+      "formula": "((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 8,
+      "formula": "((((x:sbf)' & (y:sbf)'))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 9,
+      "formula": "((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 10,
+      "formula": "((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 11,
+      "formula": "((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 12,
+      "formula": "((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 13,
+      "formula": "((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 14,
+      "formula": "((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 2,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 1,
+      "formula": "((((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 2,
+      "formula": "((((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 3,
+      "formula": "((((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 4,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 5,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 6,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 7,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 8,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 9,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 10,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 11,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 12,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 13,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 14,
+      "formula": "((((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((x:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((x:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 3,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 1,
+      "formula": "((((x:sbf) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 2,
+      "formula": "((((x:sbf) & (0)'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 3,
+      "formula": "((((x:sbf) & (0)') | ((x:sbf) & (0)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 4,
+      "formula": "((((x:sbf)' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 5,
+      "formula": "((((x:sbf)' & (0)) | ((x:sbf) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 6,
+      "formula": "((((x:sbf)' & (0)) | ((x:sbf) & (0)'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 7,
+      "formula": "((((x:sbf)' & (0)) | ((x:sbf) & (0)') | ((x:sbf) & (0)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 8,
+      "formula": "((((x:sbf)' & (0)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 9,
+      "formula": "((((x:sbf)' & (0)') | ((x:sbf) & (0)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 10,
+      "formula": "((((x:sbf)' & (0)') | ((x:sbf) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 11,
+      "formula": "((((x:sbf)' & (0)') | ((x:sbf) & (0)') | ((x:sbf) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 12,
+      "formula": "((((x:sbf)' & (0)') | ((x:sbf)' & (0)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 13,
+      "formula": "((((x:sbf)' & (0)') | ((x:sbf)' & (0)) | ((x:sbf) & (0)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 14,
+      "formula": "((((x:sbf)' & (0)') | ((x:sbf)' & (0)) | ((x:sbf) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 4,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 1,
+      "formula": "((((x:sbf) & (1)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 2,
+      "formula": "((((x:sbf) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 3,
+      "formula": "((((x:sbf) & (1)') | ((x:sbf) & (1)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 4,
+      "formula": "((((x:sbf)' & (1)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 5,
+      "formula": "((((x:sbf)' & (1)) | ((x:sbf) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 6,
+      "formula": "((((x:sbf)' & (1)) | ((x:sbf) & (1)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 7,
+      "formula": "((((x:sbf)' & (1)) | ((x:sbf) & (1)') | ((x:sbf) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 8,
+      "formula": "((((x:sbf)' & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 9,
+      "formula": "((((x:sbf)' & (1)') | ((x:sbf) & (1)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 10,
+      "formula": "((((x:sbf)' & (1)') | ((x:sbf) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 11,
+      "formula": "((((x:sbf)' & (1)') | ((x:sbf) & (1)') | ((x:sbf) & (1)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 12,
+      "formula": "((((x:sbf)' & (1)') | ((x:sbf)' & (1)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 13,
+      "formula": "((((x:sbf)' & (1)') | ((x:sbf)' & (1)) | ((x:sbf) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 14,
+      "formula": "((((x:sbf)' & (1)') | ((x:sbf)' & (1)) | ((x:sbf) & (1)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 0,
+      "right": 5,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 1,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 2,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 3,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 4,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 5,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 6,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 7,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 8,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 9,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 10,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 11,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 12,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 13,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 14,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (x:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (x:sbf)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 0,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 1,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 2,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 3,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 4,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 5,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 6,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 7,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 8,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 9,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 10,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 11,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 12,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 13,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 14,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 1,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 1,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 2,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)'))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 3,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 4,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 5,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 6,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 7,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 8,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)'))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 9,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 10,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 11,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 12,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 13,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 14,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (y:sbf)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (y:sbf)'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 2,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 1,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 2,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 3,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 4,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 5,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 6,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 7,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 8,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 9,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 10,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 11,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 12,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 13,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 14,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 3,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 1,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 2,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 3,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 4,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 5,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 6,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 7,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 8,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 9,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 10,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 11,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 12,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 13,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 14,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (0)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 4,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 1,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 2,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 3,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 4,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 5,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 6,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 7,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 8,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 9,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 10,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 11,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 12,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 13,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 14,
+      "formula": "((((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)') | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))' & (1)) | ((((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf))) & (1)'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 1,
+      "right": 5,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 1,
+      "formula": "((((y:sbf) & (x:sbf)))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 2,
+      "formula": "((((y:sbf) & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 3,
+      "formula": "((((y:sbf) & (x:sbf)') | ((y:sbf) & (x:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 4,
+      "formula": "((((y:sbf)' & (x:sbf)))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 5,
+      "formula": "((((y:sbf)' & (x:sbf)) | ((y:sbf) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 6,
+      "formula": "((((y:sbf)' & (x:sbf)) | ((y:sbf) & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 7,
+      "formula": "((((y:sbf)' & (x:sbf)) | ((y:sbf) & (x:sbf)') | ((y:sbf) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 8,
+      "formula": "((((y:sbf)' & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 9,
+      "formula": "((((y:sbf)' & (x:sbf)') | ((y:sbf) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 10,
+      "formula": "((((y:sbf)' & (x:sbf)') | ((y:sbf) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 11,
+      "formula": "((((y:sbf)' & (x:sbf)') | ((y:sbf) & (x:sbf)') | ((y:sbf) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 12,
+      "formula": "((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 13,
+      "formula": "((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)) | ((y:sbf) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 14,
+      "formula": "((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)) | ((y:sbf) & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 0,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 1,
+      "formula": "((((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 2,
+      "formula": "((((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 3,
+      "formula": "((((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 4,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 5,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 6,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 7,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 8,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 9,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 10,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 11,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 12,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 13,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 14,
+      "formula": "((((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((y:sbf)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((y:sbf) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 1,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 1,
+      "formula": "((((y:sbf) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 2,
+      "formula": "((((y:sbf) & (y:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 3,
+      "formula": "((((y:sbf) & (y:sbf)') | ((y:sbf) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 4,
+      "formula": "((((y:sbf)' & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 5,
+      "formula": "((((y:sbf)' & (y:sbf)) | ((y:sbf) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 6,
+      "formula": "((((y:sbf)' & (y:sbf)) | ((y:sbf) & (y:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 7,
+      "formula": "((((y:sbf)' & (y:sbf)) | ((y:sbf) & (y:sbf)') | ((y:sbf) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 8,
+      "formula": "((((y:sbf)' & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 9,
+      "formula": "((((y:sbf)' & (y:sbf)') | ((y:sbf) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 10,
+      "formula": "((((y:sbf)' & (y:sbf)') | ((y:sbf) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 11,
+      "formula": "((((y:sbf)' & (y:sbf)') | ((y:sbf) & (y:sbf)') | ((y:sbf) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 12,
+      "formula": "((((y:sbf)' & (y:sbf)') | ((y:sbf)' & (y:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 13,
+      "formula": "((((y:sbf)' & (y:sbf)') | ((y:sbf)' & (y:sbf)) | ((y:sbf) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 14,
+      "formula": "((((y:sbf)' & (y:sbf)') | ((y:sbf)' & (y:sbf)) | ((y:sbf) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 2,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 1,
+      "formula": "((((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 2,
+      "formula": "((((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 3,
+      "formula": "((((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 4,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 5,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 6,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 7,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 8,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 9,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 10,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 11,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 12,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 13,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 14,
+      "formula": "((((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((y:sbf)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((y:sbf) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 3,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 1,
+      "formula": "((((y:sbf) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 2,
+      "formula": "((((y:sbf) & (0)'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 3,
+      "formula": "((((y:sbf) & (0)') | ((y:sbf) & (0)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 4,
+      "formula": "((((y:sbf)' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 5,
+      "formula": "((((y:sbf)' & (0)) | ((y:sbf) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 6,
+      "formula": "((((y:sbf)' & (0)) | ((y:sbf) & (0)'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 7,
+      "formula": "((((y:sbf)' & (0)) | ((y:sbf) & (0)') | ((y:sbf) & (0)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 8,
+      "formula": "((((y:sbf)' & (0)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 9,
+      "formula": "((((y:sbf)' & (0)') | ((y:sbf) & (0)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 10,
+      "formula": "((((y:sbf)' & (0)') | ((y:sbf) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 11,
+      "formula": "((((y:sbf)' & (0)') | ((y:sbf) & (0)') | ((y:sbf) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 12,
+      "formula": "((((y:sbf)' & (0)') | ((y:sbf)' & (0)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 13,
+      "formula": "((((y:sbf)' & (0)') | ((y:sbf)' & (0)) | ((y:sbf) & (0)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 14,
+      "formula": "((((y:sbf)' & (0)') | ((y:sbf)' & (0)) | ((y:sbf) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 4,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 1,
+      "formula": "((((y:sbf) & (1)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 2,
+      "formula": "((((y:sbf) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 3,
+      "formula": "((((y:sbf) & (1)') | ((y:sbf) & (1)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 4,
+      "formula": "((((y:sbf)' & (1)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 5,
+      "formula": "((((y:sbf)' & (1)) | ((y:sbf) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 6,
+      "formula": "((((y:sbf)' & (1)) | ((y:sbf) & (1)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 7,
+      "formula": "((((y:sbf)' & (1)) | ((y:sbf) & (1)') | ((y:sbf) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 8,
+      "formula": "((((y:sbf)' & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 9,
+      "formula": "((((y:sbf)' & (1)') | ((y:sbf) & (1)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 10,
+      "formula": "((((y:sbf)' & (1)') | ((y:sbf) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 11,
+      "formula": "((((y:sbf)' & (1)') | ((y:sbf) & (1)') | ((y:sbf) & (1)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 12,
+      "formula": "((((y:sbf)' & (1)') | ((y:sbf)' & (1)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 13,
+      "formula": "((((y:sbf)' & (1)') | ((y:sbf)' & (1)) | ((y:sbf) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 14,
+      "formula": "((((y:sbf)' & (1)') | ((y:sbf)' & (1)) | ((y:sbf) & (1)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 2,
+      "right": 5,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 1,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 2,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 3,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 4,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 5,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 6,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 7,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 8,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 9,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 10,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 11,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 12,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 13,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 14,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (x:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (x:sbf)'))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 0,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 1,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 2,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 3,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 4,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 5,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 6,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 7,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)'))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 8,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 9,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 10,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 11,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 12,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 13,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 14,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf)))).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 1,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 1,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 2,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 3,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 4,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 5,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 6,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 7,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 8,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 9,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 10,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 11,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 12,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 13,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 14,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (y:sbf)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (y:sbf)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 2,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 1,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 2,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 3,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 4,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 5,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 6,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 7,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 8,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 9,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 10,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 11,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 12,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 13,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 14,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 3,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 1,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 2,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 3,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 4,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 5,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 6,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 7,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 8,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 9,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 10,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 11,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 12,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 13,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 14,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (0)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 4,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 1,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 2,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 3,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 4,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 5,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 6,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 7,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 8,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 9,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 10,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 11,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 12,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 13,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 14,
+      "formula": "((((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)') | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))' & (1)) | ((((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf))) & (1)'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 3,
+      "right": 5,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 1,
+      "formula": "((((0) & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 2,
+      "formula": "((((0) & (x:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 3,
+      "formula": "((((0) & (x:sbf)') | ((0) & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 4,
+      "formula": "((((0)' & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 5,
+      "formula": "((((0)' & (x:sbf)) | ((0) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 6,
+      "formula": "((((0)' & (x:sbf)) | ((0) & (x:sbf)'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 7,
+      "formula": "((((0)' & (x:sbf)) | ((0) & (x:sbf)') | ((0) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 8,
+      "formula": "((((0)' & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 9,
+      "formula": "((((0)' & (x:sbf)') | ((0) & (x:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 10,
+      "formula": "((((0)' & (x:sbf)') | ((0) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 11,
+      "formula": "((((0)' & (x:sbf)') | ((0) & (x:sbf)') | ((0) & (x:sbf)))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 12,
+      "formula": "((((0)' & (x:sbf)') | ((0)' & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 13,
+      "formula": "((((0)' & (x:sbf)') | ((0)' & (x:sbf)) | ((0) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 14,
+      "formula": "((((0)' & (x:sbf)') | ((0)' & (x:sbf)) | ((0) & (x:sbf)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 0,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 1,
+      "formula": "((((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 2,
+      "formula": "((((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 3,
+      "formula": "((((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 4,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 5,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 6,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 7,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 8,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 9,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 10,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 11,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 12,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 13,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 14,
+      "formula": "((((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((0)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((0) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 1,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 1,
+      "formula": "((((0) & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 2,
+      "formula": "((((0) & (y:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 3,
+      "formula": "((((0) & (y:sbf)') | ((0) & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 4,
+      "formula": "((((0)' & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 5,
+      "formula": "((((0)' & (y:sbf)) | ((0) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 6,
+      "formula": "((((0)' & (y:sbf)) | ((0) & (y:sbf)'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 7,
+      "formula": "((((0)' & (y:sbf)) | ((0) & (y:sbf)') | ((0) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 8,
+      "formula": "((((0)' & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 9,
+      "formula": "((((0)' & (y:sbf)') | ((0) & (y:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 10,
+      "formula": "((((0)' & (y:sbf)') | ((0) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 11,
+      "formula": "((((0)' & (y:sbf)') | ((0) & (y:sbf)') | ((0) & (y:sbf)))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 12,
+      "formula": "((((0)' & (y:sbf)') | ((0)' & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 13,
+      "formula": "((((0)' & (y:sbf)') | ((0)' & (y:sbf)) | ((0) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 14,
+      "formula": "((((0)' & (y:sbf)') | ((0)' & (y:sbf)) | ((0) & (y:sbf)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 2,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 1,
+      "formula": "((((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 2,
+      "formula": "((((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 3,
+      "formula": "((((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 4,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 5,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 6,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 7,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 8,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 9,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 10,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 11,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 12,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 13,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 14,
+      "formula": "((((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((0)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((0) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 3,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 1,
+      "formula": "((((0) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 2,
+      "formula": "((((0) & (0)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 3,
+      "formula": "((((0) & (0)') | ((0) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 4,
+      "formula": "((((0)' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 5,
+      "formula": "((((0)' & (0)) | ((0) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 6,
+      "formula": "((((0)' & (0)) | ((0) & (0)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 7,
+      "formula": "((((0)' & (0)) | ((0) & (0)') | ((0) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 8,
+      "formula": "((((0)' & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 9,
+      "formula": "((((0)' & (0)') | ((0) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 10,
+      "formula": "((((0)' & (0)') | ((0) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 11,
+      "formula": "((((0)' & (0)') | ((0) & (0)') | ((0) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 12,
+      "formula": "((((0)' & (0)') | ((0)' & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 13,
+      "formula": "((((0)' & (0)') | ((0)' & (0)) | ((0) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 14,
+      "formula": "((((0)' & (0)') | ((0)' & (0)) | ((0) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 4,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 1,
+      "formula": "((((0) & (1)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 2,
+      "formula": "((((0) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 3,
+      "formula": "((((0) & (1)') | ((0) & (1)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 4,
+      "formula": "((((0)' & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 5,
+      "formula": "((((0)' & (1)) | ((0) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 6,
+      "formula": "((((0)' & (1)) | ((0) & (1)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 7,
+      "formula": "((((0)' & (1)) | ((0) & (1)') | ((0) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 8,
+      "formula": "((((0)' & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 9,
+      "formula": "((((0)' & (1)') | ((0) & (1)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 10,
+      "formula": "((((0)' & (1)') | ((0) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 11,
+      "formula": "((((0)' & (1)') | ((0) & (1)') | ((0) & (1)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 12,
+      "formula": "((((0)' & (1)') | ((0)' & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 13,
+      "formula": "((((0)' & (1)') | ((0)' & (1)) | ((0) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 14,
+      "formula": "((((0)' & (1)') | ((0)' & (1)) | ((0) & (1)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 4,
+      "right": 5,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 1,
+      "formula": "((((1) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 2,
+      "formula": "((((1) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 3,
+      "formula": "((((1) & (x:sbf)') | ((1) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 4,
+      "formula": "((((1)' & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 5,
+      "formula": "((((1)' & (x:sbf)) | ((1) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 6,
+      "formula": "((((1)' & (x:sbf)) | ((1) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 7,
+      "formula": "((((1)' & (x:sbf)) | ((1) & (x:sbf)') | ((1) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 8,
+      "formula": "((((1)' & (x:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 9,
+      "formula": "((((1)' & (x:sbf)') | ((1) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 10,
+      "formula": "((((1)' & (x:sbf)') | ((1) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 11,
+      "formula": "((((1)' & (x:sbf)') | ((1) & (x:sbf)') | ((1) & (x:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 12,
+      "formula": "((((1)' & (x:sbf)') | ((1)' & (x:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 13,
+      "formula": "((((1)' & (x:sbf)') | ((1)' & (x:sbf)) | ((1) & (x:sbf)))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 14,
+      "formula": "((((1)' & (x:sbf)') | ((1)' & (x:sbf)) | ((1) & (x:sbf)'))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 0,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 1,
+      "formula": "((((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 2,
+      "formula": "((((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 3,
+      "formula": "((((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 4,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 5,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 6,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 7,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 8,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 9,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 10,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 11,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 12,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 13,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))))) = ((x:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 14,
+      "formula": "((((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))') | ((1)' & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))) | ((1) & (((x:sbf)' & (x:sbf)') | ((x:sbf)' & (x:sbf)))'))) = ((x:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 1,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 1,
+      "formula": "((((1) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 2,
+      "formula": "((((1) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 3,
+      "formula": "((((1) & (y:sbf)') | ((1) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 4,
+      "formula": "((((1)' & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 5,
+      "formula": "((((1)' & (y:sbf)) | ((1) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 6,
+      "formula": "((((1)' & (y:sbf)) | ((1) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 7,
+      "formula": "((((1)' & (y:sbf)) | ((1) & (y:sbf)') | ((1) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 8,
+      "formula": "((((1)' & (y:sbf)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 9,
+      "formula": "((((1)' & (y:sbf)') | ((1) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 10,
+      "formula": "((((1)' & (y:sbf)') | ((1) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 11,
+      "formula": "((((1)' & (y:sbf)') | ((1) & (y:sbf)') | ((1) & (y:sbf)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 12,
+      "formula": "((((1)' & (y:sbf)') | ((1)' & (y:sbf)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 13,
+      "formula": "((((1)' & (y:sbf)') | ((1)' & (y:sbf)) | ((1) & (y:sbf)))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 14,
+      "formula": "((((1)' & (y:sbf)') | ((1)' & (y:sbf)) | ((1) & (y:sbf)'))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 2,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 1,
+      "formula": "((((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 2,
+      "formula": "((((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 3,
+      "formula": "((((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 4,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 5,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 6,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 7,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 8,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 9,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 10,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 11,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 12,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 13,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))))) = ((y:sbf)').",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 14,
+      "formula": "((((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))') | ((1)' & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))) | ((1) & (((y:sbf)' & (x:sbf)') | ((y:sbf)' & (x:sbf)))'))) = ((y:sbf)).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 3,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 1,
+      "formula": "((((1) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 2,
+      "formula": "((((1) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 3,
+      "formula": "((((1) & (0)') | ((1) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 4,
+      "formula": "((((1)' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 5,
+      "formula": "((((1)' & (0)) | ((1) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 6,
+      "formula": "((((1)' & (0)) | ((1) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 7,
+      "formula": "((((1)' & (0)) | ((1) & (0)') | ((1) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 8,
+      "formula": "((((1)' & (0)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 9,
+      "formula": "((((1)' & (0)') | ((1) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 10,
+      "formula": "((((1)' & (0)') | ((1) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 11,
+      "formula": "((((1)' & (0)') | ((1) & (0)') | ((1) & (0)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 12,
+      "formula": "((((1)' & (0)') | ((1)' & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 13,
+      "formula": "((((1)' & (0)') | ((1)' & (0)) | ((1) & (0)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 14,
+      "formula": "((((1)' & (0)') | ((1)' & (0)) | ((1) & (0)'))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 4,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 0,
+      "formula": "((0)) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 1,
+      "formula": "((((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 2,
+      "formula": "((((1) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 3,
+      "formula": "((((1) & (1)') | ((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 4,
+      "formula": "((((1)' & (1)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 5,
+      "formula": "((((1)' & (1)) | ((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 6,
+      "formula": "((((1)' & (1)) | ((1) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 7,
+      "formula": "((((1)' & (1)) | ((1) & (1)') | ((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 8,
+      "formula": "((((1)' & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 9,
+      "formula": "((((1)' & (1)') | ((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 10,
+      "formula": "((((1)' & (1)') | ((1) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 11,
+      "formula": "((((1)' & (1)') | ((1) & (1)') | ((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 12,
+      "formula": "((((1)' & (1)') | ((1)' & (1)))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 13,
+      "formula": "((((1)' & (1)') | ((1)' & (1)) | ((1) & (1)))) = (1).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 14,
+      "formula": "((((1)' & (1)') | ((1)' & (1)) | ((1) & (1)'))) = (0).",
+      "valid": true
+    },
+    {
+      "left": 5,
+      "right": 5,
+      "gate": 15,
+      "formula": "((1)) = (1).",
+      "valid": true
+    }
+  ],
+  "mutants": [
+    {
+      "gate": 0,
+      "mutant": 1,
+      "formula": "(0) = (((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 1,
+      "mutant": 0,
+      "formula": "(((x:sbf) & (y:sbf))) = (0).",
+      "valid": false
+    },
+    {
+      "gate": 2,
+      "mutant": 3,
+      "formula": "(((x:sbf) & (y:sbf)')) = (((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 3,
+      "mutant": 2,
+      "formula": "(((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf))) = (((x:sbf) & (y:sbf)')).",
+      "valid": false
+    },
+    {
+      "gate": 4,
+      "mutant": 5,
+      "formula": "(((x:sbf)' & (y:sbf))) = (((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 5,
+      "mutant": 4,
+      "formula": "(((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf))) = (((x:sbf)' & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 6,
+      "mutant": 7,
+      "formula": "(((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)')) = (((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 7,
+      "mutant": 6,
+      "formula": "(((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf))) = (((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)')).",
+      "valid": false
+    },
+    {
+      "gate": 8,
+      "mutant": 9,
+      "formula": "(((x:sbf)' & (y:sbf)')) = (((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 9,
+      "mutant": 8,
+      "formula": "(((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf))) = (((x:sbf)' & (y:sbf)')).",
+      "valid": false
+    },
+    {
+      "gate": 10,
+      "mutant": 11,
+      "formula": "(((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)')) = (((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 11,
+      "mutant": 10,
+      "formula": "(((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)') | ((x:sbf) & (y:sbf))) = (((x:sbf)' & (y:sbf)') | ((x:sbf) & (y:sbf)')).",
+      "valid": false
+    },
+    {
+      "gate": 12,
+      "mutant": 13,
+      "formula": "(((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf))) = (((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 13,
+      "mutant": 12,
+      "formula": "(((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf))) = (((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf))).",
+      "valid": false
+    },
+    {
+      "gate": 14,
+      "mutant": 15,
+      "formula": "(((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)')) = (1).",
+      "valid": false
+    },
+    {
+      "gate": 15,
+      "mutant": 14,
+      "formula": "(1) = (((x:sbf)' & (y:sbf)') | ((x:sbf)' & (y:sbf)) | ((x:sbf) & (y:sbf)')).",
+      "valid": false
+    }
+  ],
+  "scope": "Tau decides primitive Boolean identities and executes the 16-function gate bank. Graph scheduling and integer vote addition remain independent host operations. No claim about conversational accuracy or native Mealy compilation."
+}

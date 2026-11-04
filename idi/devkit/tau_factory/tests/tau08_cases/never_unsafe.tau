@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# never_unsafe - Generated Tau Agent
+# Auto-generated from AgentSchema
+# never_unsafe Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# never_unsafe pattern: result <- a
+always (
+((o0[t] = i0[t]'))
+).

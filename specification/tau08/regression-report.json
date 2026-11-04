@@ -1,0 +1,41 @@
+{
+  "baseline_commit": "94fcc565f46e68405e9f1a5cd8921a3d3378fb1c",
+  "factory": {
+    "passed": 193,
+    "skipped": 34,
+    "failed": 0,
+    "scope": "Full factory suite without the separately installed native API; legacy launcher tests probe availability."
+  },
+  "ian_full": {
+    "passed": 527,
+    "failed": 10,
+    "errors": 7,
+    "skipped": 3
+  },
+  "ian_baseline_targeted": {
+    "passed": 33,
+    "failed": 10,
+    "errors": 7
+  },
+  "same_failure_ids": true,
+  "failure_ids": [
+    "idi/ian/tests/test_integration_new_modules.py::TestEndToEndWorkflow::test_contribution_lifecycle",
+    "idi/ian/tests/test_integration_new_modules.py::TestSecurityProperties::test_slotbatcher_quality_clamped",
+    "idi/ian/tests/test_integration_new_modules.py::TestSlotBatcherWithMeritRank::test_quality_weights_from_meritrank",
+    "idi/ian/tests/test_p2p_pbt.py::TestRateLimiting::test_token_bucket_bounds",
+    "idi/ian/tests/test_p2p_stateful_pbt.py::TestCase::runTest",
+    "idi/ian/tests/test_p2p_stateful_pbt.py::TestP2PManagerStateful::TestCase::runTest",
+    "idi/ian/tests/test_slotbatcher.py::TestSlot::test_invalid_state_transitions",
+    "idi/ian/tests/test_slotbatcher.py::TestSlot::test_valid_state_transitions",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_finalize_and_order",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_get_current_slot",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_ordering_proof",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_quality_weight_affects_ordering",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_reveal_verification",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_reveal_wrong_content_fails",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcher::test_submit_contribution",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcherSecurity::test_cannot_reveal_during_collection",
+    "idi/ian/tests/test_slotbatcher.py::TestSlotBatcherSecurity::test_vrf_public_key_accessible"
+  ],
+  "scope": "The current full IAN suite has pre-existing Slot constructor and P2P property-test incompatibilities. All 17 failing/error test IDs reproduce on the original commit. Focused bridge tests pass. No green full-suite claim."
+}

@@ -1,0 +1,14 @@
+{
+  "seeds": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "existing_seed1": "control-15872-annealed-seed1",
+  "members": 7,
+  "tables": 111104,
+  "rule": "Equal integer votes; fixed seven seeds. Validation-only architecture selection; test remains sealed."
+}

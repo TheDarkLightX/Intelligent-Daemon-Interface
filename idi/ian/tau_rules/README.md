@@ -1,60 +1,31 @@
-# IAN Tau Language Rules
+# Native Tau 0.8 IAN boundary contracts
 
-This directory contains Tau Language specifications for validating IAN operations on Tau Net.
+These six files replace earlier pseudocode with typed, executable constraints.
+Each file's header defines its input mapping. Host code supplies verified facts
+about one goal; Tau decides a bounded transition. Nothing here computes a
+signature, Merkle proof, transaction hash, consensus result or finality.
 
-## Overview
+| File | Decision |
+| --- | --- |
+| `ian_goal_register.tau` | Registration type, uniqueness, nonzero specification hash, name, governance kind and verified signature |
+| `ian_log_commit.tau` | Registered goal, evidence flags, previous hash, bond, monotonic size and bounded leaderboard |
+| `ian_upgrade.tau` | Policy identity, better unsigned fixed-point score, membership, monotonic clock, cooldown, governance and counter capacity |
+| `ian_challenge.tau` | Open challenge window, bond, prior resolution and exclusive valid/invalid challenge settlement flags |
+| `ian_economics.tau` | Authorized half-slash or checked deposit; exact remainder conservation |
+| `ian_state.tau` | A one-goal fold of already-validated events; conflicting commit and upgrade hold state |
 
-IAN operates as a Layer 2 on Tau Net. These rules define the on-chain validation logic for:
+The economic example does not implement withdrawals or slash escalation. The
+state fold does not provide a persistent registry. Governance never bypasses
+cooldown in the new upgrade contract. These choices are explicit corrections to
+incomplete historical sketches, not a compatibility claim for nonexistent
+previous implementations.
 
-1. **Goal Registration** (`IAN_GOAL_REGISTER`) - Register new coordination goals
-2. **Log Commits** (`IAN_LOG_COMMIT`) - Commit state roots to L1
-3. **Upgrades** (`IAN_UPGRADE`) - Update active policies
-4. **Challenges** (`IAN_CHALLENGE`) - Submit fraud proofs
+The Python `TauBridge` uses independent pure preflight checks and an optional
+governance-verifier callback. It does not automatically execute this entire Tau
+rule set. In particular, its floating-point application score has no implicit
+mapping to the Tau unsigned fixed-point score. A live Tau Net adapter must supply
+a documented conversion, the cryptographic facts, current authoritative state,
+and reconciliation of unknown transaction outcomes before claiming equivalence.
 
-## State Streams
-
-IAN uses the following Tau state streams:
-
-| Stream | Description |
-|--------|-------------|
-| `ian_goals[goal_id]` | Registered goal metadata |
-| `ian_log_root[goal_id]` | Current MMR log root |
-| `ian_lb_root[goal_id]` | Current leaderboard root |
-| `ian_active_policy[goal_id]` | Active policy hash |
-| `ian_upgrade_count[goal_id]` | Upgrade counter |
-| `ian_committer_bond[committer]` | Committer bond amounts |
-| `ian_last_commit[goal_id]` | Timestamp of last commit |
-
-## Files
-
-| File | Description |
-|------|-------------|
-| `ian_state.tau` | State stream definitions |
-| `ian_goal_register.tau` | Goal registration rules |
-| `ian_log_commit.tau` | Log commit validation |
-| `ian_upgrade.tau` | Policy upgrade rules |
-| `ian_challenge.tau` | Fraud proof validation |
-| `ian_governance.tau` | Multi-sig / voting rules |
-| `ian_economics.tau` | Bonding / slashing rules |
-
-## Integration
-
-To integrate with Tau Testnet:
-
-1. Copy rules to `tau-testnet/rules/` directory
-2. Reference in genesis.tau or load via rule proposals
-3. IAN transactions will be validated against these rules
-
-## Example Transaction Flow
-
-```
-1. Node submits IAN_LOG_COMMIT transaction
-2. Tau validates against ian_log_commit.tau rules:
-   - Check committer has bond
-   - Check prev_commit_hash matches
-   - Check timestamp is valid
-3. If valid, update ian_log_root and ian_lb_root streams
-4. Challenge period begins
-5. If challenged, ian_challenge.tau validates fraud proof
-6. If valid fraud proof, slash committer via ian_economics.tau
-```
+Native interpreter admission is in `qualification.json`; behavioral oracles are
+in `../tests/test_tau08_contracts.py`. Acquire Tau separately under its license.

@@ -1,0 +1,7 @@
+.text
+.globl zeno_kernel
+.type zeno_kernel,@function
+zeno_kernel:
+.byte 0x48,0x89,0xf8,0x48,0x21,0xf0,0xc3
+.size zeno_kernel,.-zeno_kernel
+.section .note.GNU-stack,"",@progbits

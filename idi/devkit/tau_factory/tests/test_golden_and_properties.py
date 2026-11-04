@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from idi.devkit.tau_factory.generator import generate_tau_spec
+from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec
 from idi.devkit.tau_factory.schema import AgentSchema, LogicBlock, StreamConfig
 
 
-FIXTURES = Path(__file__).parent / "fixtures" / "golden_smoke"
+FIXTURES = Path(__file__).parent / "fixtures" / "legacy_07"
 
 
 def _normalize(text: str) -> list[str]:

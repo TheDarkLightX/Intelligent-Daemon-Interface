@@ -1,0 +1,92 @@
+{
+  "timeout_seconds": 30,
+  "address_space_limit_bytes": 2147483648,
+  "scope": "Retried only previously budget-inconclusive sources with explicit sbf helper types where applicable. No behavioral equivalence or historical financial/performance claim.",
+  "results": [
+    {
+      "source": "idi/specs/V38_Minimal_Core/agent4_testnet_v38.tau",
+      "candidate_sha256": "041bde3f0b7abbc6f7a0f7a457ecfaad81d13f07e95788509335930c3439a98d",
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 8.788
+      }
+    },
+    {
+      "source": "specification/V35_Production_Ready_Kernel/agent4_testnet_v35.tau",
+      "candidate_sha256": "a90b88f11b2398729f02565f16e11123f5fe2f61b225932cf9889b85ec16b08e",
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 21.866
+      }
+    },
+    {
+      "source": "specification/V36_Bitvector_Timer/agent4_testnet_v36.tau",
+      "candidate_sha256": "56abb5a145894e174f3d27f91f7b9dc466b4160530e550e8218d266766f38c29",
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 24.025
+      }
+    },
+    {
+      "source": "specification/V37_Extended_Bitvector/agent4_testnet_v37.tau",
+      "candidate_sha256": "b6eab6277000562d2eb4846c28b329f48491e1acc53e3aa2c914429081b3a793",
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 26.934
+      }
+    },
+    {
+      "source": "specification/agent4_testnet_v35.tau",
+      "candidate_sha256": "a90b88f11b2398729f02565f16e11123f5fe2f61b225932cf9889b85ec16b08e",
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 20.778
+      }
+    },
+    {
+      "source": "specification/agent4_testnet_v39b.tau",
+      "candidate_sha256": "81aeb31e11205f3456d45b639a5babd3383f39d967e564690d22390b094e0cf4",
+      "native": {
+        "accepted": false,
+        "errors": [
+          "type inference failed"
+        ],
+        "status": "native-refused",
+        "seconds": 10.877
+      }
+    },
+    {
+      "source": "specification/agent4_testnet_v39c.tau",
+      "candidate_sha256": "e51d26c9f3b39841a7e0ed5fb500e0ee5f8158df70682221d411aeb26624f8db",
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 8.205
+      }
+    },
+    {
+      "source": "specification/agent4_testnet_v41.tau",
+      "candidate_sha256": "3d9becd0fa5ccd485c61e8def81518c7cfd824b2a3b62effe1edda275c1371ff",
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xc3 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 12.176
+      }
+    }
+  ]
+}

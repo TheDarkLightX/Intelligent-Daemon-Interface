@@ -6,7 +6,7 @@ output to the original monolithic generator for all supported patterns.
 
 import pytest
 from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
-from idi.devkit.tau_factory.generator import generate_tau_spec, validate_schema
+from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec, validate_schema
 
 
 class TestFunctionalityRegression:

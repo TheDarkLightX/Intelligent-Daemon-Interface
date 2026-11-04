@@ -1,12 +1,13 @@
 """End-to-end verification test for supervisor-worker pattern."""
 
 import pytest
+import subprocess
 import tempfile
 from pathlib import Path
 from itertools import product
 
 from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
-from idi.devkit.tau_factory.generator import generate_tau_spec
+from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec
 from idi.devkit.tau_factory.runner import run_tau_spec, TauConfig, TauMode
 
 
@@ -76,6 +77,12 @@ def tau_bin():
     bin_path = find_tau_binary()
     if bin_path is None:
         pytest.skip("Tau binary not found - skipping verification tests")
+    try:
+        probe = subprocess.run([str(bin_path), "--version"], capture_output=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        pytest.skip(f"Tau executable unavailable: {error}")
+    if probe.returncode != 0:
+        pytest.skip("Tau launcher is present but its runtime dependency is unavailable")
     return bin_path
 
 

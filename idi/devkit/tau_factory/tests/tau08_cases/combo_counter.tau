@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# combo_counter - Generated Tau Agent
+# Auto-generated from AgentSchema
+# combo_counter Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# combo_counter pattern: result <- a
+always (
+((o0[t] = i0[t] & (i0[t-1] | o0[t-1])) && (o0[0] = 0))
+).

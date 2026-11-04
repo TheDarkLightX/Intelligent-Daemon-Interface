@@ -21,17 +21,17 @@
 #   o5 = layer2_vote (contrarian wants to act)
 #   o6 = layer3_vote (trend wants to act)
 
-i1 : sbf = in file("inputs/price_up.in")
-i2 : sbf = in file("inputs/price_down.in")
-i3 : sbf = in file("inputs/layer1_weight.in")
-i4 : sbf = in file("inputs/layer2_weight.in")
-i5 : sbf = in file("inputs/layer3_weight.in")
-o1 : sbf = out file("outputs/final_buy.out")
-o2 : sbf = out file("outputs/final_sell.out")
-o3 : sbf = out file("outputs/position.out")
-o4 : sbf = out file("outputs/layer1_vote.out")
-o5 : sbf = out file("outputs/layer2_vote.out")
-o6 : sbf = out file("outputs/layer3_vote.out")
+i1 : sbf := in file("inputs/price_up.in"). 
+i2 : sbf := in file("inputs/price_down.in"). 
+i3 : sbf := in file("inputs/layer1_weight.in"). 
+i4 : sbf := in file("inputs/layer2_weight.in"). 
+i5 : sbf := in file("inputs/layer3_weight.in"). 
+o1 : sbf := out file("outputs/final_buy.out"). 
+o2 : sbf := out file("outputs/final_sell.out"). 
+o3 : sbf := out file("outputs/position.out"). 
+o4 : sbf := out file("outputs/layer1_vote.out"). 
+o5 : sbf := out file("outputs/layer2_vote.out"). 
+o6 : sbf := out file("outputs/layer3_vote.out"). 
 
 # Layer1 (momentum): buy on 2 ups, sell on 2 downs
 # Layer2 (contrarian): buy on down, sell on up
@@ -39,12 +39,6 @@ o6 : sbf = out file("outputs/layer3_vote.out")
 # Final: weighted majority (at least 2 layers agree)
 # Position tracking
 
-r (o4[t] = (i1[t] & i1[t-1] & o3[t-1]') | (i2[t] & i2[t-1] & o3[t-1])) && (o5[t] = (i2[t] & o3[t-1]') | (i1[t] & o3[t-1])) && (o6[t] = (i1[t] & o3[t-1]') | (i2[t] & o3[t-1])) && (o1[t] = o3[t-1]' & ((i3[t] & o4[t] & i1[t]) | (i4[t] & o5[t] & i2[t]) | (i5[t] & o6[t] & i1[t]))) && (o2[t] = o3[t-1] & ((i3[t] & o4[t] & i2[t]) | (i4[t] & o5[t] & i1[t]) | (i5[t] & o6[t] & i2[t]))) && (o3[t] = o1[t] | (o3[t-1] & o2[t]'))
-
-n
-n
-n
-n
-n
-q
-
+always (
+(o4[t] = (i1[t] & i1[t-1] & o3[t-1]') | (i2[t] & i2[t-1] & o3[t-1])) && (o5[t] = (i2[t] & o3[t-1]') | (i1[t] & o3[t-1])) && (o6[t] = (i1[t] & o3[t-1]') | (i2[t] & o3[t-1])) && (o1[t] = o3[t-1]' & ((i3[t] & o4[t] & i1[t]) | (i4[t] & o5[t] & i2[t]) | (i5[t] & o6[t] & i1[t]))) && (o2[t] = o3[t-1] & ((i3[t] & o4[t] & i2[t]) | (i4[t] & o5[t] & i1[t]) | (i5[t] & o6[t] & i2[t]))) && (o3[t] = o1[t] | (o3[t-1] & o2[t]'))
+).

@@ -1,0 +1,17 @@
+{
+  "records": 5211,
+  "counts": {
+    "prompts_seen": 33170,
+    "eligible_pairs": 5211
+  },
+  "splits": {
+    "train": 4188,
+    "validation": 489,
+    "test": 534
+  },
+  "followup_records": 3030,
+  "source": "https://huggingface.co/datasets/OpenAssistant/oasst1/tree/fdf72ae0827c1cda404aff25b6603abec9e3399b",
+  "source_sha256": "2a9a8fd343e9b28e04a895a669d3253f82d93e9c174d440199ae19d5fafbdff7",
+  "bytes": 6944367,
+  "quality": "Source annotations, not independent fact verification"
+}

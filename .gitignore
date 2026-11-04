@@ -124,3 +124,6 @@ runs/
 
 # Local agent scratch/workflows
 .agent/
+
+# Keep the bounded layered-table campaign and its frozen checkpoints.
+!idi/layered_chat/runs/

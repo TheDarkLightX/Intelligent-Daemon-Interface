@@ -16,23 +16,22 @@
 #   o6 = volatility (up XOR down recently)
 #   o7 = total_burn_active
 
-sbf i1 = console
-sbf i2 = console
-sbf i3 = console
-sbf o1 = console
-sbf o2 = console
-sbf o3 = console
-sbf o4 = console
-sbf o5 = console
-sbf o6 = console
-sbf o7 = console
+i1:sbf := in console. 
+i2:sbf := in console. 
+i3:sbf := in console. 
+o1:sbf := out console. 
+o2:sbf := out console. 
+o3:sbf := out console. 
+o4:sbf := out console. 
+o5:sbf := out console. 
+o6:sbf := out console. 
+o7:sbf := out console. 
 
 # Volatility: detected if both up and down in last 2 steps
 # Base burn: always on sell
 # Extra burn: volatility OR daemon boost
 # Total burn: base OR extra when selling
 
-r o6[t] = (i1[t] | i1[t-1]) & (i2[t] | i2[t-1]) && o1[t] = i1[t] & o5[t-1]' && o2[t] = i2[t] & o5[t-1] && o3[t] = o2[t] && o4[t] = (o6[t] | i3[t]) & o2[t] && o5[t] = o1[t] | (o5[t-1] & o2[t]') && o7[t] = o3[t] | o4[t]
-
-q
-
+always (
+o6[t] = (i1[t] | i1[t-1]) & (i2[t] | i2[t-1]) && o1[t] = i1[t] & o5[t-1]' && o2[t] = i2[t] & o5[t-1] && o3[t] = o2[t] && o4[t] = (o6[t] | i3[t]) & o2[t] && o5[t] = o1[t] | (o5[t-1] & o2[t]') && o7[t] = o3[t] | o4[t]
+).

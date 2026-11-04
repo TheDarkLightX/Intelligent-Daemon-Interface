@@ -4344,7 +4344,7 @@ def _generate_execution_commands(num_steps: int) -> List[str]:
     return lines
 
 
-def generate_tau_spec(schema: AgentSchema, validate: bool = True) -> str:
+def generate_legacy_tau_spec(schema: AgentSchema, validate: bool = True) -> str:
     """Generate a complete Tau Language spec from an AgentSchema.
     
     Args:
@@ -4419,3 +4419,26 @@ def generate_tau_spec(schema: AgentSchema, validate: bool = True) -> str:
         
         return spec
 
+
+
+def generate_tau_spec(schema: AgentSchema, validate: bool = True, *, dialect: str = "0.8") -> str:
+    """Emit a Tau 0.8 file specification; legacy REPL output is explicit."""
+    if dialect == "0.7":
+        return generate_legacy_tau_spec(schema, validate=validate)
+    if dialect != "0.8":
+        raise ValueError("Supported Tau dialects are 0.8 and 0.7")
+    from .tau08 import migrate, validate_file_spec
+    legacy = generate_legacy_tau_spec(schema, validate=False)
+    from .modern_patterns import modern_formula
+    body = modern_formula(schema, _generate_recurrence_block)
+    lines = legacy.splitlines()
+    legacy = "\n".join(("r " + body) if line.startswith("r ") else line for line in lines)
+    migration = migrate(legacy)
+    if migration.issues:
+        raise ValueError("Tau 0.8 migration refused: " + "; ".join(migration.issues))
+    spec = "# Tau Language 0.8 file specification; run with --charvar off.\n" + migration.text
+    if validate:
+        valid, errors = validate_file_spec(spec)
+        if not valid:
+            raise ValueError("Tau 0.8 envelope invalid: " + "; ".join(errors))
+    return spec

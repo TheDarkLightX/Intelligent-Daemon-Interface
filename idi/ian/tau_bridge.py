@@ -8,8 +8,8 @@ Implements the bridge between IAN coordinator and Tau Net:
 
 Design Principles:
 - All transactions are deterministic and verifiable
-- State roots are cryptographically bound to Tau consensus
-- Upgrades require governance approval (optional)
+- Local preflight checks precede sending; the sender's acknowledgement is not finality
+- Configured governance approval requires an injected verifier
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from .models import GoalID, GoalSpec, ContributionMeta
+from . import decision_core
 
 
 logger = logging.getLogger(__name__)
@@ -353,6 +354,7 @@ class IanTauState:
     upgrade_count: int = 0
     last_commit_hash: Optional[bytes] = None
     last_upgrade_timestamp_ms: int = 0
+    log_size: int = 0
     
     def to_dict(self) -> Dict[str, Any]:
         """Serialize state to dictionary."""
@@ -365,6 +367,7 @@ class IanTauState:
             "upgrade_count": self.upgrade_count,
             "last_commit_hash": self.last_commit_hash.hex() if self.last_commit_hash else None,
             "last_upgrade_timestamp_ms": self.last_upgrade_timestamp_ms,
+            "log_size": self.log_size,
         }
     
     @classmethod
@@ -379,6 +382,7 @@ class IanTauState:
             upgrade_count=data.get("upgrade_count", 0),
             last_commit_hash=bytes.fromhex(data["last_commit_hash"]) if data.get("last_commit_hash") else None,
             last_upgrade_timestamp_ms=data.get("last_upgrade_timestamp_ms", 0),
+            log_size=data.get("log_size", 0),
         )
 
 
@@ -439,6 +443,7 @@ class TauBridge:
         self,
         sender: Optional[TauTransactionSender] = None,
         config: Optional[TauBridgeConfig] = None,
+        governance_verifier: Optional[Callable[[IanUpgradeTx], bool]] = None,
     ) -> None:
         """
         Initialize TauBridge.
@@ -449,6 +454,7 @@ class TauBridge:
         """
         self.sender = sender or MockTauSender()
         self.config = config or TauBridgeConfig()
+        self.governance_verifier = governance_verifier
         self._states: Dict[str, IanTauState] = {}
         self._pending_commits: Dict[str, IanLogCommitTx] = {}
         self._last_commit_time: Dict[str, float] = {}
@@ -472,6 +478,9 @@ class TauBridge:
             (success, tx_hash_or_error)
         """
         tx = IanGoalRegisterTx.from_goal_spec(spec)
+        decision = decision_core.registration(self.get_state(spec.goal_id).registered, spec.name, tx.goal_spec_hash)
+        if not decision.accepted:
+            return False, decision.reason
         
         success, result = self._send_with_retry(tx.to_wire())
         
@@ -506,7 +515,9 @@ class TauBridge:
             (success, tx_hash_or_error)
         """
         state = self.get_state(goal_id)
-        
+        decision = decision_core.log_commit(state.registered, log_root, log_size, state.log_size, leaderboard_root, leaderboard_size)
+        if not decision.accepted:
+            return False, decision.reason
         tx = IanLogCommitTx(
             goal_id=goal_id,
             log_root=log_root,
@@ -521,6 +532,7 @@ class TauBridge:
         
         if success:
             state.log_root = log_root
+            state.log_size = log_size
             state.leaderboard_root = leaderboard_root
             state.last_commit_hash = tx.tx_hash
             self._last_commit_time[str(goal_id)] = time.time()
@@ -572,6 +584,20 @@ class TauBridge:
             tx = IanUpgradeTx(
                 **{**tx.__dict__, "governance_signatures": governance_signatures, "cooldown_ok": cooldown_ok}
             )
+
+        approved = False
+        if self.config.require_governance_for_upgrade and self.governance_verifier is not None:
+            try:
+                approved = self.governance_verifier(tx) is True
+            except Exception:
+                logger.warning("Governance verification failed", exc_info=True)
+        decision = decision_core.upgrade(
+            state.registered, tx.pack_hash, tx.log_root, tx.log_index, tx.score,
+            now_ms, state.last_upgrade_timestamp_ms, cooldown_ms, state.upgrade_count,
+            self.config.require_governance_for_upgrade, approved,
+        )
+        if not decision.accepted:
+            return False, decision.reason
         
         success, result = self._send_with_retry(tx.to_wire())
         
@@ -648,9 +674,10 @@ class TauBridge:
         data: Dict[str, Any],
         sender: Optional[TauTransactionSender] = None,
         config: Optional[TauBridgeConfig] = None,
+        governance_verifier: Optional[Callable[[IanUpgradeTx], bool]] = None,
     ) -> "TauBridge":
         """Deserialize bridge state."""
-        bridge = cls(sender=sender, config=config)
+        bridge = cls(sender=sender, config=config, governance_verifier=governance_verifier)
         
         for key, state_data in data.get("states", {}).items():
             bridge._states[key] = IanTauState.from_dict(state_data)

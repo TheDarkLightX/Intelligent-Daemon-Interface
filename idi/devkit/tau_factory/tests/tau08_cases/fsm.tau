@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# test_agent - Generated Tau Agent
+# Auto-generated from AgentSchema
+# test_agent Agent (Auto-generated)
+# Strategy: momentum
+
+i0:sbf := in file("inputs/q_buy.in"). 
+i1:sbf := in file("inputs/q_sell.in"). 
+
+o0:sbf := out file("outputs/position.out"). 
+
+# fsm pattern: position <- q_buy, q_sell
+always (
+((o0[t] = i0[t] | (o0[t-1] & i1[t]')) && (o0[0] = 0))
+).

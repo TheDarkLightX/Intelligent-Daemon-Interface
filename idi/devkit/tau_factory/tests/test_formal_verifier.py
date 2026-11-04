@@ -343,7 +343,7 @@ class TestVerifyGoldenSmoke:
     @pytest.fixture
     def smoke_dir(self) -> Path:
         """Get path to golden smoke fixtures."""
-        return Path(__file__).parent / "fixtures" / "golden_smoke"
+        return Path(__file__).parent / "fixtures" / "legacy_07"
     
     def test_smoke_majority(self, smoke_dir: Path) -> None:
         """Verify smoke_majority.tau implements majority voting."""

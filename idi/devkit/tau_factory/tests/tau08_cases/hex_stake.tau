@@ -1,0 +1,18 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# hex_stake_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# hex_stake_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:bv[32] := in file("inputs/stake_amount.in"). 
+i1:bv[16] := in file("inputs/stake_duration.in"). 
+i2:bv[32] := in file("inputs/current_time.in"). 
+i3:sbf := in file("inputs/action_stake.in"). 
+i4:sbf := in file("inputs/action_end.in"). 
+
+o0:sbf := out file("outputs/lock_active.out"). 
+
+# hex_stake pattern: lock_active <- stake_amount, stake_duration, current_time, action_stake, action_end
+always (
+((o0[t] = i3[t] | (o0[t-1] & i4[t]')) && (o0[0] = 0))
+).

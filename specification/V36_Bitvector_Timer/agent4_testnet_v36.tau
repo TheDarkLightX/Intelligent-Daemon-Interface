@@ -1,3 +1,5 @@
+# Tau 0.8 envelope/type port; native admission is not a behavioral proof.
+# Historical performance and financial comments below are unverified.
 # Deflationary Agent V36 - Bitvector Timer Optimization
 # Based on V35 with bitvector timer for improved efficiency and clarity
 # Copyright DarkLightX/Dana Edwards
@@ -13,55 +15,56 @@
 # Valid exit: high price and holding
 
 # === OPTIMIZED INPUT STREAMS (sbf for Boolean signals) ===
-i0 : sbf = in file("inputs/price.in").     # Market price: 0=low, 1=high
-i1 : sbf = in file("inputs/volume.in").    # Trading volume: 0=low, 1=high  
-i2 : sbf = in file("inputs/trend.in").     # Price trend: 0=bearish, 1=bullish
-i3 : sbf = in file("inputs/profit_guard.in").  # Daemon-proved profitability guard
-i4 : sbf = in file("inputs/failure_echo.in").  # Daemon failure echo to force clean exit
+i0 : sbf := in file("inputs/price.in"). # Market price: 0=low, 1=high
+i1 : sbf := in file("inputs/volume.in"). # Trading volume: 0=low, 1=high  
+i2 : sbf := in file("inputs/trend.in"). # Price trend: 0=bearish, 1=bullish
+i3 : sbf := in file("inputs/profit_guard.in"). # Daemon-proved profitability guard
+i4 : sbf := in file("inputs/failure_echo.in"). # Daemon failure echo to force clean exit
 
 # === OPTIMIZED OUTPUT STREAMS ===
 # Core state machine (o0-o3) - sbf for BDD efficiency
-o0 : sbf = out file("outputs/state.out").           # Agent state
-o1 : sbf = out file("outputs/holding.out").         # Position
-o2 : sbf = out file("outputs/buy_signal.out").      # Buy decision
-o3 : sbf = out file("outputs/sell_signal.out").     # Sell decision
+o0 : sbf := out file("outputs/state.out"). # Agent state
+o1 : sbf := out file("outputs/holding.out"). # Position
+o2 : sbf := out file("outputs/buy_signal.out"). # Buy decision
+o3 : sbf := out file("outputs/sell_signal.out"). # Sell decision
 
 # Safety mechanisms (o4-o5)
-o4 : sbf = out file("outputs/lock.out").            # Re-entrancy lock
-o5 : sbf = out file("outputs/oracle_fresh.out").    # Oracle freshness
+o4 : sbf := out file("outputs/lock.out"). # Re-entrancy lock
+o5 : sbf := out file("outputs/oracle_fresh.out"). # Oracle freshness
 
 # V36 CHANGE: Bitvector timer replaces o6/o7
 # Using bv[2] for 2-bit counter (values 0-3)
 # Timer output for monitoring (writes timer value as observable state)
-o6 : sbf = out file("outputs/timer_b0.out").        # Timer bit 0 (for backward compat)
-o7 : sbf = out file("outputs/timer_b1.out").        # Timer bit 1 (for backward compat)
+o6 : sbf := out file("outputs/timer_b0.out"). # Timer bit 0 (for backward compat)
+o7 : sbf := out file("outputs/timer_b1.out"). # Timer bit 1 (for backward compat)
 
 # Nonce and economic tracking (o9-o13)
-o9 : sbf = out file("outputs/nonce.out").           # Nonce for no-replay
-o10 : sbf = out file("outputs/entry_price.out").    # Entry price memory
-o11 : sbf = out file("outputs/profit.out").         # Profitable exit
-o12 : sbf = out file("outputs/burn_event.out").     # Burn triggered
-o13 : sbf = out file("outputs/has_burned.out").     # Burn history (monotonic)
+o9 : sbf := out file("outputs/nonce.out"). # Nonce for no-replay
+o10 : sbf := out file("outputs/entry_price.out"). # Entry price memory
+o11 : sbf := out file("outputs/profit.out"). # Profitable exit
+o12 : sbf := out file("outputs/burn_event.out"). # Burn triggered
+o13 : sbf := out file("outputs/has_burned.out"). # Burn history (monotonic)
 
 # Observable invariants (o14-o17)
-o14 : sbf = out file("outputs/obs_action_excl.out").     # Observe !(buy && sell)
-o15 : sbf = out file("outputs/obs_fresh_exec.out").      # Observe executing -> fresh
-o16 : sbf = out file("outputs/obs_burn_profit.out").     # Observe burn -> profit
-o17 : sbf = out file("outputs/obs_nonce_effect.out").    # Observe nonce blocks repeats
+o14 : sbf := out file("outputs/obs_action_excl.out"). # Observe !(buy && sell)
+o15 : sbf := out file("outputs/obs_fresh_exec.out"). # Observe executing -> fresh
+o16 : sbf := out file("outputs/obs_burn_profit.out"). # Observe burn -> profit
+o17 : sbf := out file("outputs/obs_nonce_effect.out"). # Observe nonce blocks repeats
 
 # Progress tracking (o18)
-o18 : sbf = out file("outputs/progress_flag.out").   # Activity detection
+o18 : sbf := out file("outputs/progress_flag.out"). # Activity detection
 
 # Input mirrors (log raw inputs for trace parity)
-o19 : sbf = out file("outputs/input_price.out").
-o20 : sbf = out file("outputs/input_volume.out").
-o21 : sbf = out file("outputs/input_trend.out").
-o22 : sbf = out file("outputs/input_profit_guard.out").
-o23 : sbf = out file("outputs/input_failure_echo.out").
+o19 : sbf := out file("outputs/input_price.out"). 
+o20 : sbf := out file("outputs/input_volume.out"). 
+o21 : sbf := out file("outputs/input_trend.out"). 
+o22 : sbf := out file("outputs/input_profit_guard.out"). 
+o23 : sbf := out file("outputs/input_failure_echo.out"). 
 
 # === MAIN SPECIFICATION (V36 with Bitvector Timer) ===
 # Note: Timer logic uses internal bitvector arithmetic, outputs sbf bits for compatibility
-r (
+always (
+(
     # === BITVECTOR TIMER LOGIC ===
     # Internal timer counter using bitvector arithmetic
     # Timer increments when executing (o0=1), resets when not executing
@@ -184,4 +187,4 @@ r (
 # - Burn coupling: o12 -> o11 -> o22 (daemon-proved profit)
 # - Monotonic burns: o13[t] >= o13[t-1]
 # - Progress: o18 detects activity for debugging and validation
-
+).

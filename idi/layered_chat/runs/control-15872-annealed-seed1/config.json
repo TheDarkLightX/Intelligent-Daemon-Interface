@@ -1,0 +1,21 @@
+{
+  "epochs": 30,
+  "votes": 64,
+  "depth": 4,
+  "seed": 1,
+  "batch": 256,
+  "rate": 0.025,
+  "eval_every": 5,
+  "wiring": "guided",
+  "pilot": false,
+  "encoder": "words-first",
+  "features": 3072,
+  "anneal": true,
+  "classes": 62,
+  "input_bits": 3072,
+  "source_sha256": {
+    "train.py": "e98ff20729d3e873b8223153164c3189066bcf10d91d00fdfcbe92d9bcd12203",
+    "network.py": "5963df83998c01ccf4ba900327c0bd54a9fa3dec197f60c89800019a304c841b",
+    "corpus.py": "009aa56d2098e84b115233b17b405a981ef821190651320b3cfa214ffbfc43a1"
+  }
+}

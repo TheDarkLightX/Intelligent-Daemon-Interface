@@ -1,0 +1,16 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# orthogonal_regions_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# orthogonal_regions_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/execution_signal.in"). 
+i1:sbf := in file("inputs/risk_signal.in"). 
+
+o0:bv[2] := out file("outputs/execution_state.out"). 
+o1:bv[2] := out file("outputs/risk_state.out"). 
+
+# orthogonal_regions pattern: execution_state <- execution_signal, risk_signal
+always (
+((((i0[t] != 0)) -> o0[t] = {1}:bv[2]) && ((!(i0[t] != 0)) -> o0[t] = {0}:bv[2]) && (((i1[t] != 0)) -> o1[t] = {1}:bv[2]) && ((!(i1[t] != 0)) -> o1[t] = {0}:bv[2]))
+).

@@ -20,17 +20,17 @@
 #   o5 = layer2_vote (contrarian wants to act)
 #   o6 = layer3_vote (trend wants to act)
 
-sbf i1 = console
-sbf i2 = console
-sbf i3 = console
-sbf i4 = console
-sbf i5 = console
-sbf o1 = console
-sbf o2 = console
-sbf o3 = console
-sbf o4 = console
-sbf o5 = console
-sbf o6 = console
+i1:sbf := in console. 
+i2:sbf := in console. 
+i3:sbf := in console. 
+i4:sbf := in console. 
+i5:sbf := in console. 
+o1:sbf := out console. 
+o2:sbf := out console. 
+o3:sbf := out console. 
+o4:sbf := out console. 
+o5:sbf := out console. 
+o6:sbf := out console. 
 
 # Layer1 (momentum): buy on 2 ups, sell on 2 downs
 # Layer2 (contrarian): buy on down, sell on up
@@ -38,7 +38,6 @@ sbf o6 = console
 # Final: weighted majority (at least 2 layers agree)
 # Position tracking
 
-r o4[t] = (i1[t] & i1[t-1] & o3[t-1]') | (i2[t] & i2[t-1] & o3[t-1]) && o5[t] = (i2[t] & o3[t-1]') | (i1[t] & o3[t-1]) && o6[t] = (i1[t] & o3[t-1]') | (i2[t] & o3[t-1]) && o1[t] = o3[t-1]' & ((i3[t] & o4[t] & i1[t]) | (i4[t] & o5[t] & i2[t]) | (i5[t] & o6[t] & i1[t])) && o2[t] = o3[t-1] & ((i3[t] & o4[t] & i2[t]) | (i4[t] & o5[t] & i1[t]) | (i5[t] & o6[t] & i2[t])) && o3[t] = o1[t] | (o3[t-1] & o2[t]')
-
-q
-
+always (
+o4[t] = (i1[t] & i1[t-1] & o3[t-1]') | (i2[t] & i2[t-1] & o3[t-1]) && o5[t] = (i2[t] & o3[t-1]') | (i1[t] & o3[t-1]) && o6[t] = (i1[t] & o3[t-1]') | (i2[t] & o3[t-1]) && o1[t] = o3[t-1]' & ((i3[t] & o4[t] & i1[t]) | (i4[t] & o5[t] & i2[t]) | (i5[t] & o6[t] & i1[t])) && o2[t] = o3[t-1] & ((i3[t] & o4[t] & i2[t]) | (i4[t] & o5[t] & i1[t]) | (i5[t] & o6[t] & i2[t])) && o3[t] = o1[t] | (o3[t-1] & o2[t]')
+).

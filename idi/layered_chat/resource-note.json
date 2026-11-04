@@ -1,0 +1,12 @@
+{
+  "cpu_quota_cores": 8,
+  "memory_limit_bytes": 8589934592,
+  "events": [
+    {"stage":"native Tau source build","outcome":"exit 137 under memory pressure; native API qualification used the official pinned wheel"},
+    {"stage":"ensemble seeds 2, 3, 4, 5","outcome":"exit -9 before first metrics; cgroup oom_kill count increased from 1 to 5"},
+    {"stage":"original exploratory campaign","outcome":"interrupted using the execution session to free resources; completed histories and partial checkpoints retained"},
+    {"stage":"feature storage","outcome":"binary feature matrix changed from float32 to uint8; 4x smaller storage; exact wiring/loss/gradient/optimizer agreement checked for five updates in a seeded test"},
+    {"stage":"ensemble retry","outcome":"failed seed directories retained with -oom-attempt suffix; retries use byte feature storage and two workers"}
+  ],
+  "scope":"Observed resource failures are retained. Completed epochs and exposures come from run reports or the last completed logged evaluation; no credit for unobserved work."
+}

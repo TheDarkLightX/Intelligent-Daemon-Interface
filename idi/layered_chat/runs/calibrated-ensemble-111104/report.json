@@ -1,0 +1,26 @@
+{
+  "base_checkpoint_sha256": "4563fa54ce425fdcba53afb03ec4f6936589d3fd6c8713bc201431a5944dc00c",
+  "training_rows": 62280,
+  "unique_score_label_rows": 22770,
+  "parameters": 62,
+  "temperature": 20.0,
+  "l2_penalty": 0.001,
+  "optimizer_success": true,
+  "optimizer_message": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+  "iterations": 9,
+  "objective": 0.02663122910065906,
+  "raw_validation_accuracy": 0.8669354838709677,
+  "best_validation_accuracy": 0.8723118279569892,
+  "raw_training_accuracy": 0.9924694926140013,
+  "calibrated_training_accuracy": 0.9971098265895953,
+  "examples_seen": 62280,
+  "seconds": 22.907,
+  "source_sha256": {
+    "calibrate_readout.py": "85108811bdba76f59bd999cd3d6dba9c4df948ed3bc8432e845f9aaf192751ef",
+    "train.py": "13f87047e33e328b32c384283e30fca791c9088e0fbd9fbb4720d891fd78220b",
+    "corpus.py": "009aa56d2098e84b115233b17b405a981ef821190651320b3cfa214ffbfc43a1",
+    "graph.py": "574c76817d2c082aac8b7e05fbdb2954636ca3ea79b8c93125564bbeb9dcc4f3"
+  },
+  "scope": "Train-only readout fit; validation used for architecture selection. One offset per class, rounded to integer votes. No test/challenge evaluation here.",
+  "model_sha256": "7662c3c37962f4abc11d2506434627c3b5d303bfad5df018fd9aef3a01f771be"
+}

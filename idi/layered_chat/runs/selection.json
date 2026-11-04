@@ -1,0 +1,69 @@
+{
+  "selected": {
+    "run": "calibrated-111104-annealed",
+    "tables": 111104,
+    "validation_accuracy": 0.8817204301075269,
+    "sha256": "f2ba5e05db45d883aed549f07842d3fb7578cd237842ca78133d8ceb20d58e88",
+    "bytes": 1503772
+  },
+  "rule": "At least 100,000 actually trained topic tables; highest validation accuracy, then smaller checkpoint, then lexical run name. Calibration uses training labels only. No test or challenge scores were opened before this selection.",
+  "frozen_at_utc": "2026-11-04T11:01:32.645813+00:00",
+  "candidates": [
+    {
+      "run": "calibrated-111104-annealed",
+      "tables": 111104,
+      "validation_accuracy": 0.8817204301075269,
+      "sha256": "f2ba5e05db45d883aed549f07842d3fb7578cd237842ca78133d8ceb20d58e88",
+      "bytes": 1503772
+    },
+    {
+      "run": "main-111104-annealed-seed1",
+      "tables": 111104,
+      "validation_accuracy": 0.8803763440860215,
+      "sha256": "d1d188ec41a3fcf78a0a14263608db45dce7c3020232a4e13f6f9b09c0569a84",
+      "bytes": 1503540
+    },
+    {
+      "run": "main-111104-seed0",
+      "tables": 111104,
+      "validation_accuracy": 0.8776881720430108,
+      "sha256": "0b42c1323af66eb0dd1893b8deb548b21ab511b9c1ec94e7d61afdda0f2ba084",
+      "bytes": 1503383
+    },
+    {
+      "run": "calibrated-111104-seed0",
+      "tables": 111104,
+      "validation_accuracy": 0.8763440860215054,
+      "sha256": "d5044088d8571cb3a62441476999657a96924d70477a94436c418593bf212072",
+      "bytes": 1503630
+    },
+    {
+      "run": "calibrated-ensemble-111104",
+      "tables": 111104,
+      "validation_accuracy": 0.8723118279569892,
+      "sha256": "7662c3c37962f4abc11d2506434627c3b5d303bfad5df018fd9aef3a01f771be",
+      "bytes": 1503474
+    },
+    {
+      "run": "ensemble-111104",
+      "tables": 111104,
+      "validation_accuracy": 0.8669354838709677,
+      "sha256": "4563fa54ce425fdcba53afb03ec4f6936589d3fd6c8713bc201431a5944dc00c",
+      "bytes": 1503226
+    },
+    {
+      "run": "calibrated-depth2-111104",
+      "tables": 111104,
+      "validation_accuracy": 0.8077956989247311,
+      "sha256": "95056bda12f90f22a557a3abecdab1e1824b5d0e70be7d4d0e33bb6adcf76bd7",
+      "bytes": 1477453
+    },
+    {
+      "run": "main-111104-depth2-seed1",
+      "tables": 111104,
+      "validation_accuracy": 0.803763440860215,
+      "sha256": "1c8bc02d5f5bf2d6fd5bbc75b73c79ac96a78ce733a3239f27c6512ef5bedb81",
+      "bytes": 1477202
+    }
+  ]
+}

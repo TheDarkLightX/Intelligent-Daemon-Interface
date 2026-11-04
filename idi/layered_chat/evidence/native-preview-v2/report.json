@@ -1,0 +1,125 @@
+{
+  "schema": "idi/zal-native-benchmark/1",
+  "model_sha256": "16f620bbe2b1ce755f58158b2959cf75518854b40e6c8e3390d7e2ddc094d830",
+  "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "vectors_checked": 1000,
+  "class_votes_checked": 124000,
+  "kernels": [
+    {
+      "gate": 0,
+      "bytes": 4,
+      "sha256": "0caab77d26da3539e24caf9e88c59c63ddf3423fe0a713b5dd42b656d0343b0d"
+    },
+    {
+      "gate": 1,
+      "bytes": 7,
+      "sha256": "dae3121819f12f7a4e9ae293b1733b1347a3f68971dea1cffd284dcd0433c758"
+    },
+    {
+      "gate": 2,
+      "bytes": 10,
+      "sha256": "f9157fef5e8117fd86ff1d37eeac6287d10c6c945b1ea75986597d3de286d525"
+    },
+    {
+      "gate": 3,
+      "bytes": 4,
+      "sha256": "f84e915a39a42129d4d8c8f1c771b4a320ba7b1ab0c17754721be4ff7b835a21"
+    },
+    {
+      "gate": 4,
+      "bytes": 10,
+      "sha256": "1e1f72ae9333144da740b74fefd583f982ea94108e8317ff9286941fcd417601"
+    },
+    {
+      "gate": 5,
+      "bytes": 4,
+      "sha256": "297ef56d5224205f2134280209526809023f7b23c5b97c6f0f85e9b2ac171036"
+    },
+    {
+      "gate": 6,
+      "bytes": 7,
+      "sha256": "a334d90b3b91ea7c97e7bc2a64f223db9d29ba45b1c93f11e167e61c9c884054"
+    },
+    {
+      "gate": 7,
+      "bytes": 7,
+      "sha256": "b0e913b4fae9dcb46f4527a1eb684a541a6bdbdb0a5b3b185251114e3e5b35c7"
+    },
+    {
+      "gate": 8,
+      "bytes": 20,
+      "sha256": "109fa095c3db450d52e10e535210155be638af818b24138077ac3c59fb7bb91b"
+    },
+    {
+      "gate": 9,
+      "bytes": 20,
+      "sha256": "b2128625200cde4335ea169ed6ab6f7682a0c09c85bf6e7ae722ddfe848e4668"
+    },
+    {
+      "gate": 10,
+      "bytes": 17,
+      "sha256": "b9774d6a66328a6e124efb32f3ba7a9bf957a0fa9b01c3ea7d3845d2c237500f"
+    },
+    {
+      "gate": 11,
+      "bytes": 20,
+      "sha256": "b9443601462cb043d8de9b57876fae7c122074b071a9e97e95947b19e056e6b1"
+    },
+    {
+      "gate": 12,
+      "bytes": 17,
+      "sha256": "f681bad3d7e9772dcd6a80f2a7782a67ea4a09163dfe3da0446783d0c295057e"
+    },
+    {
+      "gate": 13,
+      "bytes": 20,
+      "sha256": "1f364361e192c20866ff61cb51dac1f0cb7efc6d24c493946bb37a156c3b354d"
+    },
+    {
+      "gate": 14,
+      "bytes": 20,
+      "sha256": "20dae4c3df7e1257e607f42645fbc5d93d681511fcc26f841cdeabc59955f428"
+    },
+    {
+      "gate": 15,
+      "bytes": 17,
+      "sha256": "71ad4552945b2577dc1b04fb437fccff4dfb93027a6602dfdd4e26b8f82ec7ae"
+    }
+  ],
+  "measurements": {
+    "portable_c": {
+      "batch": 64,
+      "median_ms": 3.21048825,
+      "samples_ms": [
+        1.5804861499999998,
+        2.7853264249999996,
+        3.4535803250000003,
+        3.355369375,
+        3.21048825,
+        4.018574475,
+        4.265803675,
+        2.972416325,
+        2.997719125
+      ]
+    },
+    "zal": {
+      "batch": 64,
+      "median_ms": 2.5356816749999997,
+      "samples_ms": [
+        2.473280375,
+        2.5356816749999997,
+        2.95588805,
+        2.498197475,
+        1.887845875,
+        2.29743025,
+        3.641127025,
+        3.162467325,
+        2.882323525
+      ]
+    }
+  },
+  "includes": "Python/FFI input packing, native DAG evaluation and vote accumulation",
+  "excludes": "Text encoding, retrieval, corpus loading; no browser speed comparison",
+  "scope": "Measured under concurrent training load. ZAL proof covers gate words; whole-host correspondence is differential testing."
+}

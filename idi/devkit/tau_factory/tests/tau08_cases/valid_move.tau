@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# valid_move - Generated Tau Agent
+# Auto-generated from AgentSchema
+# valid_move Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# valid_move pattern: result <- a
+always (
+((o0[t] = i0[t]))
+).

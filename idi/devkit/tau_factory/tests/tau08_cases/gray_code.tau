@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# gray_code - Generated Tau Agent
+# Auto-generated from AgentSchema
+# gray_code Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# gray_code pattern: result <- a
+always (
+((o0[t] = i0[t] ^ o0[t-1]) && (o0[0] = 0))
+).

@@ -1,0 +1,19 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# IeWoV - Generated Tau Agent
+# Auto-generated from AgentSchema
+# IeWoV Agent (Auto-generated)
+# Strategy: momentum
+
+i0:sbf := in file("inputs/s0pkqx.in"). 
+i1:sbf := in file("inputs/li5y.in"). 
+
+mi0:sbf := out file("outputs/i0_mirror.out"). 
+mi1:sbf := out file("outputs/i1_mirror.out"). 
+
+o0:sbf := out file("outputs/s_x.out"). 
+
+# majority pattern: s_x <- li5y, s0pkqx
+# Majority voting implementation
+always (
+((o0[t] = (i1[t] & i0[t]))) && (mi0[t] = i0[t]) && (mi1[t] = i1[t])
+).

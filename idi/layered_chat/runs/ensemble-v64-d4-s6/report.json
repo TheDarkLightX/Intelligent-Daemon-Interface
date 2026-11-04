@@ -1,0 +1,90 @@
+{
+  "config": {
+    "epochs": 30,
+    "votes": 64,
+    "depth": 4,
+    "seed": 6,
+    "batch": 256,
+    "rate": 0.025,
+    "eval_every": 5,
+    "wiring": "guided",
+    "pilot": false,
+    "encoder": "words-first",
+    "features": 3072,
+    "anneal": true,
+    "classes": 62,
+    "input_bits": 3072,
+    "source_sha256": {
+      "train.py": "e98ff20729d3e873b8223153164c3189066bcf10d91d00fdfcbe92d9bcd12203",
+      "network.py": "5963df83998c01ccf4ba900327c0bd54a9fa3dec197f60c89800019a304c841b",
+      "corpus.py": "009aa56d2098e84b115233b17b405a981ef821190651320b3cfa214ffbfc43a1"
+    }
+  },
+  "seconds": 943.438,
+  "examples_seen": 1868400,
+  "selected_epoch": 25,
+  "best_validation_accuracy": 0.8629032258064516,
+  "model_sha256": "6a5faa99d8975d2b3375ecf0a1e7a0438bff088c66e89cbf1a2ba73d95775ee4",
+  "model_bytes": 227135,
+  "training_rows": 62280,
+  "split_rows": {
+    "train": 62280,
+    "validation": 744,
+    "test": 744,
+    "challenge": 62
+  },
+  "data_sha256": "55685d5c76e4f6306dfa68028db6890f33a5011ef26003e3331c6312be64432a",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 1.6867121650840353,
+      "validation_accuracy": 0.8145161290322581,
+      "seconds": 35.237,
+      "examples_seen": 62280
+    },
+    {
+      "epoch": 5,
+      "loss": 0.17748766040181838,
+      "validation_accuracy": 0.8346774193548387,
+      "seconds": 160.101,
+      "examples_seen": 311400
+    },
+    {
+      "epoch": 10,
+      "loss": 0.16803130994029894,
+      "validation_accuracy": 0.8467741935483871,
+      "seconds": 325.559,
+      "examples_seen": 622800
+    },
+    {
+      "epoch": 15,
+      "loss": 0.16581066760522245,
+      "validation_accuracy": 0.8481182795698925,
+      "seconds": 481.672,
+      "examples_seen": 934200
+    },
+    {
+      "epoch": 20,
+      "loss": 0.16535304625522806,
+      "validation_accuracy": 0.8467741935483871,
+      "seconds": 652.133,
+      "examples_seen": 1245600
+    },
+    {
+      "epoch": 25,
+      "loss": 0.16538048791977253,
+      "validation_accuracy": 0.8629032258064516,
+      "seconds": 814.154,
+      "examples_seen": 1557000
+    },
+    {
+      "epoch": 30,
+      "loss": 0.16603018058441202,
+      "validation_accuracy": 0.8521505376344086,
+      "seconds": 943.435,
+      "examples_seen": 1868400
+    }
+  ]
+}

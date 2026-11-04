@@ -1,5 +1,17 @@
 # Intelligent Daemon Interface (IDI)
 
+## November 2026 CPU and Tau 0.8 experiment
+
+The [Layered Table Agent](idi/layered_chat/README.md) trains a 111,104-table topic
+network and runs locally in a webpage, with attributed retrieval and exact
+algorithm tools. It includes Tau gate/fragment experiments, independent folding
+certificates and ZenoFCIS 2.7 ZAL kernel receipts.
+
+The factory now defaults to Tau 0.8. See the [migration inventory](specification/tau08/README.md)
+for the 122 reference examples, rewritten IAN contracts, and historical sketches
+that remain unqualified. Older milestone descriptions below are historical;
+they do not establish current production readiness or Tau Net finality.
+
 > **Development toolkit for creating, training, and deploying intelligent Tau Language agents**
 
 The Intelligent Daemon Interface (IDI) provides a complete ecosystem for building intelligent agents using Tau Language specifications, Q-learning training, and zero-knowledge proof integration.

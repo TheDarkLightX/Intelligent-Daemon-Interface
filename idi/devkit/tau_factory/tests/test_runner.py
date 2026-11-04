@@ -315,3 +315,14 @@ class TestTauRunner:
                 assert result.success is False, f"Should fail for: {expected_pattern}"
                 assert any(expected_pattern in e for e in result.errors), f"Should detect: {expected_pattern}"
 
+
+
+def test_tau08_file_envelope_overrides_legacy_stdin_default(tmp_path):
+    spec=tmp_path/'modern.tau';spec.write_text('always (o0[t]:sbf = i0[t]:sbf).\n')
+    binary=tmp_path/'tau';binary.write_text('#!/bin/sh\nexit 0\n');binary.chmod(0o755)
+    def check(cmd,*,cwd,timeout,stdin):
+        assert cmd[:2]==[str(binary),str(spec)]
+        assert cmd[-2:]==['--charvar','off']
+        return subprocess.CompletedProcess(cmd,0,stdout=b'',stderr=b'')
+    with patch('idi.devkit.tau_factory.runner._run_subprocess',side_effect=check):
+        assert run_tau_spec(spec,binary).success

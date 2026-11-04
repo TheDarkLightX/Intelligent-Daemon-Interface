@@ -1,0 +1,82 @@
+{
+  "scope": "The search collection contains the held-out documents. Queries are their original questions or every fifth lexical term removed. Correct means the exact original record ID, not semantic equivalence, factual accuracy, or open-chat competence. No parameters are fitted here.",
+  "checkpoint": "f2ba5e05db45d883aed549f07842d3fb7578cd237842ca78133d8ceb20d58e88",
+  "source_sha256": {
+    "web/engine.mjs": "8014f5cb479ae406f631f1bba115f116d64fd579cbc2140583c82d78b091c352",
+    "web/runtime.mjs": "7ba234ad26cfaae4aa720c8d5ff4fcc02e6798cc47309dd276f2f8c9719c7f90",
+    "evaluate_retrieval.mjs": "c9e1965bd8203ca5700e5863aed4da1ac195cb5aa579af5238e50072b0fb8f20",
+    "web/knowledge.json": "564f336738a749f1cac7c2addceb5ac741f19474dfbfb105f2ae4633ee05e8d2"
+  },
+  "conditions": {
+    "original": {
+      "rows": 1634,
+      "bm25_top1": 1634,
+      "bm25_top12": 1634,
+      "reciprocal_rank_sum": 1634,
+      "direct_exact_record": 1474,
+      "confirmed_exact_record": 0,
+      "wrong_direct_record": 0,
+      "wrong_pending_record": 0,
+      "other_routes": 160,
+      "routes": {
+        "retrieved": 1474,
+        "card": 160
+      },
+      "top1": 1,
+      "top12": 1,
+      "mrr12": 1,
+      "direct_exact_rate": 0.9020807833537332,
+      "direct_or_confirmable_exact_rate": 0.9020807833537332,
+      "seconds": 7.53,
+      "examples": []
+    },
+    "drop_every_fifth_term": {
+      "rows": 1634,
+      "bm25_top1": 1630,
+      "bm25_top12": 1634,
+      "reciprocal_rank_sum": 1631.8333333333335,
+      "direct_exact_record": 1542,
+      "confirmed_exact_record": 0,
+      "wrong_direct_record": 4,
+      "wrong_pending_record": 0,
+      "other_routes": 88,
+      "routes": {
+        "retrieved": 1546,
+        "card": 87,
+        "input": 1
+      },
+      "top1": 0.9975520195838433,
+      "top12": 1,
+      "mrr12": 0.9986740106079153,
+      "direct_exact_rate": 0.9436964504283966,
+      "direct_or_confirmable_exact_rate": 0.9436964504283966,
+      "seconds": 5.63,
+      "examples": [
+        {
+          "expected": "dolly-5866",
+          "query": "list ten episode title season game throne broadcast",
+          "kind": "retrieved",
+          "actual": "dolly-543"
+        },
+        {
+          "expected": "dolly-7436",
+          "query": "some good date idea",
+          "kind": "retrieved",
+          "actual": "dolly-7587"
+        },
+        {
+          "expected": "dolly-7678",
+          "query": "name five mlb team league",
+          "kind": "retrieved",
+          "actual": "dolly-6171"
+        },
+        {
+          "expected": "dolly-14642",
+          "query": "name some popular american brand",
+          "kind": "retrieved",
+          "actual": "dolly-4847"
+        }
+      ]
+    }
+  }
+}

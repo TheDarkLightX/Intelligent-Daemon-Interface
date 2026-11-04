@@ -1,0 +1,21 @@
+{
+  "tau_commit": "95a7d261ca3db5ff6f7c198a0b4d81c880816058",
+  "emscripten": "6.0.13",
+  "build": "release-wasm-nothreads; TAU_BAS=sbf,tau; TAU_LTO=OFF",
+  "errors": [],
+  "cases": [],
+  "browser": "157.0.8103.38",
+  "runtime_files": {
+    "tau.esm.mjs": {
+      "bytes": 116665,
+      "sha256": "719de150a96a06338d6700d1233448d904beaf42641b3de44131de0abf78816e"
+    },
+    "tau.esm.wasm": {
+      "bytes": 6261656,
+      "sha256": "7a415b14e76cfda5c7e014b94176dab1e910e34aebef4ab9f02e28bc85b097b9"
+    }
+  },
+  "tau_status": "Aborted(`Module.wasmBinary` was supplied but `wasmBinary` not included in INCOMING_MODULE_JS_API)",
+  "backend": "WebAssembly",
+  "success": false
+}

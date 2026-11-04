@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# script_execution_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# script_execution_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:bv[8] := in file("inputs/script.in"). 
+i1:bv[32] := in file("inputs/stack.in"). 
+
+o0:bv[32] := out file("outputs/execution_result.out"). 
+
+# script_execution pattern: execution_result <- script, stack
+always (
+((o0[t] = i1[t]))
+).

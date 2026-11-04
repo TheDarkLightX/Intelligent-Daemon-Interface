@@ -1,0 +1,1514 @@
+{
+  "tau_source_commit": "95a7d261ca3db5ff6f7c198a0b4d81c880816058",
+  "files": 106,
+  "counts": {
+    "replaced-with-explicit-bounded-0.8-contract": 9,
+    "updated-in-place": 58,
+    "historical-sketch-or-inconclusive; semantic migration remains open": 39
+  },
+  "scope": "All 106 original non-archive Tau files inventoried. Qualified envelope/type ports updated in place; six IAN sketches and three examples replaced by explicitly scoped contracts. Native admission is not behavioral equivalence. Unresolved sketches remain historical. Separate copies of five original fixtures retain explicit 0.7 compatibility tests.",
+  "files_detail": [
+    {
+      "source": "idi/devkit/tau_factory/examples/simple_fsm_agent/agent.tau",
+      "original_sha256": "819dda1b9b5f2ca15d673aae17e403f688245a6a858b81f556d4523fecd895b5",
+      "migration_issues": [
+        "legacy defs block needs a semantic rewrite"
+      ],
+      "native": {
+        "accepted": true,
+        "status": "native-interpreter-accepted",
+        "errors": [],
+        "qualification": "native API; explicit state/guard rewrite"
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "6eacc5f9e49ee0e13f9b78cdd3827b68fe46cb7e8be960f1c994c280b2b5ca6b"
+    },
+    {
+      "source": "idi/devkit/tau_factory/tests/fixtures/golden_smoke/smoke_accumulator.tau",
+      "original_sha256": "94947531b2106af537146f0e7bc83625def9346ec7fa7cdd41182a41bc30f778",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.156
+      },
+      "action": "updated-in-place",
+      "current_sha256": "ea143072f33826e6e11fbf0df7bf7c566c2247d60073e72ab76eec3de40c5787"
+    },
+    {
+      "source": "idi/devkit/tau_factory/tests/fixtures/golden_smoke/smoke_counter.tau",
+      "original_sha256": "b99a4ed73c912e00e07e6bec3c68d86331c425aa6de60b396f3ba3de08aabbf8",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.128
+      },
+      "action": "updated-in-place",
+      "current_sha256": "e0363f1658b4a87ac65b76e625580da4ffa50f4f5ec18c5e7080440af3809f40"
+    },
+    {
+      "source": "idi/devkit/tau_factory/tests/fixtures/golden_smoke/smoke_echo.tau",
+      "original_sha256": "3bda5771a09fc350b0a791c11ab2e0d22d8042a604fba87f45b657d78550339b",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.115
+      },
+      "action": "updated-in-place",
+      "current_sha256": "66d9cf0241f69ce6329229a27b7bc6d4f105089edaae2e37753448d7d67e8e0b"
+    },
+    {
+      "source": "idi/devkit/tau_factory/tests/fixtures/golden_smoke/smoke_fsm.tau",
+      "original_sha256": "63d4695d79fe775b7b79cc916bb2ba0523f3f7a4398ea4be6bca3e7b70ec7630",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.12
+      },
+      "action": "updated-in-place",
+      "current_sha256": "20f60d70eecb06158e1c1bc1b33fe8df61f1ba950852f2f86cf4db7b13b12580"
+    },
+    {
+      "source": "idi/devkit/tau_factory/tests/fixtures/golden_smoke/smoke_majority.tau",
+      "original_sha256": "686e94c6da52cc652dfaefedd140149ca666eb09b17ff26d600d301aa0d9e7ff",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.14
+      },
+      "action": "updated-in-place",
+      "current_sha256": "408e1cdc01fec88a6914b96a806b29fc96da571eb3c6f5cc913a8db67062f068"
+    },
+    {
+      "source": "idi/ian/rules/IAN_RULES.tau",
+      "original_sha256": "cac0e7122db497e0ee835b1192738ffcc09c5f9942d848274f3f24471e53fd0c",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "No main formula"
+        ],
+        "status": "native-refused",
+        "seconds": 0.234
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "cac0e7122db497e0ee835b1192738ffcc09c5f9942d848274f3f24471e53fd0c"
+    },
+    {
+      "source": "idi/ian/rules/ian_state_machine.tau",
+      "original_sha256": "f3dce42d35ccfb8d9d6073488ff0fde4e950e03246efd4ef73a57261979a775b",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ')' at 14:70 (533): \n    (log_root[t] = log_committed[t] ? in_log_root[t] : log_root[t-1])"
+        ],
+        "status": "native-refused",
+        "seconds": 0.815
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "f3dce42d35ccfb8d9d6073488ff0fde4e950e03246efd4ef73a57261979a775b"
+    },
+    {
+      "source": "idi/ian/tau_rules/ian_challenge.tau",
+      "original_sha256": "29e3b5861cff8795ef2d3c0cefc309d937cc7f0de8e64a739ca426125e7092aa",
+      "migration_issues": [],
+      "native": {
+        "file": "ian_challenge.tau",
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.321
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "f893f1ab4205502c4e49a977fee1f4bb6ebddc013cd4abd4fc9e21548ad9cb63"
+    },
+    {
+      "source": "idi/ian/tau_rules/ian_economics.tau",
+      "original_sha256": "00b7b043a2c2c7a227069f910d859361b9ec37f4fa002b1c401574aea67de410",
+      "migration_issues": [],
+      "native": {
+        "file": "ian_economics.tau",
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.849
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "976317f4de87ffc96f2bf747035b37cee7620106aaecfdd44ed9cfe2738f99a4"
+    },
+    {
+      "source": "idi/ian/tau_rules/ian_goal_register.tau",
+      "original_sha256": "b9ce3942aa15bda82ea26a534aae9ef9aea070e0e8986710b7587057f185f9b5",
+      "migration_issues": [],
+      "native": {
+        "file": "ian_goal_register.tau",
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.261
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "de1b35cbe6ea977458f9a27b8d6b14ce9f56785617c0a29c8844c22ae1583408"
+    },
+    {
+      "source": "idi/ian/tau_rules/ian_log_commit.tau",
+      "original_sha256": "013e398ac2fbf3aa830d4a1a2782eca1221824369b2b61912bd5e10e55bc4bb9",
+      "migration_issues": [],
+      "native": {
+        "file": "ian_log_commit.tau",
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.333
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "2fb991b73e456afbb6e492715a630d173e75a878f63d068c81880a3c706dc2e3"
+    },
+    {
+      "source": "idi/ian/tau_rules/ian_state.tau",
+      "original_sha256": "ec538e33728743e911f68929b56c00ab2764863f4edfb87f7c97e359aac9bdf1",
+      "migration_issues": [],
+      "native": {
+        "file": "ian_state.tau",
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.933
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "20c41fd0ab82a063ce979c0aaae41f281b52c935503c6a7602ca64aae99baa42"
+    },
+    {
+      "source": "idi/ian/tau_rules/ian_upgrade.tau",
+      "original_sha256": "4c521a86e408e6bec843bd48436d335da4938ca0abc29abdd0dae0a4fd6b3ddc",
+      "migration_issues": [],
+      "native": {
+        "file": "ian_upgrade.tau",
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.471
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "c5757aa0da3ac9170b47fa2bfd4193f77d656a50458e084b26718ef1b7c20284"
+    },
+    {
+      "source": "idi/specs/Q_Layered_Strategy/agent_layered_strategy.tau",
+      "original_sha256": "d4cabc007519587230be4dc6af69b35ba286297790bbaf6e641374eaff7d3d7b",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 3.131
+      },
+      "action": "updated-in-place",
+      "current_sha256": "1c6a05c94b77cf76579cc393e1d2e0d2142d79d1604ad49a23554e5beac49406"
+    },
+    {
+      "source": "idi/specs/V38_Minimal_Core/agent4_testnet_v38.tau",
+      "original_sha256": "13b494c6fb087a88c767bcb984e4620c836f6993d9ff960c92a1a77c0d18ff88",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 8.788
+      },
+      "action": "updated-in-place",
+      "current_sha256": "041bde3f0b7abbc6f7a0f7a457ecfaad81d13f07e95788509335930c3439a98d"
+    },
+    {
+      "source": "idi/specs/libraries/idi_core/idi_core.tau",
+      "original_sha256": "13decd1ecbdff7420997e2f674164091c540dcf1222be23ca99eedb58273d7c7",
+      "migration_issues": [
+        "legacy defs block needs a semantic rewrite"
+      ],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 3:20 (26): \n    idi_buy_en[t] ="
+        ],
+        "status": "native-refused",
+        "seconds": 0.108
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "13decd1ecbdff7420997e2f674164091c540dcf1222be23ca99eedb58273d7c7"
+    },
+    {
+      "source": "specification/V35_Production_Ready_Kernel/agent4_testnet_v35.tau",
+      "original_sha256": "d016ce6e76e7233654c12da8cf937f8b8e880609dcdfc249e3a0c35a4d873932",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 21.866
+      },
+      "action": "updated-in-place",
+      "current_sha256": "a90b88f11b2398729f02565f16e11123f5fe2f61b225932cf9889b85ec16b08e"
+    },
+    {
+      "source": "specification/V36_Bitvector_Timer/agent4_testnet_v36.tau",
+      "original_sha256": "74f50f520d7025c050a173451d9e2011b910150f3e88475f4f34f545e98c9c2b",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 24.025
+      },
+      "action": "updated-in-place",
+      "current_sha256": "56abb5a145894e174f3d27f91f7b9dc466b4160530e550e8218d266766f38c29"
+    },
+    {
+      "source": "specification/V37_Extended_Bitvector/agent4_testnet_v37.tau",
+      "original_sha256": "b73973a3df33fb50e1bf31c5d41d27d5f47bd140cd757d84cd0cc22843fe8a0a",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 26.934
+      },
+      "action": "updated-in-place",
+      "current_sha256": "b6eab6277000562d2eb4846c28b329f48491e1acc53e3aa2c914429081b3a793"
+    },
+    {
+      "source": "specification/agent4_testnet_v35.tau",
+      "original_sha256": "d016ce6e76e7233654c12da8cf937f8b8e880609dcdfc249e3a0c35a4d873932",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 20.778
+      },
+      "action": "updated-in-place",
+      "current_sha256": "a90b88f11b2398729f02565f16e11123f5fe2f61b225932cf9889b85ec16b08e"
+    },
+    {
+      "source": "specification/agent4_testnet_v39a.tau",
+      "original_sha256": "12cef8f992056d8127e798be60077bcf1cac58b644f40615fbf143b777c39167",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "status": "native-interpreter-accepted",
+        "errors": [],
+        "qualification": "Native Tau 0.8 API. V39a/V40 have 127-step transition oracles; PRNG has 255 native steps plus independent full nonzero-cycle enumeration."
+      },
+      "action": "updated-in-place",
+      "current_sha256": "96a0a3a24c680736dfc597b5b3fa70a5d4dbe13ec04ef4e498004d40c8938e0c"
+    },
+    {
+      "source": "specification/agent4_testnet_v39b.tau",
+      "original_sha256": "39825666fb10681b270934607b4b2ec02f02a99fd3a05840dca5b4a8b502efad",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "status": "budget-inconclusive",
+        "errors": [
+          "native admission exceeded the wall-clock budget"
+        ],
+        "seconds": 8.011
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "39825666fb10681b270934607b4b2ec02f02a99fd3a05840dca5b4a8b502efad"
+    },
+    {
+      "source": "specification/agent4_testnet_v39c.tau",
+      "original_sha256": "1b4355b97a23b4fd8fe22e00b87d7527580a3450a014142356022ab07a5abcb7",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 8.205
+      },
+      "action": "updated-in-place",
+      "current_sha256": "e51d26c9f3b39841a7e0ed5fb500e0ee5f8158df70682221d411aeb26624f8db"
+    },
+    {
+      "source": "specification/agent4_testnet_v40_audit.tau",
+      "original_sha256": "5c05e18b2a1f6ac016d50da1908a5137055e3142088a8c7b4a0ecb2e477bea90",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 5.976
+      },
+      "action": "updated-in-place",
+      "current_sha256": "d4f4c4e542ccd866d1a6fff5fbedeb0b55e2f940411390a4f5789a53c402bf1f"
+    },
+    {
+      "source": "specification/agent4_testnet_v40_core.tau",
+      "original_sha256": "951180e39738e15347a0fba386665fb2ae84fc15b52587dbf41c1eb4d115cec1",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "status": "native-interpreter-accepted",
+        "errors": [],
+        "qualification": "Native Tau 0.8 API. V39a/V40 have 127-step transition oracles; PRNG has 255 native steps plus independent full nonzero-cycle enumeration."
+      },
+      "action": "updated-in-place",
+      "current_sha256": "cfc4d9c67f5fab9feb672bdbfc2a667b0192b78d67ca5681245bdfd200685fde"
+    },
+    {
+      "source": "specification/agent4_testnet_v41.tau",
+      "original_sha256": "f7b39d069461005a2862534b77ee9162f6aba93d79c025d815beb45cae9bb745",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "status": "budget-inconclusive",
+        "errors": [
+          "native admission exceeded the wall-clock budget"
+        ],
+        "seconds": 8.013
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "f7b39d069461005a2862534b77ee9162f6aba93d79c025d815beb45cae9bb745"
+    },
+    {
+      "source": "specification/agent4_testnet_v42.tau",
+      "original_sha256": "e5db2b8c26496ec59ae2e9fc56169852702cb7e40e02a81ef740df983083d359",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ' ' at 43:32 (1617): \n    (o11[t] = o3[t] & (i0[t] > "
+        ],
+        "status": "native-refused",
+        "seconds": 3.896
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "e5db2b8c26496ec59ae2e9fc56169852702cb7e40e02a81ef740df983083d359"
+    },
+    {
+      "source": "specification/agent4_testnet_v43.tau",
+      "original_sha256": "81f4b5ed06617e148e2afea32920adae47e20bb3fd25be13e34c7a297a1d31ba",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xce in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.123
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "81f4b5ed06617e148e2afea32920adae47e20bb3fd25be13e34c7a297a1d31ba"
+    },
+    {
+      "source": "specification/agent4_testnet_v44.tau",
+      "original_sha256": "296f5813bc0d6052e685db9cdbf13011c96242f52fecbd561f39b9ca93ceaa09",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 9:25 (248): \n    (o15[t] = o15[t-1] ="
+        ],
+        "status": "native-refused",
+        "seconds": 0.546
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "296f5813bc0d6052e685db9cdbf13011c96242f52fecbd561f39b9ca93ceaa09"
+    },
+    {
+      "source": "specification/agent4_testnet_v45.tau",
+      "original_sha256": "4c93fb8c53d5bb0de3b046c10c2beb5b65f7da561af660f0bc13e698514adcdb",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 5:24 (117): \n    (o15[t] = i0[t-1] ="
+        ],
+        "status": "native-refused",
+        "seconds": 0.302
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "4c93fb8c53d5bb0de3b046c10c2beb5b65f7da561af660f0bc13e698514adcdb"
+    },
+    {
+      "source": "specification/agent4_testnet_v46.tau",
+      "original_sha256": "60217cf3c86e313295e3ab7c5a94ea0f6fd92441becae534cf35956f4889e167",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ' ' at 2:26 (64): \n    ((entry > current) & "
+        ],
+        "status": "native-refused",
+        "seconds": 0.141
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "60217cf3c86e313295e3ab7c5a94ea0f6fd92441becae534cf35956f4889e167"
+    },
+    {
+      "source": "specification/agent4_testnet_v47.tau",
+      "original_sha256": "06b329c8ef934a69f525a2504444c0edda561c82a2acb301224aa79876eacbf1",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xce in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.243
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "06b329c8ef934a69f525a2504444c0edda561c82a2acb301224aa79876eacbf1"
+    },
+    {
+      "source": "specification/agent4_testnet_v48.tau",
+      "original_sha256": "c947fd8d85fb74ead27c580818f569d0d858478b4a9e6cc9f3821673a962a879",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ' ' at 6:24 (237): \n    (o26[t] = o24[t] > "
+        ],
+        "status": "native-refused",
+        "seconds": 0.359
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "c947fd8d85fb74ead27c580818f569d0d858478b4a9e6cc9f3821673a962a879"
+    },
+    {
+      "source": "specification/agent4_testnet_v49.tau",
+      "original_sha256": "86a3edbc0029b7eab74fadb95be971fc033dd797176c4cc60ab2be67868ef910",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xc2 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.079
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "86a3edbc0029b7eab74fadb95be971fc033dd797176c4cc60ab2be67868ef910"
+    },
+    {
+      "source": "specification/agent4_testnet_v50.tau",
+      "original_sha256": "c11ae2f7aeaf12c3af43ed8ac2e1c302f41c981d726c09afdbd76e6d17464319",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 4:26 (62): \n    (o11[t] = (o11[t-1] ="
+        ],
+        "status": "native-refused",
+        "seconds": 0.333
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "c11ae2f7aeaf12c3af43ed8ac2e1c302f41c981d726c09afdbd76e6d17464319"
+    },
+    {
+      "source": "specification/agent4_testnet_v51.tau",
+      "original_sha256": "358844cae506cf6bfacd415497bdc9e761f97d69c2e982af02064d5e856970b0",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.106
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "358844cae506cf6bfacd415497bdc9e761f97d69c2e982af02064d5e856970b0"
+    },
+    {
+      "source": "specification/agent4_testnet_v52.tau",
+      "original_sha256": "cc8e3b06f8200b2bf88bb92cb7879ae461165e1a960728c4b0b12ff49fb0747c",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 1:23 (23): sbf s_in_position[0] :="
+        ],
+        "status": "native-refused",
+        "seconds": 0.189
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "cc8e3b06f8200b2bf88bb92cb7879ae461165e1a960728c4b0b12ff49fb0747c"
+    },
+    {
+      "source": "specification/agent4_testnet_v53.tau",
+      "original_sha256": "bcceb8c963e03c85af6e4da7b052f5ed5c4996b8d7e628a954f151e6780b1fae",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 1:23 (23): bv[16] s_eetf_ema[0] :="
+        ],
+        "status": "native-refused",
+        "seconds": 0.147
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "bcceb8c963e03c85af6e4da7b052f5ed5c4996b8d7e628a954f151e6780b1fae"
+    },
+    {
+      "source": "specification/agent4_testnet_v54.tau",
+      "original_sha256": "f481417acacbf0b108a32ebd82bc1cf03969643229434c23750ef7b340ab18e8",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 1:23 (23): sbf s_in_position[0] :="
+        ],
+        "status": "native-refused",
+        "seconds": 0.273
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "f481417acacbf0b108a32ebd82bc1cf03969643229434c23750ef7b340ab18e8"
+    },
+    {
+      "source": "specification/agent_burn_coordinator.tau",
+      "original_sha256": "710f5ed9b1b31d661105f92edf529824d9cb0797aa36908492822024749b3325",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ' ' at 2:32 (63): \n    ((eetf > { #x73 }:bv[8]) & "
+        ],
+        "status": "native-refused",
+        "seconds": 0.253
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "710f5ed9b1b31d661105f92edf529824d9cb0797aa36908492822024749b3325"
+    },
+    {
+      "source": "specification/agent_reflexivity_guard.tau",
+      "original_sha256": "d6785bd4da17fa75d0f0d1cee9f8bb1a32204692d8e460a51722602ab7e9b861",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 2:48 (82): \n    (past = { #x00 }:bv[64]) ? { #x64 }:bv[8] :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.44
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "d6785bd4da17fa75d0f0d1cee9f8bb1a32204692d8e460a51722602ab7e9b861"
+    },
+    {
+      "source": "specification/agent_virtue_compounder.tau",
+      "original_sha256": "60e995910bab32e5cce4d19246019f3717dca9a076a5871ee57eeaae184279da",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 2:49 (66): \n    (x <= { #x0100 }:bv[16]) ? { #x10 }:bv[16] :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.406
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "60e995910bab32e5cce4d19246019f3717dca9a076a5871ee57eeaae184279da"
+    },
+    {
+      "source": "specification/libraries/aeb_ethical_burn.tau",
+      "original_sha256": "73ad0236b74052d2da2b29691a3cb1d86493d7e2409bc7cb817f4fac83185850",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 2:42 (69): \n    is_cascade_4(eetf) ? { #x04 }:bv[8] :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.41
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "73ad0236b74052d2da2b29691a3cb1d86493d7e2409bc7cb817f4fac83185850"
+    },
+    {
+      "source": "specification/libraries/benevolent_burn_engine.tau",
+      "original_sha256": "3ff11b65f22c5b5d6a84cccac6c916d524cbb12d95561297475e4aed93f6ed33",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 2:54 (83): \n    (count < { #x0064 }:bv[32]) ? { #x01F4 }:bv[16] :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.302
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "3ff11b65f22c5b5d6a84cccac6c916d524cbb12d95561297475e4aed93f6ed33"
+    },
+    {
+      "source": "specification/libraries/chart_predictor.tau",
+      "original_sha256": "557730f01d181d5c586b8cd37d661e91ba458b70e23b91cc3df6da2da36af946",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.113
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "557730f01d181d5c586b8cd37d661e91ba458b70e23b91cc3df6da2da36af946"
+    },
+    {
+      "source": "specification/libraries/crypto_primitives_tau.tau",
+      "original_sha256": "5ff9032f3b193996234748bdf07cb4e6b686583d763c8081643b25fc5be723ce",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.099
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "5ff9032f3b193996234748bdf07cb4e6b686583d763c8081643b25fc5be723ce"
+    },
+    {
+      "source": "specification/libraries/dbr_dynamic_base.tau",
+      "original_sha256": "14003fc3d8ffbcd3c1543c182626bf571c831df3ae9096f5e593464e72150903",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 3:26 (82): \n        (eetf - target) :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.377
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "14003fc3d8ffbcd3c1543c182626bf571c831df3ae9096f5e593464e72150903"
+    },
+    {
+      "source": "specification/libraries/deflationary_amm.tau",
+      "original_sha256": "9975267ee4a6329e837dbe09204b88f223dbf96232213140d29c9452619e3688",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 2:78 (116): \n    (denominator > {0}:bv[32]) ? (numerator * {10000}:bv[32] / denominator) :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.356
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "9975267ee4a6329e837dbe09204b88f223dbf96232213140d29c9452619e3688"
+    },
+    {
+      "source": "specification/libraries/deflationary_economy_v1.tau",
+      "original_sha256": "20b85e14cad5e1e99fb3a6674746e0bede5645d5df1d1dcf39a95a3a1096d97e",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ' ' at 7:41 (177): \n    (o_burn_event[t] = (i_base_fee[t] > "
+        ],
+        "status": "native-refused",
+        "seconds": 0.63
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "20b85e14cad5e1e99fb3a6674746e0bede5645d5df1d1dcf39a95a3a1096d97e"
+    },
+    {
+      "source": "specification/libraries/early_exit_penalties.tau",
+      "original_sha256": "4cf239a80b2fd09583210b1df5e4be755a49ea08a17467e019db390fc6217775",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 3:28 (116): \n        { #x005A }:bv[16] :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.208
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "4cf239a80b2fd09583210b1df5e4be755a49ea08a17467e019db390fc6217775"
+    },
+    {
+      "source": "specification/libraries/ethical_ai_alignment.tau",
+      "original_sha256": "f62f8d8ba579e1d1b8c99663dbdab22e66d7fef2382aa9c57d498aa575f18454",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '}' at 1:45 (45): bv[16] C_OPPORTUNITY_RATE = { #x0032 }:bv[16}"
+        ],
+        "status": "native-refused",
+        "seconds": 0.295
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "f62f8d8ba579e1d1b8c99663dbdab22e66d7fef2382aa9c57d498aa575f18454"
+    },
+    {
+      "source": "specification/libraries/hcr_hyper_compound.tau",
+      "original_sha256": "9e03586906fc7347f29b25857f6f3443d5e757f626aba5d110c244f4bb3dfe44",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 2:51 (80): \n    (eetf <= { #x64 }:bv[8]) ? { #x0064 }:bv[16] :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.307
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "9e03586906fc7347f29b25857f6f3443d5e757f626aba5d110c244f4bb3dfe44"
+    },
+    {
+      "source": "specification/libraries/infinite_deflation_engine.tau",
+      "original_sha256": "5e68fc34934525e7eadfd8c7cac7ffd87134ec5e996c7a993500a3abb872c507",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.077
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "5e68fc34934525e7eadfd8c7cac7ffd87134ec5e996c7a993500a3abb872c507"
+    },
+    {
+      "source": "specification/libraries/intelligent_algorithms.tau",
+      "original_sha256": "b21753d674fc222e9ea61220557f3dc078223599864b5fa97a15e7870c7375f6",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 1:51 (51): bv[32] heuristic_cost(current_state, goal_state) :="
+        ],
+        "status": "native-refused",
+        "seconds": 0.124
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "b21753d674fc222e9ea61220557f3dc078223599864b5fa97a15e7870c7375f6"
+    },
+    {
+      "source": "specification/libraries/mev_oracle_safety_v1.tau",
+      "original_sha256": "cd750c86a0b0395b57762a2a41799df2ab3ee77a2bd6fe255b886fcc11d14439",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '\\n' at 2:55 (87): \n    (price >= ref - (ref * max_dev / {100}:bv[16])) &\n"
+        ],
+        "status": "native-refused",
+        "seconds": 0.234
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "cd750c86a0b0395b57762a2a41799df2ab3ee77a2bd6fe255b886fcc11d14439"
+    },
+    {
+      "source": "specification/libraries/tau_p2p_escrow.tau",
+      "original_sha256": "5d927d911a5e75232a3a5d9f5999de8aa933347b4c938b854d9a460517492637",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Traceback (most recent call last):\n  File \"<string>\", line 7, in <module>\nUnicodeDecodeError: 'utf-8' codec can't decode byte 0xe2 in position 26: invalid continuation byte\n"
+        ],
+        "returncode": 1,
+        "status": "native-refused",
+        "seconds": 0.078
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "5d927d911a5e75232a3a5d9f5999de8aa933347b4c938b854d9a460517492637"
+    },
+    {
+      "source": "specification/libraries/true_rng_commit_reveal.tau",
+      "original_sha256": "d9ab34f68e3d8811330d8ec6c9f63361ccbccce018b9774eef8d443f15d6fb4f",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '=' at 16:25 (571): \n         (i_commit1[t] ="
+        ],
+        "status": "native-refused",
+        "seconds": 0.599
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "d9ab34f68e3d8811330d8ec6c9f63361ccbccce018b9774eef8d443f15d6fb4f"
+    },
+    {
+      "source": "specification/libraries/virtue_shares.tau",
+      "original_sha256": "dcfe16c8888bc74b7d4897fdb3db672f80cbfb92e6745544b9961a7711ead8b7",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ' ' at 2:26 (69): \n    (current >= start) & "
+        ],
+        "status": "native-refused",
+        "seconds": 0.294
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "dcfe16c8888bc74b7d4897fdb3db672f80cbfb92e6745544b9961a7711ead8b7"
+    },
+    {
+      "source": "specification/libraries/vote_escrow_governance.tau",
+      "original_sha256": "72da9be5ba4561a0215119c18efc48627a436953296a9d79e11c0747e59aeaeb",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected ':' at 3:41 (127): \n        ((start + duration) - current) :"
+        ],
+        "status": "native-refused",
+        "seconds": 0.437
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "72da9be5ba4561a0215119c18efc48627a436953296a9d79e11c0747e59aeaeb"
+    },
+    {
+      "source": "specification/prng_module.tau",
+      "original_sha256": "4949a88415a4827cd1821ce5c74a163f0c24f93ddb497abe2e09f0d1952d33d1",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "status": "native-interpreter-accepted",
+        "errors": [],
+        "qualification": "Native Tau 0.8 API. V39a/V40 have 127-step transition oracles; PRNG has 255 native steps plus independent full nonzero-cycle enumeration."
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "a9e4ea631ac004456c9289797e0896f709964c6f193a2b9c568016afe31ebe16"
+    },
+    {
+      "source": "specification/simple_io/simple.tau",
+      "original_sha256": "9c0691e125dd1bed14217f40324fa5a34c7924bbb3febe4aa89dd1de1b2560ab",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "status": "native-interpreter-accepted",
+        "errors": [],
+        "qualification": "Native Tau 0.8 API. V39a/V40 have 127-step transition oracles; PRNG has 255 native steps plus independent full nonzero-cycle enumeration."
+      },
+      "action": "updated-in-place",
+      "current_sha256": "832833bca649ca84666281738d96753e78504f7e530e1d5c7b967ef5c78947e8"
+    },
+    {
+      "source": "specification/test_file_spec.tau",
+      "original_sha256": "0faf9515476f5ea6c3ce90e81abd961924a5248852cd22f56500e1476b99e3c0",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.107
+      },
+      "action": "updated-in-place",
+      "current_sha256": "ad9d453efbc36550bc2de2c73f54458077c9c12a2171e9b8d48f5750c70c5f75"
+    },
+    {
+      "source": "tau_bv_specs/01_echo_simple.tau",
+      "original_sha256": "dba8a1b1d521ffe95c398cefbe3c4e581c01fa1f495404d8fdb4fc862ae7ea75",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.064
+      },
+      "action": "updated-in-place",
+      "current_sha256": "31fc136f9aaf948239558fead3cac295d5909bd30e40ba1557e9cf6738992dcb"
+    },
+    {
+      "source": "tau_bv_specs/02_negation.tau",
+      "original_sha256": "66c59cc88b650cd1bc1565dbdaab622f550e8d1a077232da50b1f5069d29fec4",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.057
+      },
+      "action": "updated-in-place",
+      "current_sha256": "8d68c74cf8524359ccca0e1470e41a42e0a21758ce632995168bff11f84d95ba"
+    },
+    {
+      "source": "tau_bv_specs/03_memory_delay.tau",
+      "original_sha256": "1ef0724723985281da15ce5d1a53ded5eb18635136a2986462df1aae68fa288c",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.052
+      },
+      "action": "updated-in-place",
+      "current_sha256": "cb1b645b9f5d609611fad1274dc8a4417291ddc9ba0d685ec0f7c8a38550039b"
+    },
+    {
+      "source": "tau_bv_specs/04_toggle.tau",
+      "original_sha256": "3cac3b87f6c25a5a2674417b556759e67a47759a44f6c7abc983b4737ea3f42d",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.1
+      },
+      "action": "updated-in-place",
+      "current_sha256": "beaaf7a64fd3d89c06ded82ab48c78d6f069d4b159c334cee0373b201c8bafa4"
+    },
+    {
+      "source": "tau_bv_specs/05_and_gate.tau",
+      "original_sha256": "fd1046c6e38862b001f734d0bf01ac80bb0a89a9e113381b6961db0070ab2b23",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.057
+      },
+      "action": "updated-in-place",
+      "current_sha256": "0e582acf25194d3596f62a5d52cb443acdc5890c82fefb44b9dd19c6f785e02e"
+    },
+    {
+      "source": "tau_bv_specs/06_xor_gate.tau",
+      "original_sha256": "fc409d761b49a0ef0d2719a702c0dff426c2151df81f01db4d4b6b484a5963a8",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.058
+      },
+      "action": "updated-in-place",
+      "current_sha256": "5af04bc7a6e4799db5d33c3631bcd81a29126683e0515309e07d4b6cfc6b8bf1"
+    },
+    {
+      "source": "tau_bv_specs/10_bv_counter.tau",
+      "original_sha256": "ab0dce4d42f7b3b9df58383f45c08f7e311d93ef5549bc08ca53c869a446d2e7",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.07
+      },
+      "action": "updated-in-place",
+      "current_sha256": "44c9c6d2458981c32e6f2f7e983206c41d4f5ffe20618546dff666d3713d36ca"
+    },
+    {
+      "source": "tau_bv_specs/11_bv_echo.tau",
+      "original_sha256": "76f36b48d59b5cea687db58d363cfc513cc402ef19455dc5976ef1369d983a63",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.095
+      },
+      "action": "updated-in-place",
+      "current_sha256": "e04c1d74f3627790a3ca01b14ba581676a3744c8df506c5144be7bca68c58e24"
+    },
+    {
+      "source": "tau_bv_specs/12_bv_add.tau",
+      "original_sha256": "bbcd7f95a64c930c59915507232f54ad2366b962220d846dbacb65c40868ea35",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.055
+      },
+      "action": "updated-in-place",
+      "current_sha256": "c66c869f3a97999f8982d8a38957fd948e48a5a001c924ec10f40de9a3617430"
+    },
+    {
+      "source": "tau_bv_specs/13_bv_comparator.tau",
+      "original_sha256": "a7940ce60afcb9affde6f70e92e2165c40b0bd420bc2c08853f12ad61d6e1102",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.189
+      },
+      "action": "updated-in-place",
+      "current_sha256": "42f4ef4c7c6c2cfc7a44a22c27fe9bb3e0039b4fa49aa5c866a8f0f0eb3c8f12"
+    },
+    {
+      "source": "tau_bv_specs/14_bv_threshold.tau",
+      "original_sha256": "ddec34051fd52dbc468e6adfe43c684a45cc2e54763bfa38c030dde82ed4c292",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.084
+      },
+      "action": "updated-in-place",
+      "current_sha256": "bbb2f078cb291140f0706593a0524ed16a5fb9dd0ce2ac7d99491c1a2e040e8e"
+    },
+    {
+      "source": "tau_bv_specs/15_bv_accumulator.tau",
+      "original_sha256": "3282c30b357ad0056b02e0281f392bbb4020c47a029d48f920099d8acce1dd24",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.101
+      },
+      "action": "updated-in-place",
+      "current_sha256": "b64cfd520d9779a101aee7fd0c9b77a2ee529d88d6d1eba1ae8cb4225630b94a"
+    },
+    {
+      "source": "tau_bv_specs/20_trading_signals.tau",
+      "original_sha256": "b9d952e1309e02a818f9767252b1c2a57e663fd9f5d1d23865dc76dedd8d2dd1",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.143
+      },
+      "action": "updated-in-place",
+      "current_sha256": "df8c8c6d887f2b38172d4ba57302e0a2c440a5da07062fc5087bbd92b62b2e67"
+    },
+    {
+      "source": "tau_bv_specs/21_position_tracker.tau",
+      "original_sha256": "e8a9415f70587806e8d29666de0e6855b731db6608c5560b1b764795a1ee2480",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.129
+      },
+      "action": "updated-in-place",
+      "current_sha256": "2379fd8945cdf017e0e1434f59ea82269225ae7fbeb9478c1437e02e0dfb3625"
+    },
+    {
+      "source": "tau_bv_specs/22_profit_tracker.tau",
+      "original_sha256": "2f845fbf0cd00e4511be978871b7321a0e021e04f33eb5e199b3b70dd25470ab",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "status": "native-interpreter-accepted",
+        "errors": [],
+        "qualification": "native API; explicit state/guard rewrite"
+      },
+      "action": "replaced-with-explicit-bounded-0.8-contract",
+      "current_sha256": "a67d63cf9d1bf7c868383cb02ebeefb7b3551a38863b3a620b194b1c13e10e1a"
+    },
+    {
+      "source": "tau_bv_specs/30_deflationary_agent_bv.tau",
+      "original_sha256": "7caf8b4aabbca3ed60d31821b692e89a09b45a371b3cd39d5ddedef5cef20703",
+      "migration_issues": [],
+      "native": {
+        "accepted": false,
+        "errors": [
+          "Syntax Error: Unexpected '?' at 18:40 (1006): \nbuy_price[t] = (is_buy[t] & action[t] ?"
+        ],
+        "status": "native-refused",
+        "seconds": 1.323
+      },
+      "action": "historical-sketch-or-inconclusive; semantic migration remains open",
+      "current_sha256": "7caf8b4aabbca3ed60d31821b692e89a09b45a371b3cd39d5ddedef5cef20703"
+    },
+    {
+      "source": "tau_bv_specs/31_deflationary_agent_simple.tau",
+      "original_sha256": "cf520397caf97a5e40f17de97600b23df2a907969349baf4de852cb219b0f495",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 2.681
+      },
+      "action": "updated-in-place",
+      "current_sha256": "cb6b6f3f61eb9dfd39758a271398eaa4021481f0dfe733bf48f32a2193a533c0"
+    },
+    {
+      "source": "tau_bv_specs/test_01_echo.tau",
+      "original_sha256": "4bc9602b21b914caa9ad301f450e80abb168b1dbe5df4dbfa2ebd66e798ba3f8",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.086
+      },
+      "action": "updated-in-place",
+      "current_sha256": "0c96ba13409098d868876d58266a0bd82f235745aa19f5bf7759a1ed2c01a85f"
+    },
+    {
+      "source": "tau_bv_specs/test_01_echo_v2.tau",
+      "original_sha256": "cc53265f54e463c757fe63df94202a4c467b9db2ef9093e47abcbbfb6656bed2",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.07
+      },
+      "action": "updated-in-place",
+      "current_sha256": "eb1a61371f8da7e705ddb44f99624fb587580e11d4439ee243e2519b55a58181"
+    },
+    {
+      "source": "tau_bv_specs/test_02_negation.tau",
+      "original_sha256": "6101763b05933c86022593ba2f5dd134bb5acea8ccf326aee7212ce511044445",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.087
+      },
+      "action": "updated-in-place",
+      "current_sha256": "9080384da89ec5589c617913dddbe70698aa4b8acc35da0b304981a0fd127529"
+    },
+    {
+      "source": "tau_bv_specs/test_simple_console.tau",
+      "original_sha256": "b9a4a09af8720d987747038618933459f5109cf19111ef4721b02b1b65932e01",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.081
+      },
+      "action": "updated-in-place",
+      "current_sha256": "743a5f0558f85d4efd8b1fe647b2b1b1a0085063351ac2367e805f7c4983d510"
+    },
+    {
+      "source": "tau_q_agents/phase1/01_echo.tau",
+      "original_sha256": "97ffb86a0522abd2483a631f2fc081c78a272fb6f904cc9a8662b8621c192647",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.124
+      },
+      "action": "updated-in-place",
+      "current_sha256": "cbfd2705ebdff4683ac96056f3ba946ba6d6feea346724aad38987f44a61062a"
+    },
+    {
+      "source": "tau_q_agents/phase1/02_negation.tau",
+      "original_sha256": "b7ae174928fa3c2f8246184762aafce47023ddbcb081524b73119c0d32bca14e",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.11
+      },
+      "action": "updated-in-place",
+      "current_sha256": "e2ae2510c6a4327fb404979df575b27f53e5fdad13a37bd888b3f45f67518754"
+    },
+    {
+      "source": "tau_q_agents/phase1/03_delay.tau",
+      "original_sha256": "0633cbdff397ad2a103ba070e120c80eb544fade0d8a0b189856ea688d49cd8f",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.164
+      },
+      "action": "updated-in-place",
+      "current_sha256": "3f893a43d2a8f65af88db24e9621bfee3131d4e2e6c63ab0cb1fddad6574afad"
+    },
+    {
+      "source": "tau_q_agents/phase1/04_toggle.tau",
+      "original_sha256": "7bf412a4322871b62494d6528b289a8c75c100d10dd53ceb8493d3f06188c4ad",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.139
+      },
+      "action": "updated-in-place",
+      "current_sha256": "3e08b430b975dc9a446b192c13461d26308fa05208791178ed38bd80ade4ec93"
+    },
+    {
+      "source": "tau_q_agents/phase1/05_and_gate.tau",
+      "original_sha256": "b4c9a1552331dd8b22b77629657126a78c19ae091eabc5a84085e5aafc8cb59e",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.109
+      },
+      "action": "updated-in-place",
+      "current_sha256": "62a6b79283266ac990c81dc23fa168eff57f713fa235ecc80d676ae87992fdb9"
+    },
+    {
+      "source": "tau_q_agents/phase1_updated/01_echo_new.tau",
+      "original_sha256": "537ca47a9b7196c643d5e471bbbcdd7377b641d6f3fd0d210136b55bda72d662",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.124
+      },
+      "action": "updated-in-place",
+      "current_sha256": "11e93cb38b826c5e2f85192905224f4da93aaf54d9c83bae53832544f7c0f4eb"
+    },
+    {
+      "source": "tau_q_agents/phase1_updated/04_toggle_new.tau",
+      "original_sha256": "617adb6b7a142c79f182a6f7960923593fff8995ca5dda049aff92eede9fd979",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.132
+      },
+      "action": "updated-in-place",
+      "current_sha256": "96e14fe1789603a111e3baf4b1c021e316e71ae2baa163d59a115cbe32430174"
+    },
+    {
+      "source": "tau_q_agents/phase2/06_or_gate.tau",
+      "original_sha256": "90bec616166cc7f80e3e5d6db46808bc7d55e207a99d50267347cc5dafa363c7",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.144
+      },
+      "action": "updated-in-place",
+      "current_sha256": "8c923aeba8885b3ae90c7b9abbd63e4b71854712b395329ce97015bbaba2cb82"
+    },
+    {
+      "source": "tau_q_agents/phase2/07_edge_detect.tau",
+      "original_sha256": "b56e2a3c03bb1c8cbd8d53b44ac5887ea6f7d7c885669c854d188726e6f26c2d",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.15
+      },
+      "action": "updated-in-place",
+      "current_sha256": "8afc10e87340312db0a56e26c4d062097faa8bfc8766a7dfe4f46db2b820138a"
+    },
+    {
+      "source": "tau_q_agents/phase2/08_fsm_2state.tau",
+      "original_sha256": "a6b57712a4465a87349b777d2128ad905b2a6627d46c65eb6ff896eed0066ba1",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.11
+      },
+      "action": "updated-in-place",
+      "current_sha256": "3e07642a0901d4cbde78187db4c47ccc71d676136803729eb6cdeb4da46c4766"
+    },
+    {
+      "source": "tau_q_agents/phase2/09_sr_latch.tau",
+      "original_sha256": "1c53db033c0f0ce11d6ea3879c72519dfa85df6cf2ab4e30a7c971d1c7e912d6",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.135
+      },
+      "action": "updated-in-place",
+      "current_sha256": "6dfcebf221a517954c83b0dab8eaba88f6d673f6e9c3f21a1c611228c65b55ae"
+    },
+    {
+      "source": "tau_q_agents/phase2/10_trading_signal.tau",
+      "original_sha256": "e4c57d9dcb0b4e098e527cbfc30f5a9ee3dd0aa9d2d2ec941958b7d95325f964",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.138
+      },
+      "action": "updated-in-place",
+      "current_sha256": "bce5047714c800a95560d510cb7c497a28e963c32cdfc16879fa34a036737d67"
+    },
+    {
+      "source": "tau_q_agents/phase3/11_momentum_trader.tau",
+      "original_sha256": "621538e5c3b87d3d9ec00bdf869ed93c07c1ea32a629bbc0a738051d7d3e15c8",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.185
+      },
+      "action": "updated-in-place",
+      "current_sha256": "84d08b95fc57a2fa5f92430abd4387049fa302d0326108bdea71d82d69a0d675"
+    },
+    {
+      "source": "tau_q_agents/phase3/12_deflationary_agent.tau",
+      "original_sha256": "1ea58d9b1e9a641a7a6d2c0f784fbed6d2bc61d65512040a045708dfc4c62ec9",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.188
+      },
+      "action": "updated-in-place",
+      "current_sha256": "86dcee99efca92a9aa5432a40515af5375bc8028546edfa0cabe0d62b1a2bce4"
+    },
+    {
+      "source": "tau_q_agents/phase3/13_ascii_communicator.tau",
+      "original_sha256": "c6969174888b9686284c99113341a6944a7a36c9d39b0797927dbb4dd1c60457",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.244
+      },
+      "action": "updated-in-place",
+      "current_sha256": "8db8e2d010fd34e1552e145273c2b4a754380aafede004ed185a21b59ea415b7"
+    },
+    {
+      "source": "tau_q_agents/phase3/14_intelligent_q_agent.tau",
+      "original_sha256": "6a9276f688cddff0d7f8bcf85eb7ba8828b73aa5af38fd3bd1073b9f5bb8cb07",
+      "migration_issues": [
+        "removed interactive Boolean input transcript after run formula"
+      ],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.244
+      },
+      "action": "updated-in-place",
+      "current_sha256": "f676ef8469c0800016a4486a0a8ffcdf5979e8a5c52d1d77f78a2f1839b3d200"
+    },
+    {
+      "source": "tau_q_agents/phase3_updated/14_intelligent_q_agent_new.tau",
+      "original_sha256": "a7536f3650ca6cebeb48d9d4306b98f97b1f3e557bb53781651542ca9e9fee1d",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.186
+      },
+      "action": "updated-in-place",
+      "current_sha256": "343f4ebb60b83f7dc04c5921c7258c62c57d9cb91bae732442074504043beaa6"
+    },
+    {
+      "source": "tau_q_agents/phase4/15_q_controlled_agent.tau",
+      "original_sha256": "53bbc56b414675d494236a4220a2826c98726e0e866efd884d9388afa12dfb7c",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.196
+      },
+      "action": "updated-in-place",
+      "current_sha256": "11eade2651afeaeda61dfd92e50262b15a028773d038a07acb0b63b904b82db7"
+    },
+    {
+      "source": "tau_q_agents/phase4/16_layered_strategy.tau",
+      "original_sha256": "e2db9396dc7ec2e761befb04317320cc94a5493359e56571231a2638d1f640b8",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.262
+      },
+      "action": "updated-in-place",
+      "current_sha256": "56892a4762523350169f54f79193429edf36583a8e68ca9b1a070c0e8ce3cac0"
+    },
+    {
+      "source": "tau_q_agents/phase4/17_adaptive_burn.tau",
+      "original_sha256": "4bc15b7620df48b4807a49e52f9f2a7410b9156656a6eeb630b98eaf7c6df0d5",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.192
+      },
+      "action": "updated-in-place",
+      "current_sha256": "64d2276df34ad9b19b297e7c809be95ee061fcfa5bfc202d73aceaa055a9f037"
+    },
+    {
+      "source": "tau_q_agents/phase4_updated/15_q_controlled_agent_new.tau",
+      "original_sha256": "e36c3f6cf5a5a5b351befa4b374ef908e21cf23cccdee72ce3230f0a2fd6d92a",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.287
+      },
+      "action": "updated-in-place",
+      "current_sha256": "b5136db16f7cfe5daddb4dbc97d2aea5d4f1b4d0aae0aeb746a125fa00a56b4f"
+    },
+    {
+      "source": "tau_q_agents/phase4_updated/16_layered_strategy_new.tau",
+      "original_sha256": "ec17403254afb5b4583fc788af68efd8975763b285480d1c0c73c87d2f4e32fb",
+      "migration_issues": [],
+      "native": {
+        "accepted": true,
+        "errors": [],
+        "status": "native-interpreter-accepted",
+        "seconds": 0.299
+      },
+      "action": "updated-in-place",
+      "current_sha256": "3bd52b0b6ed9d4a400dba03023e45a887e13f3c5affe89680143b35d6abf0126"
+    }
+  ]
+}

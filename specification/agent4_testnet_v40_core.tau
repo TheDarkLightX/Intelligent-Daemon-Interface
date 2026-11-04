@@ -1,95 +1,41 @@
-# Deflationary Agent V40 Core - Modular Trading Engine
-# Optimized core specification without audit overhead
-# Copyright DarkLightX/Dana Edwards
-#
-# DESIGN PHILOSOPHY:
-# Separate the core trading logic from observability/audit features.
-# This allows:
-# - Maximum performance in production (core only)
-# - Full auditability when needed (core + audit)
-# - Independent testing of each component
-#
-# This file: V40 CORE - Trading logic only
-# Companion file: V40 AUDIT - Observable invariants and debugging
+# Tau 0.8 typed Boolean trading-state example.
+# Historical transition equations retained; native admission is not a behavioral proof.
+# Forecasts, prices and profitability flags are host inputs. This is not A* search.
+# No admissible-heuristic, trading-return, timing or BDD-size claim is established.
+# Initial state selection and real market execution require a separate contract.
 
-# === HELPER PREDICATES ===
-valid_entry(p, v, t, h) := p' & v & t & h'.
-valid_exit(p, h) := p & h.
-timed_out(b1, b0) := b1 & b0.
-
-# === INPUT STREAMS (5 inputs) ===
-sbf i0 = ifile("inputs/price.in").          # Market price
-sbf i1 = ifile("inputs/volume.in").         # Trading volume
-sbf i2 = ifile("inputs/trend.in").          # Price trend
-sbf i3 = ifile("inputs/profit_guard.in").   # Profit guard
-sbf i4 = ifile("inputs/failure_echo.in").   # Failure echo
-
-# === OUTPUT STREAMS (10 core outputs) ===
-# These are the ESSENTIAL outputs for trading functionality
-sbf o0 = ofile("outputs/state.out").        # Agent state (executing)
-sbf o1 = ofile("outputs/holding.out").      # Position held
-sbf o2 = ofile("outputs/buy_signal.out").   # Buy trigger
-sbf o3 = ofile("outputs/sell_signal.out").  # Sell trigger
-sbf o6 = ofile("outputs/timer_b0.out").     # Timer bit 0
-sbf o7 = ofile("outputs/timer_b1.out").     # Timer bit 1
-sbf o9 = ofile("outputs/nonce.out").        # Replay protection
-sbf o10 = ofile("outputs/entry_price.out"). # Entry price level
-sbf o11 = ofile("outputs/profit.out").      # Profitable exit
-sbf o13 = ofile("outputs/has_burned.out").  # Burn history
-
-# === CORE SPECIFICATION (10 clauses, maximum efficiency) ===
-r (
-    # === STATE MACHINE ===
-    (o0[t] = (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) & 
+valid_entry(p:sbf, v:sbf, t:sbf, h:sbf) := p:sbf' & v:sbf & t:sbf & h:sbf'.
+valid_exit(p:sbf, h:sbf) := p:sbf & h:sbf.
+timed_out(b1:sbf, b0:sbf) := b1:sbf & b0:sbf.
+i0:sbf := in file("inputs/price.in").
+i1:sbf := in file("inputs/volume.in").
+i2:sbf := in file("inputs/trend.in").
+i3:sbf := in file("inputs/profit_guard.in").
+i4:sbf := in file("inputs/failure_echo.in").
+o0:sbf := out file("outputs/state.out").
+o1:sbf := out file("outputs/holding.out").
+o2:sbf := out file("outputs/buy_signal.out").
+o3:sbf := out file("outputs/sell_signal.out").
+o6:sbf := out file("outputs/timer_b0.out").
+o7:sbf := out file("outputs/timer_b1.out").
+o9:sbf := out file("outputs/nonce.out").
+o10:sbf := out file("outputs/entry_price.out").
+o11:sbf := out file("outputs/profit.out").
+o13:sbf := out file("outputs/has_burned.out").
+always (
+(
+    (o0[t] = (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) &
               o0[t-1]' & i1[t] & timed_out(o7[t-1], o6[t-1])' & o9[t-1]' & i4[t]') |
-             (o0[t-1] & valid_exit(i0[t], o1[t-1])' & 
+             (o0[t-1] & valid_exit(i0[t], o1[t-1])' &
               timed_out(o7[t-1], o6[t-1])' & i1[t] & i4[t]')) &&
-    
-    # === TRADING SIGNALS ===
     (o2[t] = o0[t] & o0[t-1]' & o1[t-1]') &&
     (o3[t] = o0[t-1] & o0[t]' & o1[t-1]) &&
     (o1[t] = o2[t] | (o3[t]' & o1[t-1])) &&
-    
-    # === TIMER ===
     (o6[t] = o0[t] & o6[t-1]') &&
     (o7[t] = o0[t] & ((o7[t-1] & o6[t-1]') | (o7[t-1]' & o6[t-1]))) &&
-    
-    # === NONCE ===
     (o9[t] = o2[t] | (o0[t-1] & o3[t]' & o9[t-1])) &&
-    
-    # === ECONOMICS ===
     (o10[t] = (o2[t] & i0[t]) | (o0[t-1] & o2[t]' & o3[t]' & o10[t-1])) &&
     (o11[t] = o3[t] & i0[t] & o10[t-1]' & i3[t]) &&
-    
-    # === BURN TRACKING ===
     (o13[t] = o13[t-1] | o11[t])
 )
-
-# === SAFETY GUARANTEES (Inherent in specification) ===
-# These are NOT separate outputs - they are PROPERTIES of the core logic:
-# 1. Action exclusivity: o2 requires o1[t-1]', o3 requires o1[t-1]
-# 2. Fresh oracle: Entry/continuation require i1[t]
-# 3. Nonce blocking: Entry requires o9[t-1]'
-# 4. Timeout: timed_out(o7,o6)=1 forces exit
-# 5. Burn-profit: o11 requires i3[t]
-# 6. Monotonic burns: o13 OR-accumulates
-
-# === MODULARITY NOTES ===
-# For full observability, run alongside V40_AUDIT which adds:
-# - o4 (lock) = o0
-# - o5 (fresh) = i1
-# - o12 (burn_event) = o11
-# - o14 (obs_action_excl)
-# - o15 (obs_fresh_exec)
-# - o16 (obs_burn_profit)
-# - o17 (obs_nonce_effect)
-# - o18 (progress_flag)
-#
-# Daemon can merge outputs from both specs if needed.
-
-# === PERFORMANCE ===
-# Clause count: 10
-# Output count: 10
-# BDD size: Minimal
-# Normalization: ~30-40% faster than V35
-
+).

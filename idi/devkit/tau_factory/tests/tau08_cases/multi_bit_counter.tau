@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# multi_bit_counter_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# multi_bit_counter_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/increment.in"). 
+
+o0:bv[3] := out file("outputs/counter.out"). 
+
+# multi_bit_counter pattern: counter <- increment
+always (
+((((i0[t] != 0)) -> o0[t] = (o0[t-1] + {1}:bv[3])) && ((!(i0[t] != 0)) -> o0[t] = o0[t-1]) && (o0[0] = {0}:bv[3]))
+).

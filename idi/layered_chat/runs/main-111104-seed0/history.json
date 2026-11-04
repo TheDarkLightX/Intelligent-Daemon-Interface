@@ -1,0 +1,93 @@
+[
+  {
+    "epoch": 1,
+    "loss": 1.277216609447295,
+    "validation_accuracy": 0.8521505376344086,
+    "seconds": 139.312,
+    "examples_seen": 62280
+  },
+  {
+    "epoch": 5,
+    "loss": 0.14242270162990633,
+    "validation_accuracy": 0.8763440860215054,
+    "seconds": 696.95,
+    "examples_seen": 311400
+  },
+  {
+    "epoch": 10,
+    "loss": 0.1340461662126491,
+    "validation_accuracy": 0.8723118279569892,
+    "seconds": 1419.854,
+    "examples_seen": 622800
+  },
+  {
+    "epoch": 15,
+    "loss": 0.13133470493206706,
+    "validation_accuracy": 0.8776881720430108,
+    "seconds": 2197.97,
+    "examples_seen": 934200
+  },
+  {
+    "epoch": 20,
+    "loss": 0.12993638832636498,
+    "validation_accuracy": 0.8696236559139785,
+    "seconds": 3022.269,
+    "examples_seen": 1245600
+  },
+  {
+    "epoch": 25,
+    "loss": 0.12899501051229778,
+    "validation_accuracy": 0.8709677419354839,
+    "seconds": 3829.963,
+    "examples_seen": 1557000
+  },
+  {
+    "epoch": 30,
+    "loss": 0.12814865149820778,
+    "validation_accuracy": 0.8723118279569892,
+    "seconds": 4636.008,
+    "examples_seen": 1868400
+  },
+  {
+    "epoch": 35,
+    "loss": 0.12759393101406158,
+    "validation_accuracy": 0.8709677419354839,
+    "seconds": 5600.799,
+    "examples_seen": 2179800
+  },
+  {
+    "epoch": 40,
+    "loss": 0.12730542968386782,
+    "validation_accuracy": 0.8736559139784946,
+    "seconds": 6463.028,
+    "examples_seen": 2491200
+  },
+  {
+    "epoch": 45,
+    "loss": 0.12708893481476918,
+    "validation_accuracy": 0.8723118279569892,
+    "seconds": 7196.734,
+    "examples_seen": 2802600
+  },
+  {
+    "epoch": 50,
+    "loss": 0.12694071880233693,
+    "validation_accuracy": 0.875,
+    "seconds": 7860.248,
+    "examples_seen": 3114000
+  },
+  {
+    "epoch": 55,
+    "loss": 0.1268175174046114,
+    "validation_accuracy": 0.875,
+    "seconds": 8541.059,
+    "examples_seen": 3425400
+  },
+  {
+    "epoch": 60,
+    "loss": 0.12671426415405138,
+    "validation_accuracy": 0.8736559139784946,
+    "seconds": 9186.028,
+    "examples_seen": 3736800
+  }
+]

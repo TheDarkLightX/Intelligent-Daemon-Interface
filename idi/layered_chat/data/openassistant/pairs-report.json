@@ -1,0 +1,10 @@
+{
+  "rows": {
+    "train": 84382,
+    "validation": 9804,
+    "test": 10794
+  },
+  "label_scope": "Positive means original paired answer; other answers are weak negative labels and can also be relevant.",
+  "split": "SHA256 conversation-tree ID; no tree spans splits",
+  "features": "64 integer threshold bits; query/candidate lexical overlap"
+}

@@ -1,0 +1,6002 @@
+[
+  {
+    "pattern": "fsm",
+    "schema": {
+      "name": "test_agent",
+      "strategy": "momentum",
+      "streams": [
+        {
+          "name": "q_buy",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "q_sell",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "position",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "fsm",
+          "inputs": [
+            "q_buy",
+            "q_sell"
+          ],
+          "output": "position",
+          "params": {}
+        }
+      ],
+      "num_steps": 5,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.127
+    }
+  },
+  {
+    "pattern": "counter",
+    "schema": {
+      "name": "counter_test",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "increment",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "count",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "counter",
+          "inputs": [
+            "increment"
+          ],
+          "output": "count",
+          "params": {
+            "max_value": 10
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.113
+    }
+  },
+  {
+    "pattern": "accumulator",
+    "schema": {
+      "name": "smoke_accumulator",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "tick",
+          "stream_type": "bv",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "sum",
+          "stream_type": "bv",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "accumulator",
+          "inputs": [
+            "tick"
+          ],
+          "output": "sum",
+          "params": {}
+        }
+      ],
+      "num_steps": 4,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.128
+    }
+  },
+  {
+    "pattern": "vote",
+    "schema": {
+      "name": "FRFxy0Z",
+      "strategy": "momentum",
+      "streams": [
+        {
+          "name": "gt3",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "hjcbjscl",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "dm0519",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "vote",
+          "inputs": [
+            "gt3",
+            "hjcbjscl"
+          ],
+          "output": "dm0519",
+          "params": {}
+        }
+      ],
+      "num_steps": 9,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.115
+    }
+  },
+  {
+    "pattern": "passthrough",
+    "schema": {
+      "name": "passthrough_test",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "input1",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "output1",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "passthrough",
+          "inputs": [
+            "input1"
+          ],
+          "output": "output1",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.113
+    }
+  },
+  {
+    "pattern": "majority",
+    "schema": {
+      "name": "IeWoV",
+      "strategy": "momentum",
+      "streams": [
+        {
+          "name": "s0pkqx",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "li5y",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "s_x",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "majority",
+          "inputs": [
+            "li5y",
+            "s0pkqx"
+          ],
+          "output": "s_x",
+          "params": {}
+        }
+      ],
+      "num_steps": 17,
+      "include_mirrors": true,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.125
+    }
+  },
+  {
+    "pattern": "unanimous",
+    "schema": {
+      "name": "unanimous_test",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "agree1",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "agree2",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "consensus",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "unanimous",
+          "inputs": [
+            "agree1",
+            "agree2"
+          ],
+          "output": "consensus",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.112
+    }
+  },
+  {
+    "pattern": "custom",
+    "schema": {
+      "name": "custom_simple",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "custom",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {
+            "expression": "(i0[t] & i1[t]) | (i0[t]' & i1[t]')"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.144
+    }
+  },
+  {
+    "pattern": "quorum",
+    "schema": {
+      "name": "quorum_test",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "member1",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "member2",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "member3",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "approved",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "quorum",
+          "inputs": [
+            "member1",
+            "member2",
+            "member3"
+          ],
+          "output": "approved",
+          "params": {
+            "min_votes": 2
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.136
+    }
+  },
+  {
+    "pattern": "supervisor_worker",
+    "schema": {
+      "name": "supervisor_worker_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "global_mode",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "worker1_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "supervisor_state",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        },
+        {
+          "name": "worker1_enable",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        },
+        {
+          "name": "worker1_state",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "supervisor_worker",
+          "inputs": [
+            "global_mode",
+            "worker1_signal"
+          ],
+          "output": "supervisor_state",
+          "params": {
+            "supervisor_inputs": [
+              "global_mode"
+            ],
+            "worker_inputs": [
+              "worker1_signal"
+            ],
+            "worker_enable_outputs": [
+              "worker1_enable"
+            ],
+            "worker_outputs": [
+              "worker1_state"
+            ]
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.14
+    }
+  },
+  {
+    "pattern": "weighted_vote",
+    "schema": {
+      "name": "weighted_vote_bv",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "agent1",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "agent2",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "weighted_sum",
+          "stream_type": "bv",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "weighted_vote",
+          "inputs": [
+            "agent1",
+            "agent2"
+          ],
+          "output": "weighted_sum",
+          "params": {
+            "weights": [
+              3,
+              2
+            ],
+            "threshold": 3
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.193
+    }
+  },
+  {
+    "pattern": "time_lock",
+    "schema": {
+      "name": "time_lock_bool",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "lock_start",
+          "stream_type": "bv",
+          "width": 16,
+          "is_input": true
+        },
+        {
+          "name": "lock_duration",
+          "stream_type": "bv",
+          "width": 16,
+          "is_input": true
+        },
+        {
+          "name": "current_time",
+          "stream_type": "bv",
+          "width": 16,
+          "is_input": true
+        },
+        {
+          "name": "lock_active",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "time_lock",
+          "inputs": [
+            "lock_start",
+            "lock_duration",
+            "current_time"
+          ],
+          "output": "lock_active",
+          "params": {
+            "lock_start": "lock_start",
+            "lock_duration": "lock_duration",
+            "current_time": "current_time"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.15
+    }
+  },
+  {
+    "pattern": "hex_stake",
+    "schema": {
+      "name": "hex_stake_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "stake_amount",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": true
+        },
+        {
+          "name": "stake_duration",
+          "stream_type": "bv",
+          "width": 16,
+          "is_input": true
+        },
+        {
+          "name": "current_time",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": true
+        },
+        {
+          "name": "action_stake",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "action_end",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "lock_active",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "hex_stake",
+          "inputs": [
+            "stake_amount",
+            "stake_duration",
+            "current_time",
+            "action_stake",
+            "action_end"
+          ],
+          "output": "lock_active",
+          "params": {
+            "max_duration": 3650
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.186
+    }
+  },
+  {
+    "pattern": "multi_bit_counter",
+    "schema": {
+      "name": "multi_bit_counter_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "increment",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "counter",
+          "stream_type": "bv",
+          "width": 3,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "multi_bit_counter",
+          "inputs": [
+            "increment"
+          ],
+          "output": "counter",
+          "params": {
+            "width": 3
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.23
+    }
+  },
+  {
+    "pattern": "streak_counter",
+    "schema": {
+      "name": "streak_counter_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "win",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "loss",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "streak",
+          "stream_type": "bv",
+          "width": 4,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "streak_counter",
+          "inputs": [
+            "win",
+            "loss"
+          ],
+          "output": "streak",
+          "params": {
+            "width": 4,
+            "opposite_event": "loss"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.199
+    }
+  },
+  {
+    "pattern": "mode_switch",
+    "schema": {
+      "name": "mode_switch_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "aggressive_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "defensive_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "mode",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "mode_switch",
+          "inputs": [
+            "aggressive_signal",
+            "defensive_signal"
+          ],
+          "output": "mode",
+          "params": {
+            "modes": [
+              "DEFENSIVE",
+              "AGGRESSIVE"
+            ],
+            "transitions": {
+              "DEFENSIVE": {
+                "to": "AGGRESSIVE",
+                "on": "aggressive_signal"
+              },
+              "AGGRESSIVE": {
+                "to": "DEFENSIVE",
+                "on": "defensive_signal"
+              }
+            },
+            "initial_mode": 0
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.195
+    }
+  },
+  {
+    "pattern": "proposal_fsm",
+    "schema": {
+      "name": "proposal_fsm_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "create",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "vote",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "execute",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "cancel",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "quorum_met",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "proposal_state",
+          "stream_type": "bv",
+          "width": 3,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "proposal_fsm",
+          "inputs": [
+            "create",
+            "vote",
+            "execute",
+            "cancel"
+          ],
+          "output": "proposal_state",
+          "params": {
+            "create_input": "create",
+            "vote_input": "vote",
+            "execute_input": "execute",
+            "cancel_input": "cancel",
+            "quorum_met": "quorum_met"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.407
+    }
+  },
+  {
+    "pattern": "risk_fsm",
+    "schema": {
+      "name": "risk_fsm_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "warning_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "critical_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "normal_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "risk_state",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "risk_fsm",
+          "inputs": [
+            "warning_signal",
+            "critical_signal",
+            "normal_signal"
+          ],
+          "output": "risk_state",
+          "params": {
+            "warning_signal": "warning_signal",
+            "critical_signal": "critical_signal",
+            "normal_signal": "normal_signal"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.245
+    }
+  },
+  {
+    "pattern": "entry_exit_fsm",
+    "schema": {
+      "name": "entry_exit_fsm_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "entry_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "exit_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "phase",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "entry_exit_fsm",
+          "inputs": [
+            "entry_signal",
+            "exit_signal"
+          ],
+          "output": "phase",
+          "params": {
+            "phases": [
+              "PRE_TRADE",
+              "IN_TRADE",
+              "POST_TRADE"
+            ],
+            "entry_signal": "entry_signal",
+            "exit_signal": "exit_signal"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.303
+    }
+  },
+  {
+    "pattern": "orthogonal_regions",
+    "schema": {
+      "name": "orthogonal_regions_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "execution_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "risk_signal",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "execution_state",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": false
+        },
+        {
+          "name": "risk_state",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "orthogonal_regions",
+          "inputs": [
+            "execution_signal",
+            "risk_signal"
+          ],
+          "output": "execution_state",
+          "params": {
+            "regions": [
+              {
+                "name": "execution",
+                "inputs": [
+                  "execution_signal"
+                ],
+                "states": [
+                  "FLAT",
+                  "LONG"
+                ],
+                "initial_state": 0
+              },
+              {
+                "name": "risk",
+                "inputs": [
+                  "risk_signal"
+                ],
+                "states": [
+                  "NORMAL",
+                  "WARNING"
+                ],
+                "initial_state": 0
+              }
+            ],
+            "region_outputs": [
+              "execution_state",
+              "risk_state"
+            ]
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.196
+    }
+  },
+  {
+    "pattern": "state_aggregation",
+    "schema": {
+      "name": "state_aggregation_unanimous",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "fsm1_state",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "fsm2_state",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "aggregate_state",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "state_aggregation",
+          "inputs": [
+            "fsm1_state",
+            "fsm2_state"
+          ],
+          "output": "aggregate_state",
+          "params": {
+            "method": "unanimous"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.134
+    }
+  },
+  {
+    "pattern": "tcp_connection_fsm",
+    "schema": {
+      "name": "tcp_connection_fsm_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "syn_flag",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "ack_flag",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "fin_flag",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "rst_flag",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "tcp_state",
+          "stream_type": "bv",
+          "width": 4,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "tcp_connection_fsm",
+          "inputs": [
+            "syn_flag",
+            "ack_flag",
+            "fin_flag",
+            "rst_flag"
+          ],
+          "output": "tcp_state",
+          "params": {
+            "syn_flag": "syn_flag",
+            "ack_flag": "ack_flag",
+            "fin_flag": "fin_flag",
+            "rst_flag": "rst_flag"
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": false,
+      "status": "budget-inconclusive",
+      "errors": [
+        "native admission exceeded the wall-clock budget"
+      ],
+      "seconds": 8.025
+    }
+  },
+  {
+    "pattern": "utxo_state_machine",
+    "schema": {
+      "name": "utxo_state_machine_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "tx_inputs",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": true
+        },
+        {
+          "name": "tx_outputs",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": true
+        },
+        {
+          "name": "utxo_set",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "utxo_state_machine",
+          "inputs": [
+            "tx_inputs",
+            "tx_outputs"
+          ],
+          "output": "utxo_set",
+          "params": {
+            "tx_inputs": "tx_inputs",
+            "tx_outputs": "tx_outputs",
+            "initial_utxo_set": 0
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.159
+    }
+  },
+  {
+    "pattern": "history_state",
+    "schema": {
+      "name": "history_state_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "substate",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": true
+        },
+        {
+          "name": "superstate_entry",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "restored_state",
+          "stream_type": "bv",
+          "width": 2,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "history_state",
+          "inputs": [
+            "substate",
+            "superstate_entry"
+          ],
+          "output": "restored_state",
+          "params": {
+            "substate_input": "substate",
+            "superstate_entry": "superstate_entry",
+            "initial_substate": 0
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.202
+    }
+  },
+  {
+    "pattern": "decomposed_fsm",
+    "schema": {
+      "name": "decomposed_fsm_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "buy",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "sell",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "idle_low",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        },
+        {
+          "name": "idle_high",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        },
+        {
+          "name": "pos_low",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        },
+        {
+          "name": "pos_high",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "decomposed_fsm",
+          "inputs": [
+            "buy",
+            "sell"
+          ],
+          "output": "idle_low",
+          "params": {
+            "hierarchy": {
+              "IDLE": {
+                "substates": [
+                  "idle_low",
+                  "idle_high"
+                ],
+                "initial": "idle_low"
+              },
+              "POSITION": {
+                "substates": [
+                  "pos_low",
+                  "pos_high"
+                ],
+                "initial": "pos_low"
+              }
+            },
+            "transitions": [
+              {
+                "from": "idle_low",
+                "to": "pos_low",
+                "condition": "buy[t]"
+              },
+              {
+                "from": "pos_low",
+                "to": "idle_low",
+                "condition": "sell[t]"
+              }
+            ],
+            "substate_outputs": [
+              "idle_low",
+              "idle_high",
+              "pos_low",
+              "pos_high"
+            ]
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.224
+    }
+  },
+  {
+    "pattern": "script_execution",
+    "schema": {
+      "name": "script_execution_basic",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "script",
+          "stream_type": "bv",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "stack",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": true
+        },
+        {
+          "name": "execution_result",
+          "stream_type": "bv",
+          "width": 32,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "script_execution",
+          "inputs": [
+            "script",
+            "stack"
+          ],
+          "output": "execution_result",
+          "params": {
+            "script_input": "script",
+            "stack_input": "stack",
+            "opcodes": {
+              "OP_DUP": "duplicate_top",
+              "OP_HASH160": "external_hash"
+            }
+          }
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.156
+    }
+  },
+  {
+    "pattern": "edge_detector",
+    "schema": {
+      "name": "edge_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "edge_detector",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.092
+    }
+  },
+  {
+    "pattern": "falling_edge",
+    "schema": {
+      "name": "falling_edge",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "falling_edge",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.097
+    }
+  },
+  {
+    "pattern": "toggle",
+    "schema": {
+      "name": "toggle",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "toggle",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.153
+    }
+  },
+  {
+    "pattern": "latch",
+    "schema": {
+      "name": "latch",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "latch",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.134
+    }
+  },
+  {
+    "pattern": "debounce",
+    "schema": {
+      "name": "debounce",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "debounce",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.138
+    }
+  },
+  {
+    "pattern": "pulse_generator",
+    "schema": {
+      "name": "pulse_generator",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "pulse_generator",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.12
+    }
+  },
+  {
+    "pattern": "sample_hold",
+    "schema": {
+      "name": "sample_hold",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "sample_hold",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.161
+    }
+  },
+  {
+    "pattern": "multiplexer",
+    "schema": {
+      "name": "multiplexer",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "multiplexer",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.161
+    }
+  },
+  {
+    "pattern": "demultiplexer",
+    "schema": {
+      "name": "demultiplexer",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "demultiplexer",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.138
+    }
+  },
+  {
+    "pattern": "priority_encoder",
+    "schema": {
+      "name": "priority_encoder",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "priority_encoder",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.148
+    }
+  },
+  {
+    "pattern": "arbiter",
+    "schema": {
+      "name": "arbiter",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "arbiter",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.153
+    }
+  },
+  {
+    "pattern": "watchdog",
+    "schema": {
+      "name": "watchdog",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "watchdog",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.198
+    }
+  },
+  {
+    "pattern": "deadman_switch",
+    "schema": {
+      "name": "deadman_switch",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "deadman_switch",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.144
+    }
+  },
+  {
+    "pattern": "safety_interlock",
+    "schema": {
+      "name": "safety_interlock",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "safety_interlock",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.115
+    }
+  },
+  {
+    "pattern": "fault_detector",
+    "schema": {
+      "name": "fault_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "fault_detector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.114
+    }
+  },
+  {
+    "pattern": "handshake",
+    "schema": {
+      "name": "handshake",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "handshake",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.146
+    }
+  },
+  {
+    "pattern": "sync_barrier",
+    "schema": {
+      "name": "sync_barrier",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "sync_barrier",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.136
+    }
+  },
+  {
+    "pattern": "token_ring",
+    "schema": {
+      "name": "token_ring",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "token_ring",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.13
+    }
+  },
+  {
+    "pattern": "comparator",
+    "schema": {
+      "name": "comparator",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "comparator",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.13
+    }
+  },
+  {
+    "pattern": "min_selector",
+    "schema": {
+      "name": "min_selector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "min_selector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.121
+    }
+  },
+  {
+    "pattern": "max_selector",
+    "schema": {
+      "name": "max_selector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "max_selector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.099
+    }
+  },
+  {
+    "pattern": "threshold_detector",
+    "schema": {
+      "name": "threshold_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "threshold_detector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.134
+    }
+  },
+  {
+    "pattern": "byzantine_fault_tolerant",
+    "schema": {
+      "name": "byzantine_fault_tolerant",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "d",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "byzantine_fault_tolerant",
+          "inputs": [
+            "a",
+            "b",
+            "c",
+            "d"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.097
+    }
+  },
+  {
+    "pattern": "leader_election",
+    "schema": {
+      "name": "leader_election",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "leader_election",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.133
+    }
+  },
+  {
+    "pattern": "commit_protocol",
+    "schema": {
+      "name": "commit_protocol",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "commit_protocol",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.113
+    }
+  },
+  {
+    "pattern": "nand_gate",
+    "schema": {
+      "name": "nand_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "nand_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.153
+    }
+  },
+  {
+    "pattern": "nor_gate",
+    "schema": {
+      "name": "nor_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "nor_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.084
+    }
+  },
+  {
+    "pattern": "xnor_gate",
+    "schema": {
+      "name": "xnor_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "xnor_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.101
+    }
+  },
+  {
+    "pattern": "implication",
+    "schema": {
+      "name": "implication",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "implication",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.101
+    }
+  },
+  {
+    "pattern": "equivalence",
+    "schema": {
+      "name": "equivalence",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "equivalence",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.075
+    }
+  },
+  {
+    "pattern": "delay_line",
+    "schema": {
+      "name": "delay_line",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "delay_line",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.092
+    }
+  },
+  {
+    "pattern": "hold",
+    "schema": {
+      "name": "hold",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "hold",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.152
+    }
+  },
+  {
+    "pattern": "one_shot",
+    "schema": {
+      "name": "one_shot",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "one_shot",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.139
+    }
+  },
+  {
+    "pattern": "gray_code",
+    "schema": {
+      "name": "gray_code",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "gray_code",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.086
+    }
+  },
+  {
+    "pattern": "ring_counter",
+    "schema": {
+      "name": "ring_counter",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "ring_counter",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.1
+    }
+  },
+  {
+    "pattern": "sequence_detector",
+    "schema": {
+      "name": "sequence_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "sequence_detector",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.086
+    }
+  },
+  {
+    "pattern": "confidence_gate",
+    "schema": {
+      "name": "confidence_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "confidence_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.111
+    }
+  },
+  {
+    "pattern": "action_selector",
+    "schema": {
+      "name": "action_selector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "action_selector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.092
+    }
+  },
+  {
+    "pattern": "exploration_exploit",
+    "schema": {
+      "name": "exploration_exploit",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "exploration_exploit",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.113
+    }
+  },
+  {
+    "pattern": "reward_accumulator",
+    "schema": {
+      "name": "reward_accumulator",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "reward_accumulator",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.115
+    }
+  },
+  {
+    "pattern": "goal_detector",
+    "schema": {
+      "name": "goal_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "goal_detector",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.144
+    }
+  },
+  {
+    "pattern": "obstacle_detector",
+    "schema": {
+      "name": "obstacle_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "obstacle_detector",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.087
+    }
+  },
+  {
+    "pattern": "policy_switch",
+    "schema": {
+      "name": "policy_switch",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "policy_switch",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.101
+    }
+  },
+  {
+    "pattern": "experience_buffer",
+    "schema": {
+      "name": "experience_buffer",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "experience_buffer",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.093
+    }
+  },
+  {
+    "pattern": "learning_gate",
+    "schema": {
+      "name": "learning_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "learning_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.135
+    }
+  },
+  {
+    "pattern": "attention_focus",
+    "schema": {
+      "name": "attention_focus",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "attention_focus",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.095
+    }
+  },
+  {
+    "pattern": "consensus_vote",
+    "schema": {
+      "name": "consensus_vote",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "consensus_vote",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.132
+    }
+  },
+  {
+    "pattern": "broadcast",
+    "schema": {
+      "name": "broadcast",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "broadcast",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.138
+    }
+  },
+  {
+    "pattern": "message_filter",
+    "schema": {
+      "name": "message_filter",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "message_filter",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.139
+    }
+  },
+  {
+    "pattern": "role_assignment",
+    "schema": {
+      "name": "role_assignment",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "role_assignment",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.106
+    }
+  },
+  {
+    "pattern": "action_mask",
+    "schema": {
+      "name": "action_mask",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "action_mask",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.111
+    }
+  },
+  {
+    "pattern": "safety_override",
+    "schema": {
+      "name": "safety_override",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "safety_override",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.091
+    }
+  },
+  {
+    "pattern": "constraint_checker",
+    "schema": {
+      "name": "constraint_checker",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "constraint_checker",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.073
+    }
+  },
+  {
+    "pattern": "budget_gate",
+    "schema": {
+      "name": "budget_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "budget_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.076
+    }
+  },
+  {
+    "pattern": "prediction_gate",
+    "schema": {
+      "name": "prediction_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "prediction_gate",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.148
+    }
+  },
+  {
+    "pattern": "anomaly_detector",
+    "schema": {
+      "name": "anomaly_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "anomaly_detector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.081
+    }
+  },
+  {
+    "pattern": "state_classifier",
+    "schema": {
+      "name": "state_classifier",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "state_classifier",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.104
+    }
+  },
+  {
+    "pattern": "xor_combine",
+    "schema": {
+      "name": "xor_combine",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "xor_combine",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.083
+    }
+  },
+  {
+    "pattern": "commitment_match",
+    "schema": {
+      "name": "commitment_match",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "commitment_match",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.088
+    }
+  },
+  {
+    "pattern": "all_revealed",
+    "schema": {
+      "name": "all_revealed",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "all_revealed",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.086
+    }
+  },
+  {
+    "pattern": "phase_gate",
+    "schema": {
+      "name": "phase_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "phase_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.139
+    }
+  },
+  {
+    "pattern": "collision_detect",
+    "schema": {
+      "name": "collision_detect",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "collision_detect",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.162
+    }
+  },
+  {
+    "pattern": "turn_gate",
+    "schema": {
+      "name": "turn_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "turn_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.169
+    }
+  },
+  {
+    "pattern": "fair_priority",
+    "schema": {
+      "name": "fair_priority",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "c",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "fair_priority",
+          "inputs": [
+            "a",
+            "b",
+            "c"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.149
+    }
+  },
+  {
+    "pattern": "streak_detector",
+    "schema": {
+      "name": "streak_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "streak_detector",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.133
+    }
+  },
+  {
+    "pattern": "combo_counter",
+    "schema": {
+      "name": "combo_counter",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "combo_counter",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.136
+    }
+  },
+  {
+    "pattern": "cooldown",
+    "schema": {
+      "name": "cooldown",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "cooldown",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.157
+    }
+  },
+  {
+    "pattern": "capture",
+    "schema": {
+      "name": "capture",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "capture",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.162
+    }
+  },
+  {
+    "pattern": "territory_control",
+    "schema": {
+      "name": "territory_control",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "territory_control",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.132
+    }
+  },
+  {
+    "pattern": "simultaneous_action",
+    "schema": {
+      "name": "simultaneous_action",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "simultaneous_action",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.135
+    }
+  },
+  {
+    "pattern": "any_action",
+    "schema": {
+      "name": "any_action",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "any_action",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.125
+    }
+  },
+  {
+    "pattern": "exclusive_action",
+    "schema": {
+      "name": "exclusive_action",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "exclusive_action",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.085
+    }
+  },
+  {
+    "pattern": "valid_move",
+    "schema": {
+      "name": "valid_move",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "valid_move",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.154
+    }
+  },
+  {
+    "pattern": "win_condition",
+    "schema": {
+      "name": "win_condition",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "win_condition",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.093
+    }
+  },
+  {
+    "pattern": "game_over",
+    "schema": {
+      "name": "game_over",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "game_over",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.109
+    }
+  },
+  {
+    "pattern": "score_gate",
+    "schema": {
+      "name": "score_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "score_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.163
+    }
+  },
+  {
+    "pattern": "bonus_trigger",
+    "schema": {
+      "name": "bonus_trigger",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "bonus_trigger",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.126
+    }
+  },
+  {
+    "pattern": "mutual_exclusion",
+    "schema": {
+      "name": "mutual_exclusion",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "mutual_exclusion",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.081
+    }
+  },
+  {
+    "pattern": "never_unsafe",
+    "schema": {
+      "name": "never_unsafe",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "never_unsafe",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.186
+    }
+  },
+  {
+    "pattern": "request_response",
+    "schema": {
+      "name": "request_response",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "request_response",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.09
+    }
+  },
+  {
+    "pattern": "recovery",
+    "schema": {
+      "name": "recovery",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "recovery",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.269
+    }
+  },
+  {
+    "pattern": "no_starvation",
+    "schema": {
+      "name": "no_starvation",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "no_starvation",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.133
+    }
+  },
+  {
+    "pattern": "stabilization",
+    "schema": {
+      "name": "stabilization",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "stabilization",
+          "inputs": [
+            "a"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.173
+    }
+  },
+  {
+    "pattern": "consensus_check",
+    "schema": {
+      "name": "consensus_check",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "consensus_check",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.142
+    }
+  },
+  {
+    "pattern": "progress",
+    "schema": {
+      "name": "progress",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "progress",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.155
+    }
+  },
+  {
+    "pattern": "bounded_until",
+    "schema": {
+      "name": "bounded_until",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "bounded_until",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.151
+    }
+  },
+  {
+    "pattern": "trust_update",
+    "schema": {
+      "name": "trust_update",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "trust_update",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.107
+    }
+  },
+  {
+    "pattern": "reputation_gate",
+    "schema": {
+      "name": "reputation_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "reputation_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.123
+    }
+  },
+  {
+    "pattern": "risk_gate",
+    "schema": {
+      "name": "risk_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "risk_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.095
+    }
+  },
+  {
+    "pattern": "belief_consistency",
+    "schema": {
+      "name": "belief_consistency",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "belief_consistency",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.146
+    }
+  },
+  {
+    "pattern": "exploration_decay",
+    "schema": {
+      "name": "exploration_decay",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "exploration_decay",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.204
+    }
+  },
+  {
+    "pattern": "safe_exploration",
+    "schema": {
+      "name": "safe_exploration",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "safe_exploration",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.171
+    }
+  },
+  {
+    "pattern": "emergent_detector",
+    "schema": {
+      "name": "emergent_detector",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "emergent_detector",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.132
+    }
+  },
+  {
+    "pattern": "utility_alignment",
+    "schema": {
+      "name": "utility_alignment",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "utility_alignment",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.136
+    }
+  },
+  {
+    "pattern": "causal_gate",
+    "schema": {
+      "name": "causal_gate",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "causal_gate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.136
+    }
+  },
+  {
+    "pattern": "counterfactual_safe",
+    "schema": {
+      "name": "counterfactual_safe",
+      "strategy": "custom",
+      "streams": [
+        {
+          "name": "a",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "b",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": true
+        },
+        {
+          "name": "result",
+          "stream_type": "sbf",
+          "width": 8,
+          "is_input": false
+        }
+      ],
+      "logic_blocks": [
+        {
+          "pattern": "counterfactual_safe",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "output": "result",
+          "params": {}
+        }
+      ],
+      "num_steps": 10,
+      "include_mirrors": false,
+      "descriptive_names": false
+    },
+    "generated": true,
+    "native": {
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.132
+    }
+  }
+]

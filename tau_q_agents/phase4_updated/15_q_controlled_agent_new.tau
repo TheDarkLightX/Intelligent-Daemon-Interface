@@ -23,16 +23,16 @@
 # - HOLD always valid
 # - Reward when: sell after price went up, or hold during down
 
-i1 : sbf = in file("inputs/price_up.in")
-i2 : sbf = in file("inputs/price_down.in")
-i3 : sbf = in file("inputs/action_bit0.in")
-i4 : sbf = in file("inputs/action_bit1.in")
-o1 : sbf = out file("outputs/executed_buy.out")
-o2 : sbf = out file("outputs/executed_sell.out")
-o3 : sbf = out file("outputs/executed_hold.out")
-o4 : sbf = out file("outputs/position.out")
-o5 : sbf = out file("outputs/action_valid.out")
-o6 : sbf = out file("outputs/reward.out")
+i1 : sbf := in file("inputs/price_up.in"). 
+i2 : sbf := in file("inputs/price_down.in"). 
+i3 : sbf := in file("inputs/action_bit0.in"). 
+i4 : sbf := in file("inputs/action_bit1.in"). 
+o1 : sbf := out file("outputs/executed_buy.out"). 
+o2 : sbf := out file("outputs/executed_sell.out"). 
+o3 : sbf := out file("outputs/executed_hold.out"). 
+o4 : sbf := out file("outputs/position.out"). 
+o5 : sbf := out file("outputs/action_valid.out"). 
+o6 : sbf := out file("outputs/reward.out"). 
 
 # Action decode: BUY = i4'&i3, SELL = i4&i3', HOLD = i4'&i3'
 # Valid BUY: want_buy & not_holding
@@ -41,12 +41,6 @@ o6 : sbf = out file("outputs/reward.out")
 # Position: set on buy, reset on sell
 # Reward: sold (any sell = took profit in simple model)
 
-r (o1[t] = i3[t] & i4[t]' & o4[t-1]') && (o2[t] = i4[t] & i3[t]' & o4[t-1]) && (o3[t] = i3[t]' & i4[t]') && (o4[t] = o1[t] | (o4[t-1] & o2[t]')) && (o5[t] = o1[t] | o2[t] | o3[t]) && (o6[t] = o2[t])
-
-n
-n
-n
-n
-n
-q
-
+always (
+(o1[t] = i3[t] & i4[t]' & o4[t-1]') && (o2[t] = i4[t] & i3[t]' & o4[t-1]) && (o3[t] = i3[t]' & i4[t]') && (o4[t] = o1[t] | (o4[t-1] & o2[t]')) && (o5[t] = o1[t] | o2[t] | o3[t]) && (o6[t] = o2[t])
+).

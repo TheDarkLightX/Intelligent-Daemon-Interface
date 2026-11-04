@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# history_state_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# history_state_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:bv[2] := in file("inputs/substate.in"). 
+i1:sbf := in file("inputs/superstate_entry.in"). 
+
+o0:bv[2] := out file("outputs/restored_state.out"). 
+
+# history_state pattern: restored_state <- substate, superstate_entry
+always (
+(((((i1[t] != 0) && (o0[t-1] != {0}:bv[2]))) -> o0[t] = o0[t-1]) && ((!((i1[t] != 0) && (o0[t-1] != {0}:bv[2])) && (i1[t] != 0)) -> o0[t] = {0}:bv[2]) && ((!((i1[t] != 0) && (o0[t-1] != {0}:bv[2])) && !(i1[t] != 0)) -> o0[t] = i0[t]) && (o0[0] = {0}:bv[2]))
+).
