@@ -1,0 +1,47 @@
+name: Layered tables and Tau 0.8 boundaries
+on:
+  pull_request:
+    paths:
+      - 'idi/layered_chat/**'
+      - 'idi/devkit/tau_factory/**'
+      - 'idi/ian/**'
+      - '.github/workflows/layered-tables.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'idi/layered_chat/**'
+      - 'idi/devkit/tau_factory/**'
+      - 'idi/ian/**'
+      - '.github/workflows/layered-tables.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -r idi/layered_chat/requirements-cpu.txt
+      - name: Pure cores, certificates and file dialect
+        env:
+          PYTHONPATH: .
+          OPENBLAS_NUM_THREADS: '1'
+        run: >-
+          python -m pytest -q
+          idi/layered_chat/tests/test_graph.py
+          idi/devkit/tau_factory/tests/test_tau08.py
+          idi/devkit/tau_factory/tests/test_runner.py
+          idi/ian/tests/test_decision_core.py
+          idi/ian/tests/test_phase4.py
+      - name: Browser engine, Python parity fixtures and Wasm
+        run: node --test idi/layered_chat/tests/runtime.test.mjs
+      - name: Frozen release identity and all-input folding certificate
+        env:
+          PYTHONPATH: .
+        run: python -m idi.layered_chat.verify_release

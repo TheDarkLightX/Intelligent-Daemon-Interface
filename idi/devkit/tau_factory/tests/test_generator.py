@@ -5,7 +5,7 @@ from pathlib import Path
 
 try:
     from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
-    from idi.devkit.tau_factory.generator import generate_tau_spec
+    from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec
 except ImportError:
     pytest.skip("Generator module not yet implemented", allow_module_level=True)
 

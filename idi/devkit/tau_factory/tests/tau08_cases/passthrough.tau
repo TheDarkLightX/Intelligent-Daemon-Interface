@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# passthrough_test - Generated Tau Agent
+# Auto-generated from AgentSchema
+# passthrough_test Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/input1.in"). 
+
+o0:sbf := out file("outputs/output1.out"). 
+
+# passthrough pattern: output1 <- input1
+# output1 :- input1
+always (
+((o0[t] = i0[t]))
+).

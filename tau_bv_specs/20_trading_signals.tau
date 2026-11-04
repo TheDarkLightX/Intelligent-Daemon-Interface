@@ -3,9 +3,9 @@
 # Tests: BitVector comparisons, signal generation
 
 # Define streams - price is 8-bit (0-255 range)
-price : bv[8] = in console.
-buy_signal : sbf = out console.
-sell_signal : sbf = out console.
+price : bv[8] := in console. 
+buy_signal : sbf := out console. 
+sell_signal : sbf := out console. 
 
 # Function: detect price increase
 # Buy when price drops below 64 (low price)
@@ -15,4 +15,3 @@ sell_signal : sbf = out console.
 (price[t] !< {64}:bv[8] -> buy_signal[t] = 0) &&
 (price[t] > {192}:bv[8] -> sell_signal[t] = 1) &&
 (price[t] !> {192}:bv[8] -> sell_signal[t] = 0).
-

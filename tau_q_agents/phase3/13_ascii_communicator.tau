@@ -18,12 +18,12 @@
 # State:
 #   o4 = position (holding)
 
-sbf i1 = console
-sbf i2 = console
-sbf o1 = console
-sbf o2 = console
-sbf o3 = console
-sbf o4 = console
+i1:sbf := in console. 
+i2:sbf := in console. 
+o1:sbf := out console. 
+o2:sbf := out console. 
+o3:sbf := out console. 
+o4:sbf := out console. 
 
 # Encode actions: buy=010, sell=011, hold=100, idle=000
 # o3 = LSB, o2 = middle, o1 = MSB
@@ -32,17 +32,6 @@ sbf o4 = console
 # Hold: holding, no sell -> 100
 # Idle: not holding, no buy -> 000
 
-r o4[t] = (i1[t] & o4[t-1]') | (o4[t-1] & (i2[t] & o4[t-1])') && o1[t] = o4[t-1] & (i2[t] & o4[t-1])' && o2[t] = i1[t] & o4[t-1]' && o3[t] = (i1[t] & o4[t-1]') | (i2[t] & o4[t-1])
-
-0
-0
-1
-0
-0
-0
-0
-1
-1
-0
-q
-
+always (
+o4[t] = (i1[t] & o4[t-1]') | (o4[t-1] & (i2[t] & o4[t-1])') && o1[t] = o4[t-1] & (i2[t] & o4[t-1])' && o2[t] = i1[t] & o4[t-1]' && o3[t] = (i1[t] & o4[t-1]') | (i2[t] & o4[t-1])
+).

@@ -1,0 +1,48 @@
+{
+  "tau_commit": "95a7d261ca3db5ff6f7c198a0b4d81c880816058",
+  "scope": "Native interpreter admission, not trace or cryptographic verification",
+  "results": [
+    {
+      "file": "ian_challenge.tau",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.321
+    },
+    {
+      "file": "ian_economics.tau",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.849
+    },
+    {
+      "file": "ian_goal_register.tau",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.261
+    },
+    {
+      "file": "ian_log_commit.tau",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.333
+    },
+    {
+      "file": "ian_state.tau",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.933
+    },
+    {
+      "file": "ian_upgrade.tau",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.471
+    }
+  ]
+}

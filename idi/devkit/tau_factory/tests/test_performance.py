@@ -6,7 +6,7 @@ Tests performance improvements and ensures optimizations don't break functionali
 import pytest
 import time
 from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
-from idi.devkit.tau_factory.generator import generate_tau_spec, create_minimal_schema
+from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec, create_minimal_schema
 from idi.devkit.tau_factory.performance_monitor import monitor
 
 

@@ -26,14 +26,14 @@
 # - BURN when: selling (all momentum sells are profitable by definition)
 # - HOLD when: holding AND NOT selling
 
-sbf i1 = console
-sbf i2 = console
-sbf o1 = console
-sbf o2 = console
-sbf o3 = console
-sbf o4 = console
-sbf o5 = console
-sbf o6 = console
+i1:sbf := in console. 
+i2:sbf := in console. 
+o1:sbf := out console. 
+o2:sbf := out console. 
+o3:sbf := out console. 
+o4:sbf := out console. 
+o5:sbf := out console. 
+o6:sbf := out console. 
 
 # Buy on momentum (2 consecutive ups, not holding)
 # Sell on down when holding momentum entry
@@ -42,21 +42,6 @@ sbf o6 = console
 # Position: set on buy, reset on sell
 # Entry_was_momentum: set on buy (all buys are momentum)
 
-r o1[t] = i1[t] & i1[t-1] & o5[t-1]' && o2[t] = i2[t] & o5[t-1] & o6[t-1] && o3[t] = o2[t] && o4[t] = o5[t-1] & o2[t]' && o5[t] = o1[t] | (o5[t-1] & o2[t]') && o6[t] = o1[t] | (o6[t-1] & o2[t]')
-
-0
-0
-0
-0
-1
-0
-1
-0
-0
-0
-0
-1
-0
-0
-q
-
+always (
+o1[t] = i1[t] & i1[t-1] & o5[t-1]' && o2[t] = i2[t] & o5[t-1] & o6[t-1] && o3[t] = o2[t] && o4[t] = o5[t-1] & o2[t]' && o5[t] = o1[t] | (o5[t-1] & o2[t]') && o6[t] = o1[t] | (o6[t-1] & o2[t]')
+).

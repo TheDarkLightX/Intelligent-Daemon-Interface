@@ -1,0 +1,45 @@
+{
+  "architecture": "seven independent 15,872-table networks",
+  "tables": 111104,
+  "best_validation_accuracy": 0.8669354838709677,
+  "members": [
+    {
+      "run": "ensemble-v64-d4-s0",
+      "sha256": "1532171199302aa6b999e2b21e9297bc528cb33783968c0a79836fa840c4480f",
+      "selected_epoch": 30
+    },
+    {
+      "run": "control-15872-annealed-seed1",
+      "sha256": "24234f944beecebdbe316429f22f6807a4d46a522723621b66f40eb261c3d1ca",
+      "selected_epoch": 25
+    },
+    {
+      "run": "ensemble-v64-d4-s2",
+      "sha256": "268019b5b8568bf515f0df0abaae385cf05d49803034c81e1e0e6c49b8936aca",
+      "selected_epoch": 1
+    },
+    {
+      "run": "ensemble-v64-d4-s3",
+      "sha256": "a70faf907b5b3f2b16b5a5e2944016f06db1a8a1e4eda8e09c244b1cbc7c3008",
+      "selected_epoch": 20
+    },
+    {
+      "run": "ensemble-v64-d4-s4",
+      "sha256": "cdbcc93295c6a5540613727befb3e70eeff1d06c5e679e86cde668c3891fca99",
+      "selected_epoch": 10
+    },
+    {
+      "run": "ensemble-v64-d4-s5",
+      "sha256": "bd7611aa508363c080dee5133faf4eb8094ac0d039d498f994b874f56fc540a6",
+      "selected_epoch": 25
+    },
+    {
+      "run": "ensemble-v64-d4-s6",
+      "sha256": "6a5faa99d8975d2b3375ecf0a1e7a0438bff088c66e89cbf1a2ba73d95775ee4",
+      "selected_epoch": 25
+    }
+  ],
+  "composition_parity_vectors": 1000,
+  "seconds": 0.799,
+  "scope": "Validation-only architecture selection. Exact class-score sums checked; no extra fitting after composition."
+}

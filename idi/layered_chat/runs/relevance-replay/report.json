@@ -1,0 +1,89 @@
+{
+  "tables": 3072,
+  "examples_seen": 7494240,
+  "train_pairs": 437154,
+  "validation_pairs": 53410,
+  "test_pairs": 54698,
+  "seconds": 496.351,
+  "best_validation_balanced_accuracy": 0.9905635648754915,
+  "history": [
+    {
+      "epoch": 1,
+      "validation_balanced_accuracy": 0.9892529488859765,
+      "seconds": 10.03
+    },
+    {
+      "epoch": 5,
+      "validation_balanced_accuracy": 0.9899191786806465,
+      "seconds": 47.25
+    },
+    {
+      "epoch": 10,
+      "validation_balanced_accuracy": 0.9901048492791612,
+      "seconds": 86.55
+    },
+    {
+      "epoch": 15,
+      "validation_balanced_accuracy": 0.9901813018785496,
+      "seconds": 123.84
+    },
+    {
+      "epoch": 20,
+      "validation_balanced_accuracy": 0.990257754477938,
+      "seconds": 164.28
+    },
+    {
+      "epoch": 25,
+      "validation_balanced_accuracy": 0.990257754477938,
+      "seconds": 208.34
+    },
+    {
+      "epoch": 30,
+      "validation_balanced_accuracy": 0.9905307994757536,
+      "seconds": 245.64
+    },
+    {
+      "epoch": 35,
+      "validation_balanced_accuracy": 0.9905635648754915,
+      "seconds": 288.6
+    },
+    {
+      "epoch": 40,
+      "validation_balanced_accuracy": 0.9903123634775011,
+      "seconds": 332.36
+    },
+    {
+      "epoch": 45,
+      "validation_balanced_accuracy": 0.9905307994757536,
+      "seconds": 377.64
+    },
+    {
+      "epoch": 50,
+      "validation_balanced_accuracy": 0.9904980340760157,
+      "seconds": 415.5
+    },
+    {
+      "epoch": 55,
+      "validation_balanced_accuracy": 0.9905635648754915,
+      "seconds": 453.91
+    },
+    {
+      "epoch": 60,
+      "validation_balanced_accuracy": 0.9905307994757536,
+      "seconds": 496.35
+    }
+  ],
+  "source_sha256": {
+    "train_relevance.py": "d3f8e833198982b52a6697dec4229b8c3bfeece20e6c26543b309095bf1e9bb0",
+    "openassistant.py": "394a48341862968464d28cc59e4268dbbe385c2b5913e2136448ca08109aabbe",
+    "network.py": "5963df83998c01ccf4ba900327c0bd54a9fa3dec197f60c89800019a304c841b",
+    "train.py": "13f87047e33e328b32c384283e30fca791c9088e0fbd9fbb4720d891fd78220b"
+  },
+  "pair_sha256": {
+    "train": "f80974eeec5b27ff6a1385c1c43d44e4518742e862222b8caa09d7e9677ee878",
+    "validation": "88907cadf05c3e4036598421d3ccbb088563a35d8d152b7fd8d41ccbfb590ec6",
+    "test": "689df56f16fe697388bfc4f9360f4d10115135a696a20ba6adc6d33eb86c9c8f"
+  },
+  "numpy_version": "2.3.5",
+  "source_capture_note": "Hashes were captured at completion. During this run train.py gained optional integer offsets, inactive for the relevance network. A subsequent source-frozen run records hashes at start."
+}

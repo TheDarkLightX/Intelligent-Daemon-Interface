@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# utxo_state_machine_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# utxo_state_machine_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:bv[32] := in file("inputs/tx_inputs.in"). 
+i1:bv[32] := in file("inputs/tx_outputs.in"). 
+
+o0:bv[32] := out file("outputs/utxo_set.out"). 
+
+# utxo_state_machine pattern: utxo_set <- tx_inputs, tx_outputs
+always (
+((o0[t] = ((o0[t-1] & i0[t]') | i1[t])) && (o0[0] = {0}:bv[32]))
+).

@@ -1,3 +1,5 @@
+# Tau 0.8 envelope/type port; native admission is not a behavioral proof.
+# Historical performance and financial comments below are unverified.
 # Deflationary Agent V39c - LTL Temporal Lookahead
 # A*-style pathfinding using Linear Temporal Logic constraints
 # Copyright DarkLightX/Dana Edwards
@@ -19,31 +21,31 @@
 # This version is experimental - benchmark against V38/V39a/V39b.
 
 # === HELPER PREDICATES ===
-valid_entry(p, v, t, h) := p' & v & t & h'.
-valid_exit(p, h) := p & h.
-timed_out(b1, b0) := b1 & b0.
+valid_entry(p:sbf, v:sbf, t:sbf, h:sbf) := p:sbf' & v:sbf & t:sbf & h:sbf'.
+valid_exit(p:sbf, h:sbf) := p:sbf & h:sbf.
+timed_out(b1:sbf, b0:sbf) := b1:sbf & b0:sbf.
 
 # === INPUT STREAMS (5 inputs, standard) ===
-sbf i0 = ifile("inputs/price.in").          # Market price
-sbf i1 = ifile("inputs/volume.in").         # Trading volume
-sbf i2 = ifile("inputs/trend.in").          # Price trend
-sbf i3 = ifile("inputs/profit_guard.in").   # Profit guard
-sbf i4 = ifile("inputs/failure_echo.in").   # Failure echo
+i0:sbf := in file("inputs/price.in"). # Market price
+i1:sbf := in file("inputs/volume.in"). # Trading volume
+i2:sbf := in file("inputs/trend.in"). # Price trend
+i3:sbf := in file("inputs/profit_guard.in"). # Profit guard
+i4:sbf := in file("inputs/failure_echo.in"). # Failure echo
 
 # === OUTPUT STREAMS ===
-sbf o0 = ofile("outputs/state.out").        # Agent state
-sbf o1 = ofile("outputs/holding.out").      # Position
-sbf o2 = ofile("outputs/buy_signal.out").   # Buy signal
-sbf o3 = ofile("outputs/sell_signal.out").  # Sell signal
-sbf o6 = ofile("outputs/timer_b0.out").     # Timer bit 0
-sbf o7 = ofile("outputs/timer_b1.out").     # Timer bit 1
-sbf o9 = ofile("outputs/nonce.out").        # Nonce
-sbf o10 = ofile("outputs/entry_price.out"). # Entry price
-sbf o11 = ofile("outputs/profit.out").      # Profit
-sbf o13 = ofile("outputs/has_burned.out").  # Burn history
+o0:sbf := out file("outputs/state.out"). # Agent state
+o1:sbf := out file("outputs/holding.out"). # Position
+o2:sbf := out file("outputs/buy_signal.out"). # Buy signal
+o3:sbf := out file("outputs/sell_signal.out"). # Sell signal
+o6:sbf := out file("outputs/timer_b0.out"). # Timer bit 0
+o7:sbf := out file("outputs/timer_b1.out"). # Timer bit 1
+o9:sbf := out file("outputs/nonce.out"). # Nonce
+o10:sbf := out file("outputs/entry_price.out"). # Entry price
+o11:sbf := out file("outputs/profit.out"). # Profit
+o13:sbf := out file("outputs/has_burned.out"). # Burn history
 
 # Goal tracking output
-sbf o21 = ofile("outputs/goal_reached.out"). # Tracks if goal (profit) was reached
+o21:sbf := out file("outputs/goal_reached.out"). # Tracks if goal (profit) was reached
 
 # === CORE SPECIFICATION WITH LTL CONSTRAINTS ===
 #
@@ -55,7 +57,8 @@ sbf o21 = ofile("outputs/goal_reached.out"). # Tracks if goal (profit) was reach
 # - Entry is allowed only if the specification remains satisfiable
 # - The daemon's profit_guard (i3) implicitly encodes goal reachability
 
-r (
+always (
+(
     # === STATE MACHINE ===
     # Standard state machine from V38, but with goal-oriented interpretation
     (o0[t] = (o0[t-1]' & valid_entry(i0[t], i1[t], i2[t], o1[t-1]) & 
@@ -161,4 +164,4 @@ r (
 #
 # For benchmarking purposes, this version behaves like V38 with goal tracking.
 # The LTL properties are DESIGN CONSTRAINTS that the daemon should verify.
-
+).

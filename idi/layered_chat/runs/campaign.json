@@ -1,0 +1,69 @@
+{
+  "seconds": 6499.219077500001,
+  "results": [
+    {
+      "name": "v32-d2-s0-guided",
+      "returncode": 0,
+      "seconds": 586.95,
+      "validation_accuracy": 0.6908602150537635,
+      "bytes": 59995,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v32-d3-s0-guided",
+      "returncode": 0,
+      "seconds": 663.43,
+      "validation_accuracy": 0.7943548387096774,
+      "bytes": 82397,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v64-d3-s0-guided",
+      "returncode": 0,
+      "seconds": 1439.13,
+      "validation_accuracy": 0.7634408602150538,
+      "bytes": 153315,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v64-d3-s1-guided",
+      "returncode": 0,
+      "seconds": 1527.46,
+      "validation_accuracy": 0.8118279569892473,
+      "bytes": 153622,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v64-d3-s2-guided",
+      "returncode": 0,
+      "seconds": 1544.93,
+      "validation_accuracy": 0.8387096774193549,
+      "bytes": 153628,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v128-d3-s0-guided",
+      "returncode": 0,
+      "seconds": 2991.65,
+      "validation_accuracy": 0.7836021505376344,
+      "bytes": 295585,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v128-d3-s1-guided",
+      "returncode": 0,
+      "seconds": 3193.57,
+      "validation_accuracy": 0.8064516129032258,
+      "bytes": 295805,
+      "examples_seen": 4982400
+    },
+    {
+      "name": "v128-d4-s2-guided",
+      "returncode": 0,
+      "seconds": 4290.86,
+      "validation_accuracy": 0.8077956989247311,
+      "bytes": 391680,
+      "examples_seen": 4982400
+    }
+  ]
+}

@@ -449,14 +449,19 @@ def run_tau_spec(
     outputs_dir.mkdir(parents=True, exist_ok=True)
     _clear_output_files(outputs_dir)  # Clear old outputs
     
+    # Modern file specifications have explicit := stream bindings. Their
+    # named streams require long identifiers, and EOF terminates finite input.
+    source_text = spec_path.read_text(encoding="utf-8")
+    modern = bool(re.search(r":\s*(?:sbf|bv\[\d+\])\s*:=\s*(?:in|out)\b", source_text) or re.search(r"^\s*(?:always|sometimes)\s*\(", source_text, re.M))
+    effective_mode = TauMode.FILE if modern else config.mode
     # Build command line arguments
     cmd = [str(tau_bin)]
 
     # Tau expects: tau <specification file> [ options ]
-    if config.mode == TauMode.FILE:
+    if effective_mode == TauMode.FILE:
         cmd.append(str(spec_path))
     
-    if not config.charvar:
+    if modern or not config.charvar:
         cmd.extend(["--charvar", "off"])
     
     if config.experimental:
@@ -466,7 +471,7 @@ def run_tau_spec(
         cmd.extend(["-S", config.severity])
     
     try:
-        if config.mode == TauMode.STDIN:
+        if effective_mode == TauMode.STDIN:
             # REPL/stdin mode: pipe spec via stdin
             with spec_path.open("rb") as spec_file:
                 proc = _run_subprocess(
@@ -488,7 +493,7 @@ def run_tau_spec(
         stderr = proc.stderr.decode("utf-8", errors="ignore")
 
         # Some Tau builds only support: tau <spec.tau>. If so, retry in FILE mode.
-        if _should_fallback_to_file_mode(config=config, stderr=stderr, returncode=proc.returncode):
+        if not modern and _should_fallback_to_file_mode(config=config, stderr=stderr, returncode=proc.returncode):
             _clear_output_files(outputs_dir)
 
             cmd_file = [str(tau_bin), str(spec_path)]
@@ -516,7 +521,7 @@ def run_tau_spec(
         # Parse errors from both stdout and stderr
         errors = _parse_errors(stdout, stderr, proc.returncode)
 
-        if config.mode == TauMode.FILE:
+        if effective_mode == TauMode.FILE:
             clean_stdout = _strip_ansi(stdout).replace("\r", "\n")
             if clean_stdout.lstrip().startswith("tau>"):
                 errors.append(

@@ -1,0 +1,16 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# risk_fsm_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# risk_fsm_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/warning_signal.in"). 
+i1:sbf := in file("inputs/critical_signal.in"). 
+i2:sbf := in file("inputs/normal_signal.in"). 
+
+o0:bv[2] := out file("outputs/risk_state.out"). 
+
+# risk_fsm pattern: risk_state <- warning_signal, critical_signal, normal_signal
+always (
+((((i2[t] != 0)) -> o0[t] = {0}:bv[2]) && ((!(i2[t] != 0) && ((o0[t-1] = {1}:bv[2]) && (i1[t] != 0))) -> o0[t] = {2}:bv[2]) && ((!(i2[t] != 0) && !((o0[t-1] = {1}:bv[2]) && (i1[t] != 0)) && ((o0[t-1] = {0}:bv[2]) && (i0[t] != 0))) -> o0[t] = {1}:bv[2]) && ((!(i2[t] != 0) && !((o0[t-1] = {1}:bv[2]) && (i1[t] != 0)) && !((o0[t-1] = {0}:bv[2]) && (i0[t] != 0))) -> o0[t] = o0[t-1]) && (o0[0] = {0}:bv[2]))
+).

@@ -1,0 +1,9 @@
+profile zal/word-kernel/1;
+kernel gate10;
+target x86_64-sysv-register/1;
+inputs x:u64,y:u64;
+result (or (and (not x) (not y)) (and x (not y))) modulo 2^64;
+palette [["mov","rax","rdi"],["mov","rax","rsi"],["xor","rax","rax"],["imm","rdx","18446744073709551615"],["xor","rax","rdx"],["and","rax","rsi"],["or","rax","rsi"],["xor","rax","rsi"],["mov","rcx","rsi"],["xor","rcx","rdx"],["and","rax","rcx"],["or","rax","rcx"]];
+max-body 4;
+objective bytes;
+limits candidates=20000 checks=32 deadline-ms=3000 solver-ms=500;

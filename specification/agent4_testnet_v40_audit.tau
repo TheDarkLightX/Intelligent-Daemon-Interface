@@ -18,41 +18,42 @@
 # This file reads outputs from V40_CORE and computes derived observables.
 
 # === INPUT STREAMS (Same as V40 Core) ===
-sbf i0 = ifile("inputs/price.in").
-sbf i1 = ifile("inputs/volume.in").
-sbf i2 = ifile("inputs/trend.in").
-sbf i3 = ifile("inputs/profit_guard.in").
-sbf i4 = ifile("inputs/failure_echo.in").
+i0:sbf := in file("inputs/price.in"). 
+i1:sbf := in file("inputs/volume.in"). 
+i2:sbf := in file("inputs/trend.in"). 
+i3:sbf := in file("inputs/profit_guard.in"). 
+i4:sbf := in file("inputs/failure_echo.in"). 
 
 # === CORE OUTPUTS (Read from V40 Core) ===
 # These are inputs to the audit module, outputs from core
-sbf o0 = ofile("outputs/state.out").
-sbf o1 = ofile("outputs/holding.out").
-sbf o2 = ofile("outputs/buy_signal.out").
-sbf o3 = ofile("outputs/sell_signal.out").
-sbf o6 = ofile("outputs/timer_b0.out").
-sbf o7 = ofile("outputs/timer_b1.out").
-sbf o9 = ofile("outputs/nonce.out").
-sbf o10 = ofile("outputs/entry_price.out").
-sbf o11 = ofile("outputs/profit.out").
-sbf o13 = ofile("outputs/has_burned.out").
+o0:sbf := out file("outputs/state.out"). 
+o1:sbf := out file("outputs/holding.out"). 
+o2:sbf := out file("outputs/buy_signal.out"). 
+o3:sbf := out file("outputs/sell_signal.out"). 
+o6:sbf := out file("outputs/timer_b0.out"). 
+o7:sbf := out file("outputs/timer_b1.out"). 
+o9:sbf := out file("outputs/nonce.out"). 
+o10:sbf := out file("outputs/entry_price.out"). 
+o11:sbf := out file("outputs/profit.out"). 
+o13:sbf := out file("outputs/has_burned.out"). 
 
 # === DERIVED OUTPUTS (Computed from core for observability) ===
-sbf o4 = ofile("outputs/lock.out").               # Re-entrancy lock
-sbf o5 = ofile("outputs/oracle_fresh.out").       # Oracle freshness
-sbf o12 = ofile("outputs/burn_event.out").        # Burn trigger
+o4:sbf := out file("outputs/lock.out"). # Re-entrancy lock
+o5:sbf := out file("outputs/oracle_fresh.out"). # Oracle freshness
+o12:sbf := out file("outputs/burn_event.out"). # Burn trigger
 
 # === OBSERVABLE INVARIANTS (Safety property witnesses) ===
-sbf o14 = ofile("outputs/obs_action_excl.out").   # !(buy && sell)
-sbf o15 = ofile("outputs/obs_fresh_exec.out").    # executing -> fresh
-sbf o16 = ofile("outputs/obs_burn_profit.out").   # burn -> profit
-sbf o17 = ofile("outputs/obs_nonce_effect.out").  # nonce blocks repeats
+o14:sbf := out file("outputs/obs_action_excl.out"). # !(buy && sell)
+o15:sbf := out file("outputs/obs_fresh_exec.out"). # executing -> fresh
+o16:sbf := out file("outputs/obs_burn_profit.out"). # burn -> profit
+o17:sbf := out file("outputs/obs_nonce_effect.out"). # nonce blocks repeats
 
 # === PROGRESS TRACKING ===
-sbf o18 = ofile("outputs/progress_flag.out").     # Activity detection
+o18:sbf := out file("outputs/progress_flag.out"). # Activity detection
 
 # === AUDIT SPECIFICATION (6 clauses for derived values) ===
-r (
+always (
+(
     # === DERIVED VALUES (Always true by construction) ===
     # Lock mirrors state
     (o4[t] = o0[t]) &&
@@ -142,4 +143,4 @@ r (
 # Combined with core: 18 clauses (similar to V35)
 # BDD overhead: ~50-60% when combined
 # Recommended: Use post-hoc or daemon-side monitoring for production
-
+).

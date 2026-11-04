@@ -1,0 +1,51 @@
+[
+  {
+    "epoch": 1,
+    "loss": 1.6895364958292869,
+    "validation_accuracy": 0.8064516129032258,
+    "seconds": 20.809,
+    "examples_seen": 62280
+  },
+  {
+    "epoch": 5,
+    "loss": 0.19253594966446197,
+    "validation_accuracy": 0.853494623655914,
+    "seconds": 115.486,
+    "examples_seen": 311400
+  },
+  {
+    "epoch": 10,
+    "loss": 0.18186747581819426,
+    "validation_accuracy": 0.8588709677419355,
+    "seconds": 228.417,
+    "examples_seen": 622800
+  },
+  {
+    "epoch": 15,
+    "loss": 0.17991317569845827,
+    "validation_accuracy": 0.8521505376344086,
+    "seconds": 330.967,
+    "examples_seen": 934200
+  },
+  {
+    "epoch": 20,
+    "loss": 0.1793560188859414,
+    "validation_accuracy": 0.8521505376344086,
+    "seconds": 436.803,
+    "examples_seen": 1245600
+  },
+  {
+    "epoch": 25,
+    "loss": 0.17936847956041227,
+    "validation_accuracy": 0.864247311827957,
+    "seconds": 545.355,
+    "examples_seen": 1557000
+  },
+  {
+    "epoch": 30,
+    "loss": 0.17963281960615993,
+    "validation_accuracy": 0.8561827956989247,
+    "seconds": 659.459,
+    "examples_seen": 1868400
+  }
+]

@@ -6,27 +6,14 @@
 # o3 = sell_signal (fires on 2nd consecutive down when holding)
 # Internal: momentum tracking via history
 
-sbf i1 = console
-sbf i2 = console
-sbf o1 = console
-sbf o2 = console
-sbf o3 = console
+i1:sbf := in console. 
+i2:sbf := in console. 
+o1:sbf := out console. 
+o2:sbf := out console. 
+o3:sbf := out console. 
 
 # Buy: price up now AND price up before AND not holding
 # Sell: price down now AND price down before AND holding
-r o2[t] = i1[t] & i1[t-1] & o1[t-1]' && o3[t] = i2[t] & i2[t-1] & o1[t-1] && o1[t] = o2[t] | (o1[t-1] & o3[t]')
-
-0
-0
-1
-0
-1
-0
-0
-0
-0
-1
-0
-1
-q
-
+always (
+o2[t] = i1[t] & i1[t-1] & o1[t-1]' && o3[t] = i2[t] & i2[t-1] & o1[t-1] && o1[t] = o2[t] | (o1[t-1] & o3[t]')
+).

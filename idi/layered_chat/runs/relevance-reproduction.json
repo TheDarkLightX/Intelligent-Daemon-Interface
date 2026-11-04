@@ -1,0 +1,16 @@
+{
+  "same_frozen_model": true,
+  "model_sha256": {
+    "relevance-combined": "dc391d54dc604aa98a56b2e8031ffc77aa7246d425e8b6c20b6c8efd82031b04",
+    "relevance-replay": "dc391d54dc604aa98a56b2e8031ffc77aa7246d425e8b6c20b6c8efd82031b04",
+    "relevance-source-frozen": "dc391d54dc604aa98a56b2e8031ffc77aa7246d425e8b6c20b6c8efd82031b04"
+  },
+  "source_sha256": {
+    "train_relevance.py": "373aeac48cd4d82f663b99f69a6cf3d3d566af8c765d9a575337b6ae1c7a04c6",
+    "openassistant.py": "394a48341862968464d28cc59e4268dbbe385c2b5913e2136448ca08109aabbe",
+    "network.py": "5963df83998c01ccf4ba900327c0bd54a9fa3dec197f60c89800019a304c841b",
+    "train.py": "13f87047e33e328b32c384283e30fca791c9088e0fbd9fbb4720d891fd78220b"
+  },
+  "numpy_version": "2.3.5",
+  "scope": "Three independent CPU runs on the same prepared pairs, seed and numerical environment produced byte-identical frozen models. This does not claim floating-point training reproducibility on every platform. The last run records source hashes before fitting. Earlier source formatting changed bytes but not the reproduced artifact."
+}

@@ -1,3 +1,5 @@
+# Tau 0.8 envelope/type port; native admission is not a behavioral proof.
+# Historical performance and financial comments below are unverified.
 # Deflationary Agent V37 - Extended Bitvector Features
 # Based on V36 with enhanced bitvector capabilities
 # Copyright DarkLightX/Dana Edwards
@@ -17,60 +19,61 @@
 # (Inlined below for Tau CLI compatibility)
 
 # === INPUT STREAMS (Boolean signals from oracle) ===
-i0 : sbf = in file("inputs/price.in").          # Market price: 0=low, 1=high
-i1 : sbf = in file("inputs/volume.in").         # Trading volume: 0=low, 1=high  
-i2 : sbf = in file("inputs/trend.in").          # Price trend: 0=bearish, 1=bullish
-i3 : sbf = in file("inputs/profit_guard.in").   # Daemon-proved profitability guard
-i4 : sbf = in file("inputs/failure_echo.in").   # Daemon failure echo
+i0 : sbf := in file("inputs/price.in"). # Market price: 0=low, 1=high
+i1 : sbf := in file("inputs/volume.in"). # Trading volume: 0=low, 1=high  
+i2 : sbf := in file("inputs/trend.in"). # Price trend: 0=bearish, 1=bullish
+i3 : sbf := in file("inputs/profit_guard.in"). # Daemon-proved profitability guard
+i4 : sbf := in file("inputs/failure_echo.in"). # Daemon failure echo
 
 # === OUTPUT STREAMS ===
 # Core state machine (sbf for BDD efficiency)
-o0 : sbf = out file("outputs/state.out").        # Agent state (executing)
-o1 : sbf = out file("outputs/holding.out").      # Position held
-o2 : sbf = out file("outputs/buy_signal.out").   # Buy trigger
-o3 : sbf = out file("outputs/sell_signal.out").  # Sell trigger
+o0 : sbf := out file("outputs/state.out"). # Agent state (executing)
+o1 : sbf := out file("outputs/holding.out"). # Position held
+o2 : sbf := out file("outputs/buy_signal.out"). # Buy trigger
+o3 : sbf := out file("outputs/sell_signal.out"). # Sell trigger
 
 # Safety mechanisms (sbf)
-o4 : sbf = out file("outputs/lock.out").         # Re-entrancy lock
-o5 : sbf = out file("outputs/oracle_fresh.out"). # Oracle freshness
+o4 : sbf := out file("outputs/lock.out"). # Re-entrancy lock
+o5 : sbf := out file("outputs/oracle_fresh.out"). # Oracle freshness
 
 # V37 CHANGE: Timer as explicit bits (sbf for daemon compatibility)
-o6 : sbf = out file("outputs/timer_b0.out").     # Timer LSB
-o7 : sbf = out file("outputs/timer_b1.out").     # Timer MSB
+o6 : sbf := out file("outputs/timer_b0.out"). # Timer LSB
+o7 : sbf := out file("outputs/timer_b1.out"). # Timer MSB
 
 # Nonce (sbf for simple on/off, but conceptually a counter)
-o9 : sbf = out file("outputs/nonce.out").        # Nonce active flag
+o9 : sbf := out file("outputs/nonce.out"). # Nonce active flag
 
 # Economic tracking (sbf)
-o10 : sbf = out file("outputs/entry_price.out"). # Entry price level
-o11 : sbf = out file("outputs/profit.out").      # Profit achieved
-o12 : sbf = out file("outputs/burn_event.out").  # Burn trigger
-o13 : sbf = out file("outputs/has_burned.out").  # Burn history
+o10 : sbf := out file("outputs/entry_price.out"). # Entry price level
+o11 : sbf := out file("outputs/profit.out"). # Profit achieved
+o12 : sbf := out file("outputs/burn_event.out"). # Burn trigger
+o13 : sbf := out file("outputs/has_burned.out"). # Burn history
 
 # Observables (sbf)
-o14 : sbf = out file("outputs/obs_action_excl.out").
-o15 : sbf = out file("outputs/obs_fresh_exec.out").
-o16 : sbf = out file("outputs/obs_burn_profit.out").
-o17 : sbf = out file("outputs/obs_nonce_effect.out").
+o14 : sbf := out file("outputs/obs_action_excl.out"). 
+o15 : sbf := out file("outputs/obs_fresh_exec.out"). 
+o16 : sbf := out file("outputs/obs_burn_profit.out"). 
+o17 : sbf := out file("outputs/obs_nonce_effect.out"). 
 
 # Progress (sbf)
-o18 : sbf = out file("outputs/progress_flag.out").
+o18 : sbf := out file("outputs/progress_flag.out"). 
 
 # V37 NEW: Extended counter outputs
-o19 : sbf = out file("outputs/trade_count_b0.out").  # Trade counter bit 0
-o20 : sbf = out file("outputs/trade_count_b1.out").  # Trade counter bit 1
-o21 : sbf = out file("outputs/trade_count_b2.out").  # Trade counter bit 2
-o22 : sbf = out file("outputs/trade_count_b3.out").  # Trade counter bit 3
+o19 : sbf := out file("outputs/trade_count_b0.out"). # Trade counter bit 0
+o20 : sbf := out file("outputs/trade_count_b1.out"). # Trade counter bit 1
+o21 : sbf := out file("outputs/trade_count_b2.out"). # Trade counter bit 2
+o22 : sbf := out file("outputs/trade_count_b3.out"). # Trade counter bit 3
 
 # Input mirror outputs for trace parity
-o23 : sbf = out file("outputs/input_price.out").
-o24 : sbf = out file("outputs/input_volume.out").
-o25 : sbf = out file("outputs/input_trend.out").
-o26 : sbf = out file("outputs/input_profit_guard.out").
-o27 : sbf = out file("outputs/input_failure_echo.out").
+o23 : sbf := out file("outputs/input_price.out"). 
+o24 : sbf := out file("outputs/input_volume.out"). 
+o25 : sbf := out file("outputs/input_trend.out"). 
+o26 : sbf := out file("outputs/input_profit_guard.out"). 
+o27 : sbf := out file("outputs/input_failure_echo.out"). 
 
 # === MAIN SPECIFICATION (V37 with Extended Bitvector Logic) ===
-r (
+always (
+(
     # === 2-BIT TIMER LOGIC ===
     # Timer counts 0->1->2->3 while executing, reset on exit
     # Timeout when timer = 3 (b1=1, b0=1)
@@ -206,4 +209,4 @@ r (
 # - New outputs (o19-o22) are additive
 # - Daemon can ignore trade counter if not needed
 # - Input protocol unchanged
-
+).

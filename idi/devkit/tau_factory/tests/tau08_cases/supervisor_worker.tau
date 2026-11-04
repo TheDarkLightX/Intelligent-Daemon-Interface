@@ -1,0 +1,17 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# supervisor_worker_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# supervisor_worker_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/global_mode.in"). 
+i1:sbf := in file("inputs/worker1_signal.in"). 
+
+o0:sbf := out file("outputs/supervisor_state.out"). 
+o1:sbf := out file("outputs/worker1_enable.out"). 
+o2:sbf := out file("outputs/worker1_state.out"). 
+
+# supervisor_worker pattern: supervisor_state <- global_mode, worker1_signal
+always (
+((o0[t] = i0[t]) && (o1[t] = o0[t]) && (o2[t] = (o1[t] & i1[t]) | (o2[t-1] & o1[t] & i1[t]')) && (o2[0] = 0))
+).

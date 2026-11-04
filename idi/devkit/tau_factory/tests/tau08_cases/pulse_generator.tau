@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# pulse_generator - Generated Tau Agent
+# Auto-generated from AgentSchema
+# pulse_generator Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# pulse_generator pattern: result <- a
+always (
+((o0[t] = i0[t] & i0[t-1]'))
+).

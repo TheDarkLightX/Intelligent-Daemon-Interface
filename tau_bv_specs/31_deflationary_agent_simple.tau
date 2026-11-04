@@ -6,11 +6,11 @@
 # ============================================================
 # STREAMS
 # ============================================================
-price : bv[8] = in console.
-holding : sbf = out console.
-buy_price : bv[8] = out console.
-should_burn : sbf = out console.
-burn_count : bv[8] = out console.
+price : bv[8] := in console. 
+holding : sbf := out console. 
+buy_price : bv[8] := out console. 
+should_burn : sbf := out console. 
+burn_count : bv[8] := out console. 
 
 # ============================================================
 # SPECIFICATION
@@ -60,4 +60,3 @@ burn_count : bv[8] = out console.
     (should_burn[t] = 1 -> burn_count[t] = burn_count[t-1] + {1}:bv[8]) &&
     (should_burn[t] = 0 -> burn_count[t] = burn_count[t-1])
 ).
-

@@ -3,10 +3,9 @@
 # Tests: BitVector addition
 
 # Define streams with bitvector type (8-bit)
-i1 : bv[8] = in console.
-i2 : bv[8] = in console.
-o1 : bv[8] = out console.
+i1 : bv[8] := in console. 
+i2 : bv[8] := in console. 
+o1 : bv[8] := out console. 
 
 # Spec: output is sum of inputs (modular arithmetic)
 o1[t] = i1[t] + i2[t].
-

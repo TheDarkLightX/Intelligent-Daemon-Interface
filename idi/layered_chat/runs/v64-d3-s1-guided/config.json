@@ -1,0 +1,20 @@
+{
+  "epochs": 80,
+  "votes": 64,
+  "depth": 3,
+  "seed": 1,
+  "batch": 256,
+  "rate": 0.04,
+  "eval_every": 5,
+  "wiring": "guided",
+  "pilot": false,
+  "encoder": "frequency",
+  "features": 1536,
+  "classes": 62,
+  "input_bits": 1536,
+  "source_sha256": {
+    "train.py": "cb4b5805de42bee67db855527f1f40e9490a61c1c4274b3795f0aaa9dcec942c",
+    "network.py": "001fa0376cd84d6684708f6f0ec6a8f2e7a57c807d1495cf2d70ede233a9731f",
+    "corpus.py": "009aa56d2098e84b115233b17b405a981ef821190651320b3cfa214ffbfc43a1"
+  }
+}

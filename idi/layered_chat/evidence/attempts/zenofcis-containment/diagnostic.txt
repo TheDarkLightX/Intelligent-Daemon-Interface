@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/scratch/4450054c5654/idi/idi/layered_chat/qualify_zeno.py", line 55, in <module>
+    p=argparse.ArgumentParser();p.add_argument('--binary',type=Path,required=True);p.add_argument('--out',type=Path,required=True);a=p.parse_args();run(a.binary.resolve(),a.out.resolve())
+                                                                                                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4450054c5654/idi/idi/layered_chat/qualify_zeno.py", line 46, in run
+    op=canonical(lower(original),name+'-original');cp=canonical(lower(candidate),name+'-candidate');receipt=out/(name+'-receipt.json')
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/4450054c5654/idi/idi/layered_chat/qualify_zeno.py", line 35, in canonical
+    code,r=call(['loop','encode','--program',path,'--out',dest]);assert code==0,(code,r);return dest
+                                                                        ^^^^^^^
+AssertionError: (2, {'accounting_complete': False, 'acquisition': {'accounting_complete': False, 'exhausted': False, 'leftover_checker_staging': 0, 'observed_intake': None, 'policy': 'zeno-fcis/loop-acquisition/1', 'reserved_units': 33797160, 'separate_from_session_check_work': True}, 'authority': 'none', 'backend': 'posix', 'containment': {'backend': 'posix', 'evidence': 'private-append-only-journal', 'required_profile': 'finite-data/1', 'schema': 'zeno-fcis/containment-result/1', 'selection_source': 'default'}, 'reason': 'containment-unavailable:posix:No such file or directory (os error 2); PosixOwnedWorker=11\nCleanupError=None\nWorkerDiagnostic=\n', 'required_profile': 'finite-data/1', 'schema': 'zeno-fcis/transform-loop/1', 'status': 'inconclusive'})

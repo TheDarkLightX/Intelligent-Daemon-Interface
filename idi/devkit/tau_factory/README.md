@@ -1,3 +1,7 @@
+> Tau 0.8 update: `generate_tau_spec` now emits file syntax by default.
+> Use `dialect="0.7"` for historical REPL scripts. See the
+> [qualification record](../../../specification/tau08/README.md) for exact scope.
+
 # Tau Agent Factory
 
 A child-friendly, parameterized Tau agent generation system with wizard-style GUI (Python/Rust), schema-driven spec generation, and end-to-end testing pipeline.

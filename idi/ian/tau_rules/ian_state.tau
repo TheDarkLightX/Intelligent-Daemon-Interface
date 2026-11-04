@@ -1,92 +1,28 @@
-# IAN State Streams - State definitions for IAN on Tau Net
-#
-# These streams hold the canonical IAN state on L1.
-# All IAN L2 nodes can read these values for finality.
-#
-# Stream naming convention:
-#   ian_<entity>_<attribute>[<key>]
-#
-# Note: This is pseudocode representing intended Tau Language semantics.
-# Actual syntax may vary based on Tau Language specification.
+# Tau Language 0.8: One-goal state fold of ALREADY VALIDATED register/commit/upgrade flags. Conflicting commit+upgrade holds both roots.
+# Run with --charvar off. Native BV build required (browser build omits BV).
+# Inputs are facts for one goal. Host verifies signatures, proofs and state identity.
+# These constraints do not implement hashing, a ledger, network consensus or finality.
 
-# =============================================================================
-# Goal Registry
-# =============================================================================
+i0:sbf := in console.
+i1:sbf := in console.
+i2:sbf := in console.
+i3:bv[256] := in console.
+i4:bv[256] := in console.
+o0:sbf := out console.
+o1:bv[256] := out console.
+o2:bv[256] := out console.
+o3:bv[64] := out console.
 
-# Goal existence predicate
-# ian_goal_exists(GoalID) := true iff goal is registered
-# Input: i10 = goal_id (string hash)
-# Output: o10 = 1 if exists, 0 otherwise
-
-# Goal metadata stream
-# ian_goals[goal_id] := {spec_hash, name, governance_config, registered_at}
-# Updated on IAN_GOAL_REGISTER transactions
-
-# =============================================================================
-# Per-Goal State
-# =============================================================================
-
-# Log root - MMR root hash
-# ian_log_root[goal_id] := 32-byte hash
-# Updated on IAN_LOG_COMMIT transactions
-# Input: i11 = goal_id, i12 = new_root
-# Output: o11 = previous_root
-
-# Log size - Number of contributions in log
-# ian_log_size[goal_id] := integer
-# Updated alongside log_root
-
-# Leaderboard root - Merkle root of leaderboard
-# ian_lb_root[goal_id] := 32-byte hash
-# Updated on IAN_LOG_COMMIT transactions
-
-# Active policy - Hash of current best policy
-# ian_active_policy[goal_id] := {pack_hash, score, log_index, upgrade_height}
-# Updated on IAN_UPGRADE transactions
-
-# Upgrade count - Number of upgrades for this goal
-# ian_upgrade_count[goal_id] := integer
-# Incremented on each IAN_UPGRADE
-
-# Last commit timestamp
-# ian_last_commit[goal_id] := timestamp_ms
-# Updated on IAN_LOG_COMMIT
-
-# =============================================================================
-# Committer State
-# =============================================================================
-
-# Committer bond - Amount staked by committer
-# ian_committer_bond[committer_pubkey][goal_id] := {amount, status, locked_until}
-# Updated on bond deposit/withdrawal/slash
-
-# Committer slash count
-# ian_committer_slashes[committer_pubkey] := integer
-# Incremented on each slash
-
-# =============================================================================
-# Challenge State
-# =============================================================================
-
-# Pending challenges
-# ian_challenge[commit_hash] := {challenger, fraud_type, submitted_at, resolved}
-# Created on IAN_CHALLENGE, resolved after challenge period
-
-# Challenge bond
-# ian_challenge_bond[commit_hash] := {challenger, amount, returned}
-
-# =============================================================================
-# Constants (configurable via governance)
-# =============================================================================
-
-# Minimum bond required to commit
-# ian_min_committer_bond := 1_000_000_000 (1000 TAU)
-
-# Challenge period duration (blocks)
-# ian_challenge_period := 1440 (~24 hours)
-
-# Slash percentage
-# ian_slash_pct := 50 (50%)
-
-# Upgrade cooldown (blocks)
-# ian_upgrade_cooldown := 1440 (~24 hours)
+always (
+  (o0[0] = 0) &&
+  (o1[0] = 0) &&
+  (o2[0] = 0) &&
+  (o3[0] = 0) &&
+  (o0[t] = o0[t-1] | i0[t]) &&
+  ((i1[t] != 0 && o0[t-1] != 0 && i2[t] = 0) -> o1[t] = i3[t]) &&
+  (!(i1[t] != 0 && o0[t-1] != 0 && i2[t] = 0) -> o1[t] = o1[t-1]) &&
+  ((i2[t] != 0 && o0[t-1] != 0 && i1[t] = 0 && o3[t-1] < {18446744073709551615}:bv[64]) -> o2[t] = i4[t]) &&
+  (!(i2[t] != 0 && o0[t-1] != 0 && i1[t] = 0 && o3[t-1] < {18446744073709551615}:bv[64]) -> o2[t] = o2[t-1]) &&
+  ((i2[t] != 0 && o0[t-1] != 0 && i1[t] = 0 && o3[t-1] < {18446744073709551615}:bv[64]) -> o3[t] = o3[t-1] + {1}:bv[64]) &&
+  (!(i2[t] != 0 && o0[t-1] != 0 && i1[t] = 0 && o3[t-1] < {18446744073709551615}:bv[64]) -> o3[t] = o3[t-1])
+).

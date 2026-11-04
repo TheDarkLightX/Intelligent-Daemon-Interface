@@ -1,0 +1,216 @@
+{
+  "inputs": [
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    },
+    {
+      "kind": "Bool"
+    }
+  ],
+  "nodes": [
+    [
+      "Input",
+      0
+    ],
+    [
+      "Input",
+      1
+    ],
+    [
+      "Bool",
+      0
+    ],
+    [
+      "Bool",
+      1
+    ],
+    [
+      "Select",
+      0,
+      2,
+      2
+    ],
+    [
+      "Select",
+      0,
+      4,
+      4
+    ],
+    [
+      "Select",
+      0,
+      3,
+      2
+    ],
+    [
+      "Select",
+      0,
+      6,
+      4
+    ],
+    [
+      "Select",
+      0,
+      2,
+      3
+    ],
+    [
+      "Select",
+      0,
+      8,
+      4
+    ],
+    [
+      "Select",
+      0,
+      3,
+      3
+    ],
+    [
+      "Select",
+      0,
+      10,
+      4
+    ],
+    [
+      "Select",
+      0,
+      4,
+      6
+    ],
+    [
+      "Select",
+      0,
+      6,
+      6
+    ],
+    [
+      "Select",
+      0,
+      8,
+      6
+    ],
+    [
+      "Select",
+      0,
+      10,
+      6
+    ],
+    [
+      "Select",
+      0,
+      4,
+      8
+    ],
+    [
+      "Select",
+      0,
+      6,
+      8
+    ],
+    [
+      "Select",
+      0,
+      8,
+      8
+    ],
+    [
+      "Select",
+      0,
+      10,
+      8
+    ],
+    [
+      "Select",
+      0,
+      4,
+      10
+    ],
+    [
+      "Select",
+      0,
+      6,
+      10
+    ],
+    [
+      "Select",
+      0,
+      8,
+      10
+    ],
+    [
+      "Select",
+      0,
+      10,
+      10
+    ]
+  ],
+  "roots": [
+    5,
+    7,
+    9,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+  ]
+}

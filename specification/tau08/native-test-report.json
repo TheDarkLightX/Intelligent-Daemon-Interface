@@ -1,0 +1,129 @@
+{
+  "tau_commit": "95a7d261ca3db5ff6f7c198a0b4d81c880816058",
+  "tests": 24,
+  "failures": 0,
+  "errors": 0,
+  "seconds": 23.383,
+  "cases": [
+    {
+      "name": "test_counter_wraps_and_holds",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.123
+    },
+    {
+      "name": "test_weighted_sum_exhaustive",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.085
+    },
+    {
+      "name": "test_time_lock_boundary_and_modular_end",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.057
+    },
+    {
+      "name": "test_independent_single_input_regions_are_combinational",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.083
+    },
+    {
+      "name": "test_entry_exit_and_hold",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.211
+    },
+    {
+      "name": "test_history_restores_previous_and_tracks_source",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.106
+    },
+    {
+      "name": "test_proposal_cancel_has_priority",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.285
+    },
+    {
+      "name": "test_tcp_reset_and_active_close",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 6.787
+    },
+    {
+      "name": "test_mode_transitions_hold_and_simultaneous_signals",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.142
+    },
+    {
+      "name": "test_risk_normal_priority_and_guarded_escalation",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.184
+    },
+    {
+      "name": "test_streak_reset_priority_and_wrap",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.221
+    },
+    {
+      "name": "test_boolean_weighted_threshold_all_inputs",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.192
+    },
+    {
+      "name": "test_numeric_weighted_vote_keeps_modular_arithmetic",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.066
+    },
+    {
+      "name": "test_remaining_time_is_explicitly_modular",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.073
+    },
+    {
+      "name": "test_enabled_mirrors_are_equal_to_inputs",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 0.078
+    },
+    {
+      "name": "test_lfsr_cycle_and_native_trace",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 2.449
+    },
+    {
+      "name": "test_trading_transition_equations_on_native_traces[False]",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 2.689
+    },
+    {
+      "name": "test_trading_transition_equations_on_native_traces[True]",
+      "classname": "idi.devkit.tau_factory.tests.test_tau08_execution",
+      "seconds": 3.285
+    },
+    {
+      "name": "test_registration_all_boolean_conditions",
+      "classname": "idi.ian.tests.test_tau08_contracts",
+      "seconds": 0.643
+    },
+    {
+      "name": "test_log_commit_required_evidence_and_monotonic_size",
+      "classname": "idi.ian.tests.test_tau08_contracts",
+      "seconds": 0.251
+    },
+    {
+      "name": "test_upgrade_clock_governance_and_counter_boundaries",
+      "classname": "idi.ian.tests.test_tau08_contracts",
+      "seconds": 0.301
+    },
+    {
+      "name": "test_challenge_window_and_exclusive_slash",
+      "classname": "idi.ian.tests.test_tau08_contracts",
+      "seconds": 1.398
+    },
+    {
+      "name": "test_economics_matches_integer_oracle_and_conserves_all_units",
+      "classname": "idi.ian.tests.test_tau08_contracts",
+      "seconds": 2.649
+    },
+    {
+      "name": "test_one_goal_state_rejects_conflicting_updates",
+      "classname": "idi.ian.tests.test_tau08_contracts",
+      "seconds": 0.863
+    }
+  ]
+}

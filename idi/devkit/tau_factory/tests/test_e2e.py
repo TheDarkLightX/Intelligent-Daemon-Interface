@@ -6,7 +6,7 @@ from pathlib import Path
 
 try:
     from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
-    from idi.devkit.tau_factory.generator import generate_tau_spec
+    from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec
     from idi.devkit.tau_factory.test_harness import run_end_to_end_test
 except ImportError:
     pytest.skip("Required modules not available", allow_module_level=True)

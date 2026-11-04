@@ -1,0 +1,32 @@
+[
+  {
+    "seed": 0,
+    "returncode": 0,
+    "seconds": 1007.963
+  },
+  {
+    "seed": 2,
+    "returncode": -9,
+    "seconds": 7.85
+  },
+  {
+    "seed": 3,
+    "returncode": -9,
+    "seconds": 6.05
+  },
+  {
+    "seed": 4,
+    "returncode": -9,
+    "seconds": 5.599
+  },
+  {
+    "seed": 5,
+    "returncode": -9,
+    "seconds": 5.518
+  },
+  {
+    "seed": 6,
+    "returncode": 0,
+    "seconds": 966.405
+  }
+]

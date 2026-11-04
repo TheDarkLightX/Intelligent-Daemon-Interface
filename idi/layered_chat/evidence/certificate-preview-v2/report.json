@@ -1,0 +1,37 @@
+{
+  "original_nodes": 111104,
+  "folded_nodes": 39603,
+  "local_boolean_valuations": 412975,
+  "classes": 62,
+  "scope": "All Boolean input vectors, by local substitution induction and exact vote multisets. Trusts this Python checker and its execution; no proof-assistant kernel claim.",
+  "checkpoint_sha256": "d1d188ec41a3fcf78a0a14263608db45dce7c3020232a4e13f6f9b09c0569a84",
+  "seconds": 15.658,
+  "mutants": [
+    {
+      "mutation": "gate",
+      "rejected": true,
+      "reason": "local substitution at original node 3072"
+    },
+    {
+      "mutation": "output-bias",
+      "rejected": true,
+      "reason": "vote multiset 0"
+    },
+    {
+      "mutation": "drop-vote",
+      "rejected": true,
+      "reason": "vote multiset 0"
+    },
+    {
+      "mutation": "projection",
+      "rejected": true,
+      "reason": "dead-node projection"
+    },
+    {
+      "mutation": "input-map",
+      "rejected": true,
+      "reason": "input identity"
+    }
+  ],
+  "checker_sha256": "0c082066a7c68b1bd2e9430eb2c2212affc15459ec63536dffbbd928c0a772bc"
+}

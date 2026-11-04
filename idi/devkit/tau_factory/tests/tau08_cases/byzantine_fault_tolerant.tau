@@ -1,0 +1,17 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# byzantine_fault_tolerant - Generated Tau Agent
+# Auto-generated from AgentSchema
+# byzantine_fault_tolerant Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+i1:sbf := in file("inputs/b.in"). 
+i2:sbf := in file("inputs/c.in"). 
+i3:sbf := in file("inputs/d.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# byzantine_fault_tolerant pattern: result <- a, b, c, d
+always (
+((o0[t] = (i0[t] & i1[t] & i2[t]) | (i0[t] & i1[t] & i3[t]) | (i0[t] & i2[t] & i3[t]) | (i1[t] & i2[t] & i3[t])))
+).

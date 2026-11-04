@@ -1,0 +1,13 @@
+{
+  "epochs": 80,
+  "votes": 64,
+  "depth": 3,
+  "seed": 0,
+  "batch": 256,
+  "rate": 0.04,
+  "eval_every": 5,
+  "wiring": "guided",
+  "pilot": false,
+  "classes": 62,
+  "input_bits": 1536
+}

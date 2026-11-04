@@ -2,16 +2,9 @@
 # Expected: output = i1 AND i2
 # Test: (0,0)->0, (0,1)->0, (1,0)->0, (1,1)->1
 
-sbf i1 = console
-sbf i2 = console
-sbf o1 = console
-r o1[t] = i1[t] & i2[t]
-0
-0
-0
-1
-1
-0
-1
-1
-q
+i1:sbf := in console. 
+i2:sbf := in console. 
+o1:sbf := out console. 
+always (
+o1[t] = i1[t] & i2[t]
+).

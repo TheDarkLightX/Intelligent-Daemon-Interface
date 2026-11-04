@@ -1,0 +1,16 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# quorum_test - Generated Tau Agent
+# Auto-generated from AgentSchema
+# quorum_test Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/member1.in"). 
+i1:sbf := in file("inputs/member2.in"). 
+i2:sbf := in file("inputs/member3.in"). 
+
+o0:sbf := out file("outputs/approved.out"). 
+
+# quorum pattern: approved <- member1, member2, member3
+always (
+((o0[t] = (i0[t] & i1[t]) | (i0[t] & i2[t]) | (i1[t] & i2[t])))
+).

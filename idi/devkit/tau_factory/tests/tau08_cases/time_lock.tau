@@ -1,0 +1,16 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# time_lock_bool - Generated Tau Agent
+# Auto-generated from AgentSchema
+# time_lock_bool Agent (Auto-generated)
+# Strategy: custom
+
+i0:bv[16] := in file("inputs/lock_start.in"). 
+i1:bv[16] := in file("inputs/lock_duration.in"). 
+i2:bv[16] := in file("inputs/current_time.in"). 
+
+o0:sbf := out file("outputs/lock_active.out"). 
+
+# time_lock pattern: lock_active <- lock_start, lock_duration, current_time
+always (
+(((o0[t] != 0) <-> (i2[t] < (i0[t] + i1[t]))))
+).

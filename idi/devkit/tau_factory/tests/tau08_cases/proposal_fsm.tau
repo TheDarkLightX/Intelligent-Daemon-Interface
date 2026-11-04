@@ -1,0 +1,18 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# proposal_fsm_basic - Generated Tau Agent
+# Auto-generated from AgentSchema
+# proposal_fsm_basic Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/create.in"). 
+i1:sbf := in file("inputs/vote.in"). 
+i2:sbf := in file("inputs/execute.in"). 
+i3:sbf := in file("inputs/cancel.in"). 
+i4:sbf := in file("inputs/quorum_met.in"). 
+
+o0:bv[3] := out file("outputs/proposal_state.out"). 
+
+# proposal_fsm pattern: proposal_state <- create, vote, execute, cancel
+always (
+((((i3[t] != 0)) -> o0[t] = {4}:bv[3]) && ((!(i3[t] != 0) && ((o0[t-1] = {0}:bv[3]) && (i0[t] != 0))) -> o0[t] = {1}:bv[3]) && ((!(i3[t] != 0) && !((o0[t-1] = {0}:bv[3]) && (i0[t] != 0)) && ((o0[t-1] = {1}:bv[3]) && (i1[t] != 0) && (i4[t] != 0))) -> o0[t] = {2}:bv[3]) && ((!(i3[t] != 0) && !((o0[t-1] = {0}:bv[3]) && (i0[t] != 0)) && !((o0[t-1] = {1}:bv[3]) && (i1[t] != 0) && (i4[t] != 0)) && ((o0[t-1] = {2}:bv[3]) && (i2[t] != 0))) -> o0[t] = {3}:bv[3]) && ((!(i3[t] != 0) && !((o0[t-1] = {0}:bv[3]) && (i0[t] != 0)) && !((o0[t-1] = {1}:bv[3]) && (i1[t] != 0) && (i4[t] != 0)) && !((o0[t-1] = {2}:bv[3]) && (i2[t] != 0))) -> o0[t] = o0[t-1]) && (o0[0] = {0}:bv[3]))
+).

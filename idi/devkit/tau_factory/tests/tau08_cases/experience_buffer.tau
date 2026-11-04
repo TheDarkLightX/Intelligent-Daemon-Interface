@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# experience_buffer - Generated Tau Agent
+# Auto-generated from AgentSchema
+# experience_buffer Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+i1:sbf := in file("inputs/b.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# experience_buffer pattern: result <- a, b
+always (
+((o0[t] = (i1[t] & i0[t]) | (i1[t]' & o0[t-1])) && (o0[0] = 0))
+).

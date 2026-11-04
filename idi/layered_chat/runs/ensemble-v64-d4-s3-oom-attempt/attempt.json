@@ -1,0 +1,5 @@
+{
+  "seed": 3,
+  "returncode": -9,
+  "reason": "Four queued processes exited -9 while the cgroup oom_kill counter increased from 1 to 5; no training metrics were produced. Retried after byte feature storage and reduced concurrency."
+}

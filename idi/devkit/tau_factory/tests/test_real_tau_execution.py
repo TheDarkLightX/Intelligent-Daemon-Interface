@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from idi.devkit.tau_factory.schema import AgentSchema, StreamConfig, LogicBlock
-from idi.devkit.tau_factory.generator import generate_tau_spec
+from idi.devkit.tau_factory.generator import generate_legacy_tau_spec as generate_tau_spec
 from idi.devkit.tau_factory.test_harness import generate_sample_inputs, write_inputs
 from idi.devkit.tau_factory.runner import run_tau_spec, TauConfig, TauMode
 

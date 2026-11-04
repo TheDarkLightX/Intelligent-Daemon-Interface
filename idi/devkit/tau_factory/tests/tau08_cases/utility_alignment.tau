@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# utility_alignment - Generated Tau Agent
+# Auto-generated from AgentSchema
+# utility_alignment Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/a.in"). 
+i1:sbf := in file("inputs/b.in"). 
+
+o0:sbf := out file("outputs/result.out"). 
+
+# utility_alignment pattern: result <- a, b
+always (
+((o0[t] = i0[t]' | i1[t]))
+).

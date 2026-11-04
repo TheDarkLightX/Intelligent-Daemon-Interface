@@ -1,0 +1,15 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# weighted_vote_bv - Generated Tau Agent
+# Auto-generated from AgentSchema
+# weighted_vote_bv Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/agent1.in"). 
+i1:sbf := in file("inputs/agent2.in"). 
+
+o0:bv[8] := out file("outputs/weighted_sum.out"). 
+
+# weighted_vote pattern: weighted_sum <- agent1, agent2
+always (
+((((i0[t] = 0) && (i1[t] = 0)) -> o0[t] = {0}:bv[8]) && (((i0[t] != 0) && (i1[t] = 0)) -> o0[t] = {3}:bv[8]) && (((i0[t] = 0) && (i1[t] != 0)) -> o0[t] = {2}:bv[8]) && (((i0[t] != 0) && (i1[t] != 0)) -> o0[t] = {5}:bv[8]))
+).

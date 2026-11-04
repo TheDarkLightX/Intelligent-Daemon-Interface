@@ -1,0 +1,37 @@
+{
+  "inputs": [
+    {
+      "file": "layered-lookup-tables-v4(1).pdf",
+      "bytes": 305300,
+      "sha256": "8fe885c49c63821abc6d830230fee5c4df4abda22a7190c5176761fbbe64de58"
+    },
+    {
+      "file": "layered-tables-training-files.zip",
+      "bytes": 17031029,
+      "sha256": "4804f193a51e073f653219d8b9757355cbe20cca343273490668ef5f90177416"
+    },
+    {
+      "file": "layered-tables-tau-run-folders.zip",
+      "bytes": 120093285,
+      "sha256": "21b0a7f5e66bc7879b19468a2da9fb70b4c96b35e77634ab63a1a0c8d3f1a738"
+    },
+    {
+      "file": "The Algorithm Design Manual (1).pdf",
+      "bytes": 4082875,
+      "sha256": "fe1a100b3f30b910cb33bcc64d90f4d62892e99bd775f28cc2933d1c359640d4"
+    }
+  ],
+  "paper": {
+    "title": "How Far Can Layered Lookup Tables Go?",
+    "author": "Dana Edwards",
+    "version": 4,
+    "date": "2026-11-02"
+  },
+  "book": {
+    "title": "The Algorithm Design Manual",
+    "author": "Steven S. Skiena",
+    "edition": 2,
+    "doi": "10.1007/978-1-84800-070-4"
+  },
+  "use": "Paper and archives informed relaxed Boolean choice tables, MSB truth-table order, freezing, exact DAG folding and Tau chunking. The book informed algorithm selection and independent bounded implementations. These source PDFs and archives are not redistributed here."
+}

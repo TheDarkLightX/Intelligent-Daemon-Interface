@@ -1,0 +1,982 @@
+{
+  "tau_commit": "95a7d261ca3db5ff6f7c198a0b4d81c880816058",
+  "scope": "One recorded reference schema per factory pattern. Native interpreter admission, not all parameter combinations or execution traces.",
+  "results": [
+    {
+      "pattern": "fsm",
+      "sha256": "4eed955850364a30977871796aaf4092d0facd87c62857221e924ef0eef7a1a1",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.188
+    },
+    {
+      "pattern": "counter",
+      "sha256": "61714be5f2fb7864b6c756c0ef6715b9b696805056ce13080293d82f125d3f66",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.261
+    },
+    {
+      "pattern": "accumulator",
+      "sha256": "62d0484b229d857d75f2125d5cbde7c5d0a97db1bde02c2c3c4a19cb84f3072b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.198
+    },
+    {
+      "pattern": "vote",
+      "sha256": "df5f5f134857ab27825fb1eefbd3f68b114437ae9db58c3aa3b06ccd68dd727c",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.258
+    },
+    {
+      "pattern": "passthrough",
+      "sha256": "986bb216da5e6641086d0f2f8c3ca498bd160300378ce711b4498fc1084c2b7c",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.338
+    },
+    {
+      "pattern": "majority",
+      "sha256": "0cd98ab2bfe30a59140b6318d04e8c6f03df560dc5fc09f8dc8c5adff947d04a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.388
+    },
+    {
+      "pattern": "unanimous",
+      "sha256": "334a3f2698a274ec68316fc64dfc0120e576d469d9e28dc9a633a81586a613db",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.261
+    },
+    {
+      "pattern": "custom",
+      "sha256": "d0d3de60e7b388e2396eee0a673ccf7cc9a3bf1d18a3e16b0c1edeed8bd37281",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.184
+    },
+    {
+      "pattern": "quorum",
+      "sha256": "942a51129b15d215acb626c8b4ebac6b795b9c32f4eb0ace09fb0b8183a0c6ca",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.207
+    },
+    {
+      "pattern": "supervisor_worker",
+      "sha256": "84bbcf6183ed3fb601877ac42cf34587fe4c12b75ecdd18a2f0ed7cff4ec35d9",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.255
+    },
+    {
+      "pattern": "weighted_vote",
+      "sha256": "3e738519f0d4c70b11a4bda470868339a3f732bceef279014b823094160bbfeb",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.352
+    },
+    {
+      "pattern": "time_lock",
+      "sha256": "0e9285f83cd58c8ce5069e0cdf6950b33b4b37c509b068711e17a6c36c9ef222",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.297
+    },
+    {
+      "pattern": "hex_stake",
+      "sha256": "68deb918c324184d562c2abd8323fbd0bad45da75fabeb9f71f0a89362ee189b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.41
+    },
+    {
+      "pattern": "multi_bit_counter",
+      "sha256": "00e3c8355e5c21778eb84327d983c674a73bfd960b92ca5657b1c3593a6cbef7",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.442
+    },
+    {
+      "pattern": "streak_counter",
+      "sha256": "fcb324d276591ae00278f305cee79d55593c3be973714fd6a63858d60ac54576",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.435
+    },
+    {
+      "pattern": "mode_switch",
+      "sha256": "2a8ad06dc23cabebb6bf226c7a8c9a04124d4964f807ce08fb6723561fbd93b2",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.428
+    },
+    {
+      "pattern": "proposal_fsm",
+      "sha256": "0d4eadd2e4ab746250b6d48be8cfe6df1e22195dd37a561c51d4bdef497f0a33",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.979
+    },
+    {
+      "pattern": "risk_fsm",
+      "sha256": "30bb279b4fb43539200e8de1176459d44dc2547d595996986c65d638cf964d53",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.73
+    },
+    {
+      "pattern": "entry_exit_fsm",
+      "sha256": "4e776f69d3adfdc4c667499d808c211e1151a8c6eb1d449971c289049390dd1b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.739
+    },
+    {
+      "pattern": "orthogonal_regions",
+      "sha256": "d78630570fd3afbd3ee02995f32807ed401bc7b96fc5ac674e157a8b2cba7562",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.568
+    },
+    {
+      "pattern": "state_aggregation",
+      "sha256": "2bd5fce8f358b2eb39db3a0c7c563da9e9b973b31414b094e6f6b38a7d928c13",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.337
+    },
+    {
+      "pattern": "tcp_connection_fsm",
+      "sha256": "3a43061c465fd86ab634b5330b9adefae5891ccd08f57667a26a26005f031254",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 12.7
+    },
+    {
+      "pattern": "utxo_state_machine",
+      "sha256": "4916a37a8efdd12c9c3e901d406af4d629423f49220cacc07ce3286ae4ca1663",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.433
+    },
+    {
+      "pattern": "history_state",
+      "sha256": "26b0ab0b7e176b3168a0e6f847c6881bd77e47e8c2ef68a0e294b1f121fe8d8a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.594
+    },
+    {
+      "pattern": "decomposed_fsm",
+      "sha256": "5a9cd2067d96dc3d284a3bd3dd33ea70aa1756e138b69189be7a02a0310c76ed",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.586
+    },
+    {
+      "pattern": "script_execution",
+      "sha256": "a97fd108a3b105ba07aca4dbba8b080f63b701690694c3848b050f00e709a588",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.453
+    },
+    {
+      "pattern": "edge_detector",
+      "sha256": "b610fe2629809723eff7b49d210a63a8201bc5a3c9a84de56f370134220dd7e9",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.299
+    },
+    {
+      "pattern": "falling_edge",
+      "sha256": "c729cc6b9302073bf1e2d4f60ad88c49b1e86266a99f5db5f7a4557aafffc5b5",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.181
+    },
+    {
+      "pattern": "toggle",
+      "sha256": "42a93942a80e7040edde48f33f295fb0d242ac75122a3905b24df726971c1514",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.191
+    },
+    {
+      "pattern": "latch",
+      "sha256": "93af7537e63896b223cc23f5bb8157bfdac9469965ffe93b54630431a1517fb1",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.202
+    },
+    {
+      "pattern": "debounce",
+      "sha256": "a773408b7b15994304a0b54c444f9b8f8ffb318a1bc1b58545f2f42d109be80a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.191
+    },
+    {
+      "pattern": "pulse_generator",
+      "sha256": "66b9f64e1a8733d49b4386591ce002cf1261ed5e4ab0e79eb0e49c04594f1213",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.188
+    },
+    {
+      "pattern": "sample_hold",
+      "sha256": "1c0cf3ed2d4b7757c9c9c20dc3ce5717f56d5a757e73312104ff22f4e87f5ee7",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.2
+    },
+    {
+      "pattern": "multiplexer",
+      "sha256": "2e61e9af26b53ac0cf4032d7a37b22c2029ffbc71f4e642d913803adf6ddcf9a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.433
+    },
+    {
+      "pattern": "demultiplexer",
+      "sha256": "2c29d1aa302f6a3de9349370b556fb8662d367341125e147ef2fd8050c58c61c",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.333
+    },
+    {
+      "pattern": "priority_encoder",
+      "sha256": "ff2db3a2f170334c5d80a314113a61781508afb1390663bf739951d0e031de57",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.388
+    },
+    {
+      "pattern": "arbiter",
+      "sha256": "90a5a7e385420c6b84588fba78f30d76e338e7c1423b9a8d872f5748d4bcbd1a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.354
+    },
+    {
+      "pattern": "watchdog",
+      "sha256": "32474e5e2d934988ba1554f38909ba8c42d3fde4e75ab84032fcb08b2ac69d5b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.332
+    },
+    {
+      "pattern": "deadman_switch",
+      "sha256": "a19e97074b2c6d9f387949576de402cfd18536f6bd0334b6972c57699bf754b9",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.187
+    },
+    {
+      "pattern": "safety_interlock",
+      "sha256": "19648ba76f5eea1a18647aa39b849d149bac6383dd071b27828695458531821a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.186
+    },
+    {
+      "pattern": "fault_detector",
+      "sha256": "64fb00563088bdb7da77de1602225d9444f4ce6db2bf833752f5f257fecb85e6",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.28
+    },
+    {
+      "pattern": "handshake",
+      "sha256": "4a26fcaf40fd8537a95a2315b55064c96c23b9d31de6ebf31374f492d34b893f",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.406
+    },
+    {
+      "pattern": "sync_barrier",
+      "sha256": "69c2af691e3035ff070c0724ace1d63389c7cc2c6f295d0dcffee0fb3b754d87",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.262
+    },
+    {
+      "pattern": "token_ring",
+      "sha256": "851586ae75d6aeb0b17b5bb6a0d677f62080cd311274b4546b9634f3fd037a02",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.341
+    },
+    {
+      "pattern": "comparator",
+      "sha256": "27facf3011bdac9927cff08335b610eb1d25435a439e04aaca12d899735c0558",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.304
+    },
+    {
+      "pattern": "min_selector",
+      "sha256": "1dc21e9636fb17f725aebdcbfb015d2049a94b888bb736cdbd416a70e9577c81",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.207
+    },
+    {
+      "pattern": "max_selector",
+      "sha256": "82cd1149da67cc40ce28b31e868052a67155555440336b3e6ee2a10dc6a06cc4",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.288
+    },
+    {
+      "pattern": "threshold_detector",
+      "sha256": "d1716bbede0224e94f049fc2ed2cc47969057425e3b745f03e9df459ab0b0da2",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.291
+    },
+    {
+      "pattern": "byzantine_fault_tolerant",
+      "sha256": "3b56f1febb1c4c41aaa37b442847a0a97ecf6a8df46eae70cfd1e47babeca82b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.441
+    },
+    {
+      "pattern": "leader_election",
+      "sha256": "2b3ca7667fcc5ca520fd09040add7b1aa47c5fe6e232637baef15062c6064e69",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.409
+    },
+    {
+      "pattern": "commit_protocol",
+      "sha256": "c7641068f58c0437bcefa611cb8df62e31cfb88f2361262a93da486a1b6b057d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.409
+    },
+    {
+      "pattern": "nand_gate",
+      "sha256": "8dc910af4982690725fc25ca7c9b526b36cdaeaf8afa72dde3f93b3d74a3c00e",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.31
+    },
+    {
+      "pattern": "nor_gate",
+      "sha256": "c6b8c97f8dd5d0f2369702fcc04a7d3d9bc640f56a23108f4bc38f19019b9a0b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.296
+    },
+    {
+      "pattern": "xnor_gate",
+      "sha256": "f5abc8da9722ccabbbf5878b413225e0e7c272a1cc3a948e8b7503a92c6c5481",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.216
+    },
+    {
+      "pattern": "implication",
+      "sha256": "879ce1c75d3dfc12032ea2bd1b99cf3f0a46d8d027b54e4c4c4d78f3b00643ef",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.418
+    },
+    {
+      "pattern": "equivalence",
+      "sha256": "66b4483a716e0fb17de6ed7e3108bda70dea6dc5bd0bc78c6bd6a3f8cea86f48",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.329
+    },
+    {
+      "pattern": "delay_line",
+      "sha256": "77bca95759f73c88c4c6fd6e963629cd3113c25fe6f70f002e209da3c4dbe2f2",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.22
+    },
+    {
+      "pattern": "hold",
+      "sha256": "01878ea2bf9431236871a85ad1a463dc5920da4a5b7eca287dd56c12c06edba6",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.354
+    },
+    {
+      "pattern": "one_shot",
+      "sha256": "21d26d340b0a6ef3dfb2408283b3b2fd35661d2826d8fa317aa3e2b7e520e55f",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.274
+    },
+    {
+      "pattern": "gray_code",
+      "sha256": "e388351267d82e620a8471bce8b39f7ddb380cc6f4945354505e85e32865dbcb",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.262
+    },
+    {
+      "pattern": "ring_counter",
+      "sha256": "5082fc3a017a209724d90fc74648b5bf34dd8bf67cc71e78f1760d2b0c169669",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.262
+    },
+    {
+      "pattern": "sequence_detector",
+      "sha256": "35a8c67f04b4699b210a8bda8bf771694aec6d513cc539363114ef412c73d03d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.227
+    },
+    {
+      "pattern": "confidence_gate",
+      "sha256": "c8e4628c898bf31eb065921d9b5bfc536fc996e9284a99905d74f60c3198cc55",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.086
+    },
+    {
+      "pattern": "action_selector",
+      "sha256": "84dc81bed927b33cf48fa8a84a301972e45e49b77ee09b687a9d63145de17c43",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.15
+    },
+    {
+      "pattern": "exploration_exploit",
+      "sha256": "19f1189c4bc4a5fed6b60487dbc6a57f62634a88a38fd0b6e3ab53bc56e4beed",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.244
+    },
+    {
+      "pattern": "reward_accumulator",
+      "sha256": "0761f89bc33e5e98dd021292f760819de05682624f60196ee2304a78c2421bc8",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.334
+    },
+    {
+      "pattern": "goal_detector",
+      "sha256": "a036857a823bb5ef73a335e9bae7ea0c2d156e7f456f9d2fa18532829d6e5f3a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.29
+    },
+    {
+      "pattern": "obstacle_detector",
+      "sha256": "71b75f7f61a289cd19dd794ba2beb8c216be3ca75c936dd6444bd22cba3146b7",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.25
+    },
+    {
+      "pattern": "policy_switch",
+      "sha256": "baac0534678a868958151e90f57d9a89bb8ad663edd3106aaee6b34802baf801",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.314
+    },
+    {
+      "pattern": "experience_buffer",
+      "sha256": "90877843d870c436ed16afd438f0352be0dbdcfdafcfe54e8d57cee06851a272",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.235
+    },
+    {
+      "pattern": "learning_gate",
+      "sha256": "86a46c024a7ba178b7e613e285c1c84ff836f23b41b75d5b595e4783193f7db0",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.372
+    },
+    {
+      "pattern": "attention_focus",
+      "sha256": "36f1796622e90da70f288cbe6b7691286e0d75e32c40ba35999a964d67ad1238",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.102
+    },
+    {
+      "pattern": "consensus_vote",
+      "sha256": "9d83c24cfb320f3ccd45af138a5a927f0627567ca5ff9bd1a47912867897f0c6",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.097
+    },
+    {
+      "pattern": "broadcast",
+      "sha256": "349db042049c8448ab97c55c8f93382968796bfc02f9b999b98ddbfd3f18959d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.145
+    },
+    {
+      "pattern": "message_filter",
+      "sha256": "4c21e6d43bdc892767b347bfa1af8521193168c5e9c48a8109469a0f3672c03b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.374
+    },
+    {
+      "pattern": "role_assignment",
+      "sha256": "b60678d4a96e1d285c3d41e69da350baebdb561e092b7f80de0ce6eff7161dc6",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.351
+    },
+    {
+      "pattern": "action_mask",
+      "sha256": "4a3e2b84e939ced2ddaac2410d7b3416e05ce2f8ca631edbf9fdce0ea6676eef",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.254
+    },
+    {
+      "pattern": "safety_override",
+      "sha256": "e51354c2ab5f32a18ebf667012680ef54e30e5b9d4f12e10cd756304dd29ab1f",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.276
+    },
+    {
+      "pattern": "constraint_checker",
+      "sha256": "59016cf5daa8376e169d4a1db2b76b6f8a288bc5f235df069df6ab0f7d13d28e",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.39
+    },
+    {
+      "pattern": "budget_gate",
+      "sha256": "3206d25a1ec9386b75e8abb19eaa1ff42e54e20bf7d03cc0a0716e36a2f58277",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.323
+    },
+    {
+      "pattern": "prediction_gate",
+      "sha256": "6ea59f56359e2eda688979689c35970bee3df36d717466268252cc1dfb6f94ce",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.332
+    },
+    {
+      "pattern": "anomaly_detector",
+      "sha256": "64f0682d1d6beb4393fab68bb057a46ffa7a406615052d2d02eac2ef9f37c962",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.313
+    },
+    {
+      "pattern": "state_classifier",
+      "sha256": "894df46e2553767f6428faa2e581562bc52736f67f9c30248bd37e3039d08a92",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.244
+    },
+    {
+      "pattern": "xor_combine",
+      "sha256": "ba38180fa3eb7e9c04a63aff3dd2f9a566d4e4052e2bb2e0ff5e7c3db811cbf0",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.227
+    },
+    {
+      "pattern": "commitment_match",
+      "sha256": "9557c37ce2cf7354e43232020d150ca55a10acc25d50f663acc26ffb97cbea22",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.232
+    },
+    {
+      "pattern": "all_revealed",
+      "sha256": "490ae65eafe1d9d72116fef498f424f3cefd170b7bee1e386b0169b2b5c3b59d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.23
+    },
+    {
+      "pattern": "phase_gate",
+      "sha256": "f4ccb47cd324870d724adc54143a49222a16f7bb626a73ec48e2b478d5829735",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.325
+    },
+    {
+      "pattern": "collision_detect",
+      "sha256": "94265883b81167a6db562ee785e3fd3e52e87886571660a7536704f737cb263c",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.328
+    },
+    {
+      "pattern": "turn_gate",
+      "sha256": "c962fe861b51f2bbcdf8decba3b9243f66c44ee9d28e847a3b8ce6c5f99a3c45",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.238
+    },
+    {
+      "pattern": "fair_priority",
+      "sha256": "34a3e87103e27c136d95ea1bd52090c1c4b69fb9d0c0477fc26dd82f05ff3716",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.26
+    },
+    {
+      "pattern": "streak_detector",
+      "sha256": "f1778d3d42ea4d87638d9a6e63372c69808215f39c269d1218953de71699c8b1",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.22
+    },
+    {
+      "pattern": "combo_counter",
+      "sha256": "b80cc4f7728945c2c4b507da8e64f0277360a0224d08fde06171db66204d4759",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.267
+    },
+    {
+      "pattern": "cooldown",
+      "sha256": "394e0328ae63750a777735f3f2b8b483d15e3d8221733c44ad8e00d1df86b862",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.248
+    },
+    {
+      "pattern": "capture",
+      "sha256": "49c3e25dec86305c034a4b78969de22bd104cd13ec5fab9dafb428edbad1322d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.239
+    },
+    {
+      "pattern": "territory_control",
+      "sha256": "423c416fe2f4f53be2b020025327c3ccc33b80f8bc3aa8aee32f5f09cb0ab019",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.266
+    },
+    {
+      "pattern": "simultaneous_action",
+      "sha256": "f929d1f035ae908f4412373c0e8ab9a128b9000e8fb0e092bf6b7f62dbe56c93",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.252
+    },
+    {
+      "pattern": "any_action",
+      "sha256": "888a8ef49ad9f90a6f0bffeaf806a992d364a8469359fc6228731df96fa30acd",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.218
+    },
+    {
+      "pattern": "exclusive_action",
+      "sha256": "c15c2130c684d0281b25a536b5f243797ec4907bdc07f8ce37420387d02383ad",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.198
+    },
+    {
+      "pattern": "valid_move",
+      "sha256": "2603ee95dd875bff4e2e21ba6db6e5f03b9ae44408f56397122cee50b844e0a3",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.188
+    },
+    {
+      "pattern": "win_condition",
+      "sha256": "2160eea152511d5f415af6c8aa5cf24dd0ccebb254f37b682661fceecd2f21ee",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.238
+    },
+    {
+      "pattern": "game_over",
+      "sha256": "f3dcbb1179a18bb8cc677c3a1ebbac8655204842e9328b2c76a26312945a665f",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.36
+    },
+    {
+      "pattern": "score_gate",
+      "sha256": "c5425639ea2f8b210529574d16b80a1f9f7ed7e02e9c714453c9de6573bf64ee",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.4
+    },
+    {
+      "pattern": "bonus_trigger",
+      "sha256": "36d82d6febeca9c73219cc61879f20159acd2fc52845873d7b14d9e6538093b7",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.344
+    },
+    {
+      "pattern": "mutual_exclusion",
+      "sha256": "ef7205520c05d5c4997faec7a1f827ccfd4cef41678381480dd3c7fcd314a6c6",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.388
+    },
+    {
+      "pattern": "never_unsafe",
+      "sha256": "2899e2ba03b73778a15dd12feb3387c5c2bc11214e7372bf5536708a00ed467d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.404
+    },
+    {
+      "pattern": "request_response",
+      "sha256": "0d52975451e0b5045d7a9ea73a1bfce6f9f1ab5873e877869e3cd6c70373703b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.34
+    },
+    {
+      "pattern": "recovery",
+      "sha256": "2ec1a698a18ef7ee7f02cefda9337842263c3befdd3f966eb21f9f2f300a1b0a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.307
+    },
+    {
+      "pattern": "no_starvation",
+      "sha256": "36418df15d94ffab873ada46f13560935978b8085a3212df5af0727b46cb593d",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.308
+    },
+    {
+      "pattern": "stabilization",
+      "sha256": "e32e4636c22bd3f99f90c8c2ab96c9762ed1815ba009f16164f5300ca58c7ff7",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.27
+    },
+    {
+      "pattern": "consensus_check",
+      "sha256": "8be5894b77c5d802e24eb2e2d9db3478a2e57e93aeb7c1c956d15b0b51df613e",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.292
+    },
+    {
+      "pattern": "progress",
+      "sha256": "be0d9c7b2e759fff66ebc9774714de9a66ec4822bfdb3aaacd83539d54bb7cbb",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.387
+    },
+    {
+      "pattern": "bounded_until",
+      "sha256": "ac4f197c0ec54f2955e2de0bdabca03653abe4f075d37e1032d1349943471b2b",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.363
+    },
+    {
+      "pattern": "trust_update",
+      "sha256": "c9e72154a81fb5ca177c6af637eb5961edcbda7a54edfccafb2aba8c2a8ab9ff",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.331
+    },
+    {
+      "pattern": "reputation_gate",
+      "sha256": "ee39b22491f18b16bf051e1a248e29603b9a57edacf78d2a3a141ea8e5c073eb",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.321
+    },
+    {
+      "pattern": "risk_gate",
+      "sha256": "7059b7580dbee63c07065aa1ec63bb7c4cb768ca85104858574058374854d4c8",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.392
+    },
+    {
+      "pattern": "belief_consistency",
+      "sha256": "28799a17ee299c10f966680dd69a06b03f11810ca293e97e9a113f4a46523fa6",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.364
+    },
+    {
+      "pattern": "exploration_decay",
+      "sha256": "b2317bc4ab46ce8ee717486404c0c5ea729ad8916352dcce224b96706529bbe5",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.234
+    },
+    {
+      "pattern": "safe_exploration",
+      "sha256": "0716579bd05acc43f9b51c75b04341e5a31d7d1c212534ce36a06756aac0956a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.265
+    },
+    {
+      "pattern": "emergent_detector",
+      "sha256": "5bbf136c1c8edf873fdedc9f3149b6cf311eda807e735a27379860d1a40dc5ef",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.34
+    },
+    {
+      "pattern": "utility_alignment",
+      "sha256": "7cdaca2735c8b18becc1197eb10469afd11031eda6f93e8863ebbc1c5db1122a",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.442
+    },
+    {
+      "pattern": "causal_gate",
+      "sha256": "23c138fb39b1f1bb542281b73ae82a3584fa5df4153464101618973d8480151f",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.385
+    },
+    {
+      "pattern": "counterfactual_safe",
+      "sha256": "3034378ec437e7cb90e4c653f882dbafaeb941ebc9168c451eeb49492c781542",
+      "accepted": true,
+      "errors": [],
+      "status": "native-interpreter-accepted",
+      "seconds": 0.238
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# Tau Language 0.8 file specification; run with --charvar off.
+# counter_test - Generated Tau Agent
+# Auto-generated from AgentSchema
+# counter_test Agent (Auto-generated)
+# Strategy: custom
+
+i0:sbf := in file("inputs/increment.in"). 
+
+o0:sbf := out file("outputs/count.out"). 
+
+# counter pattern: count <- increment
+always (
+((o0[t] = (i0[t] & o0[t-1]') | (i0[t]' & o0[t-1])) && (o0[0] = 0))
+).

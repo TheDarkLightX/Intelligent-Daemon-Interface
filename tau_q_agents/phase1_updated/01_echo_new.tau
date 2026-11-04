@@ -3,11 +3,8 @@
 #
 # Expected: input 0,1,0 -> output 0,1,0
 
-i1 : sbf = in file("inputs/signal.in")
-o1 : sbf = out file("outputs/echo.out")
-r o1[t] = i1[t]
-n
-n
-n
-q
-
+i1 : sbf := in file("inputs/signal.in"). 
+o1 : sbf := out file("outputs/echo.out"). 
+always (
+o1[t] = i1[t]
+).
